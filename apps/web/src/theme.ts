@@ -1,0 +1,15 @@
+export const theme = {
+  gold: "#E5AC5F",
+  goldDark: "#C9914A",
+  goldLight: "#F2CB8E",
+  goldSoft: "#FBF1E0",
+  red: "#9B1C1C",
+  redLight: "#C0392B",
+  bg: "#F2EFE9",
+  bgCard: "#FFFFFF",
+  bgDark: "#1C1813",
+  bgDark2: "#272019",
+  text: "#211C16",
+  textMuted: "#8A8178",
+  border: "#E7E0D4",
+} as const;

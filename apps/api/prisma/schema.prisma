@@ -1,0 +1,374 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String           @id @default(cuid())
+  email                String           @unique
+  password             String
+  name                 String
+  role                 Role             @default(USER)
+  resetToken           String?
+  resetExpires         DateTime?
+  autoReplyEnabled     Boolean          @default(true) // interrupteur global des réponses automatiques
+  // Profil
+  avatarUrl            String? // photo de profil (data URL compressée côté navigateur)
+  phone                String?
+  companyName          String?
+  // Préférences
+  defaultPage          String           @default("gestion") // page ouverte après connexion
+  desktopNotifications Boolean          @default(false) // notification du navigateur pour les messages à traiter
+  // Incrémenté pour invalider toutes les sessions (changement de mot de passe, « déconnecter partout »)
+  tokenVersion         Int              @default(0)
+  accounts             SocialAccount[]
+  rules                AutomationRule[]
+  logs                 ActivityLog[]
+  schedules            Schedule[]
+  liveSessions         LiveSession[]
+  leads                Lead[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+}
+
+model SocialAccount {
+  id              String           @id @default(cuid())
+  platform        Platform
+  externalId      String
+  name            String
+  avatarUrl       String?
+  accessToken     String
+  expiresAt       DateTime?
+  isActive        Boolean          @default(true)
+  lastSyncedAt    DateTime? // curseur du polling des commentaires : seuls les éléments plus récents sont traités
+  dmSyncedAt      DateTime? // curseur du polling des messages privés (avance indépendamment)
+  syncError       String? // dernière erreur de relève (ex. permission manquante), null si tout va bien
+  // Assistant IA (propre à chaque compte : chaque Page est une activité différente)
+  aiEnabled       Boolean          @default(false)
+  aiAutoSend      Boolean          @default(false) // sinon : suggestion à valider
+  aiChannel       RuleChannel      @default(ALL)
+  aiContext       String? // base de connaissances : produits, prix, livraison, horaires…
+  aiInstructions  String? // consignes de ton, signature…
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  messages        SocialMessage[]
+  rules           AutomationRule[]
+  scheduleTargets ScheduleTarget[]
+  liveSessions    LiveSession[]
+  leads           Lead[]
+  createdAt       DateTime         @default(now())
+
+  @@unique([platform, externalId, userId])
+}
+
+model SocialMessage {
+  id          String          @id @default(cuid())
+  externalId  String // id du commentaire / message côté Meta
+  kind        MessageKind
+  authorId    String? // id de l'auteur (PSID, IGSID, id Facebook)
+  authorName  String
+  content     String
+  postId      String? // publication parente (commentaires)
+  intent      String? // détectée par l'IA : prix, commande, reclamation…
+  leadScore   Int? // score de lead (null : pas encore analysé)
+  aiReply     String? // réponse envoyée, ou suggérée tant que PENDING
+  aiGenerated Boolean         @default(false) // réponse rédigée par l'IA (sinon règle ou saisie manuelle)
+  status      MessageStatus   @default(PENDING)
+  error       String? // dernière erreur d'envoi
+  repliedAt   DateTime?
+  rule        AutomationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  ruleId      String?
+  account     SocialAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String
+  createdAt   DateTime        @default(now())
+
+  @@unique([accountId, externalId]) // garantit qu'un même message n'est traité qu'une fois
+  @@index([accountId, status])
+}
+
+model AutomationRule {
+  id              String          @id @default(cuid())
+  name            String
+  channel         RuleChannel     @default(ALL)
+  matchType       MatchType       @default(CONTAINS)
+  trigger         String          @default("") // mots-clés séparés par des virgules (ignoré si ANY)
+  response        String // variantes séparées par ||, variables {nom} et {page}
+  privateReply    String? // commentaires : message privé envoyé en plus à l'auteur
+  autoSend        Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  priority        Int             @default(0) // la plus haute est évaluée en premier
+  hitCount        Int             @default(0)
+  lastTriggeredAt DateTime?
+  account         SocialAccount?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId       String? // null = tous les comptes
+  messages        SocialMessage[]
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String
+  meta      Json?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Platform {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+}
+
+enum MessageKind {
+  COMMENT
+  DIRECT
+  LIVE_COMMENT
+}
+
+enum MessageStatus {
+  PENDING
+  REPLIED
+  ESCALATED
+  IGNORED
+}
+
+enum RuleChannel {
+  ALL
+  COMMENT
+  DIRECT
+}
+
+enum MatchType {
+  CONTAINS // au moins un mot-clé présent dans le texte
+  EXACT // le texte entier correspond à un mot-clé
+  ANY // tout message (réponse par défaut)
+}
+
+// ============================================================
+// Planification : publications, commentaires et messages programmés
+// ============================================================
+
+model Schedule {
+  id          String           @id @default(cuid())
+  kind        ScheduleKind
+  status      ScheduleStatus   @default(DRAFT)
+  text        String
+  imageUrl    String? // publication : image téléversée (/uploads/…) ou URL publique
+  link        String? // publication Facebook : lien partagé
+  messageTag  String? // message privé hors fenêtre de 24 h (Messenger) : POST_PURCHASE_UPDATE…
+  scheduledAt DateTime? // null : brouillon sans date
+  publishedAt DateTime?
+  error       String? // résumé du dernier échec
+  targets     ScheduleTarget[]
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([userId, scheduledAt])
+}
+
+// Une destination : une Page / un compte (publication), une publication (commentaire) ou une conversation (message)
+model ScheduleTarget {
+  id         String        @id @default(cuid())
+  schedule   Schedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId String
+  account    SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId  String
+  refId      String? // COMMENT : publication commentée ; MESSAGE : conversation
+  label      String? // aperçu : extrait de la publication ou nom du destinataire
+  status     TargetStatus  @default(PENDING)
+  externalId String? // identifiant créé chez Meta
+  permalink  String?
+  error      String?
+  doneAt     DateTime?
+}
+
+enum ScheduleKind {
+  POST
+  COMMENT
+  MESSAGE
+}
+
+enum ScheduleStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  DONE
+  PARTIAL // certaines destinations ont échoué
+  FAILED
+}
+
+enum TargetStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+// ============================================================
+// Lives : capture des commentaires et gestion des JP (vente en direct)
+// ============================================================
+
+model LiveSession {
+  id             String            @id @default(cuid())
+  title          String
+  status         LiveSessionStatus @default(ACTIVE)
+  sourceType     String // "live" (vidéo en direct) ou "post" (publication)
+  objectId       String // objet dont on lit les commentaires : vidéo Facebook, publication ou média Instagram
+  postId         String? // identifiant de publication reçu par les webhooks (Facebook : {pageId}_{videoId})
+  liveVideoId    String? // Facebook : live_video, pour suivre l'état du direct
+  liveStatus     String? // LIVE, VOD… (dernier état connu)
+  permalink      String?
+  thumbnail      String?
+  keywords       String            @default("jp, j'prends, jprends, je prends")
+  requiredFields String            @default("nom,telephone,adresse")
+  autoMessage    Boolean           @default(true) // message privé automatique à chaque JP
+  replyPublic    String? // réponse publique sous le commentaire JP (vide : aucune)
+  firstMessage   String
+  missingMessage String
+  confirmMessage String
+  soldOutMessage String
+  cursor         DateTime? // date du dernier commentaire lu
+  lastPolledAt   DateTime?
+  syncError      String?
+  endedAt        DateTime?
+  account        SocialAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId      String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  products       LiveProduct[]
+  comments       LiveComment[]
+  orders         LiveOrder[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([accountId, status])
+}
+
+model LiveProduct {
+  id        String      @id @default(cuid())
+  session   LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+  code      String
+  name      String
+  price     Int? // en ariary
+  stock     Int? // null : illimité
+
+  @@unique([sessionId, code])
+}
+
+model LiveComment {
+  id         String      @id @default(cuid())
+  session    LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  externalId String
+  authorId   String?
+  authorName String
+  text       String
+  isJp       Boolean     @default(false)
+  createdAt  DateTime
+
+  @@unique([sessionId, externalId])
+  @@index([sessionId, createdAt])
+}
+
+model LiveOrder {
+  id           String          @id @default(cuid())
+  session      LiveSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId    String
+  commentId    String? // commentaire JP d'origine (null : ajout manuel)
+  customerId   String? // auteur du commentaire
+  customerName String
+  recipientId  String? // PSID / IGSID renvoyé par le message privé : relie les réponses du client
+  comment      String // texte du JP
+  code         String?
+  productName  String?
+  quantity     Int             @default(1)
+  unitPrice    Int?
+  fullName     String?
+  phone        String?
+  address      String?
+  note         String?
+  replies      String? // réponses du client (les plus récentes)
+  status       LiveOrderStatus @default(NEW)
+  reminders    Int             @default(0) // relances pour informations manquantes
+  error        String? // dernier échec d'envoi
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([sessionId, commentId])
+  @@index([sessionId, recipientId])
+}
+
+enum LiveSessionStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum LiveOrderStatus {
+  NEW // capturé, client pas encore contacté
+  MESSAGED // message privé envoyé, en attente de réponse
+  PARTIAL // réponse reçue, informations incomplètes
+  CONFIRMED // informations complètes
+  WAITLIST // article épuisé
+  DELIVERED
+  CANCELED
+}
+
+// ============================================================
+// Leads : clients potentiels détectés dans les commentaires, messages et lives
+// ============================================================
+
+model Lead {
+  id           String        @id @default(cuid())
+  personKey    String // identifiant de la personne (id Facebook/Instagram, sinon « nom:… »)
+  personId     String? // auteur du commentaire ou du message
+  psid         String? // identifiant Messenger / Instagram pour lui écrire en privé
+  name         String
+  score        Int // 0 à 100
+  signals      String[] // « Demande de prix », « Téléphone partagé »…
+  intent       String? // intention principale (prix, commande, livraison…)
+  phone        String?
+  email        String?
+  lastMessage  String // dernier message révélateur (extrait)
+  lastSource   String // COMMENT, DIRECT ou LIVE
+  postId       String? // publication d'origine (commentaire)
+  messageCount Int           @default(1)
+  status       LeadStatus    @default(NEW)
+  value        Int? // montant estimé (Ar)
+  note         String?
+  lastSeenAt   DateTime      @default(now())
+  account      SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId    String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([accountId, personKey])
+  @@index([accountId, psid])
+  @@index([userId, status, score])
+}
+
+enum LeadStatus {
+  NEW // à contacter
+  CONTACTED
+  QUALIFIED
+  WON
+  LOST
+}
