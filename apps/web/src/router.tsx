@@ -15,6 +15,7 @@ import { PlannerPage } from "@/pages/app/PlannerPage";
 import { LivePage } from "@/pages/app/LivePage";
 import { LeadsPage } from "@/pages/app/LeadsPage";
 import { StatsPage } from "@/pages/app/StatsPage";
+import { HistoryPage } from "@/pages/app/HistoryPage";
 import { ConnectionsPage } from "@/pages/app/ConnectionsPage";
 import { AutomationPage } from "@/pages/app/AutomationPage";
 import { SettingsPage } from "@/pages/app/SettingsPage";
@@ -22,6 +23,7 @@ import { WorkspacePage } from "@/pages/app/WorkspacePage";
 import { PlaceholderPage } from "@/pages/app/PlaceholderPage";
 import { DefaultPageRedirect } from "@/components/layout/DefaultPageRedirect";
 import { HubRedirect } from "@/components/layout/HubRedirect";
+import { InvoicePrintPage } from "@/pages/print/InvoicePrintPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      // Page d'impression : sans menu ni barre latérale, pour une mise en page propre
+      { path: "/print/invoice/:id", element: <InvoicePrintPage /> },
       {
         path: "/app",
         element: <AppLayout />,
@@ -47,6 +51,7 @@ export const router = createBrowserRouter([
           { path: "lives", element: <LivePage /> },
           { path: "leads", element: <LeadsPage /> },
           { path: "statistiques", element: <StatsPage /> },
+          { path: "historique", element: <HistoryPage /> },
           { path: "connexions", element: <ConnectionsPage /> },
           { path: "messages", element: <HubRedirect tab={2} /> },
           { path: "automatisation", element: <AutomationPage /> },

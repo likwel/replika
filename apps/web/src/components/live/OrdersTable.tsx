@@ -97,7 +97,9 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
       .map(([k, list]) => {
         const product = products.find((p) => p.code === list[0].code);
         const sold = list.filter((o) => SOLD.includes(o.status));
-        const reserved = list.filter((o) => !["CANCELED", "WAITLIST"].includes(o.status)).reduce((n, o) => n + o.quantity, 0);
+        // Les commandes confirmées/livrées sont déjà déduites de product.stock ; seules celles
+        // encore en attente de confirmation sont une réservation "en plus" à afficher.
+        const reserved = list.filter((o) => ["NEW", "MESSAGED", "PARTIAL"].includes(o.status)).reduce((n, o) => n + o.quantity, 0);
         return {
           key: k,
           code: list[0].code,

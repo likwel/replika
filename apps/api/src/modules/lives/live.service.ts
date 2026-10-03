@@ -16,7 +16,7 @@ import {
   type Detection,
   type JpProduct,
 } from "./live.matcher.js";
-import type { CreateOrderInput, CreateSessionInput, UpdateOrderInput, UpdateSessionInput } from "./live.schema.js";
+import type { CreateOrderInput, CreateSessionInput, UpdateInvoiceInput, UpdateOrderInput, UpdateSessionInput } from "./live.schema.js";
 
 type MetaAccount = SocialAccount & { platform: "FACEBOOK" | "INSTAGRAM" };
 type SessionWithAccount = LiveSession & { account: SocialAccount };
@@ -31,6 +31,14 @@ export const DEFAULT_TEMPLATES = {
   missingMessage: "Merci {nom} ! Il nous manque encore {manquant}. Pouvez-vous nous l'envoyer ?",
   confirmMessage: "Merci {nom} ✅ Votre commande est enregistrée : {articles}. Nous vous appelons au {telephone} pour la livraison.",
   soldOutMessage: "Désolé {nom}, {produit} est épuisé 😔 Vous êtes sur liste d'attente : nous vous prévenons s'il se libère.",
+  recapMessage:
+    "Bonjour {nom} 👋\n\nMerci pour votre commande ! Voici votre récapitulatif :\n{articles}\n\n" +
+    "Sous-total : {sousTotal}\nLivraison : {livraison}\nTotal à payer : {total}\n\n" +
+    "Nous revenons vers vous pour organiser la livraison. Merci pour votre confiance 🙏",
+  recapUpdateMessage:
+    "Mise à jour de votre commande, {nom} :\n{articles}\n\n" +
+    "Sous-total : {sousTotal}\nLivraison : {livraison}\nTotal à payer : {total}",
+  deliveryFee: 0,
 };
 
 const ORDER_STATUSES = ["NEW", "MESSAGED", "PARTIAL", "CONFIRMED", "WAITLIST", "DELIVERED", "CANCELED"] as const;
@@ -59,6 +67,12 @@ async function findOrder(userId: string, id: string) {
   return o;
 }
 
+async function findInvoice(userId: string, id: string) {
+  const inv = await prisma.liveInvoice.findFirst({ where: { id, session: { userId } }, include: { session: { include: { account: true } } } });
+  if (!inv) throw new AppError("Facture introuvable", 404);
+  return inv;
+}
+
 // Traduit les refus fréquents de Meta
 export function explain(e: unknown): string {
   const raw = graphErrorMessage(e).replace(/\s+/g, " ").trim();
@@ -74,6 +88,31 @@ const isOwnComment = (acc: SocialAccount, c: { authorId?: string | null; authorN
   (c.authorId && c.authorId === acc.externalId) || (acc.platform === "INSTAGRAM" && `@${c.authorName.replace(/^@/, "")}` === acc.name);
 
 const productLabel = (o: Pick<LiveOrder, "productName" | "code">) => o.productName ?? (o.code ? `l'article ${o.code}` : "votre article");
+
+// ============================================================
+// Stock : décrémenté quand une commande est confirmée (ou livrée directement),
+// restauré si elle en ressort (annulation, retour en attente, suppression).
+// ============================================================
+
+const STOCK_CONSUMING = new Set<LiveOrder["status"]>(["CONFIRMED", "DELIVERED"]);
+const consumesStock = (status: LiveOrder["status"]) => STOCK_CONSUMING.has(status);
+
+async function syncProductStock(
+  sessionId: string,
+  code: string | null,
+  wasConsuming: boolean,
+  isConsuming: boolean,
+  fromQty: number,
+  toQty: number
+) {
+  if (!code || (!wasConsuming && !isConsuming)) return;
+  // delta > 0 : du stock est consommé (commande confirmée/livrée) ; delta < 0 : il est restitué
+  const delta = !wasConsuming && isConsuming ? toQty : wasConsuming && !isConsuming ? -fromQty : toQty - fromQty;
+  if (!delta) return;
+  const product = await prisma.liveProduct.findUnique({ where: { sessionId_code: { sessionId, code } } });
+  if (!product || product.stock === null) return; // pas de suivi de stock pour cet article
+  await prisma.liveProduct.update({ where: { id: product.id }, data: { stock: Math.max(0, product.stock - delta) } });
+}
 
 function varsFor(session: LiveSession, account: SocialAccount, orders: LiveOrder[], missing: string[] = []) {
   const o = orders[0];
@@ -151,14 +190,17 @@ async function contactCustomer(session: LiveSession, account: SocialAccount, ord
     errors.push(`Message privé : ${explain(e)}`);
   }
 
-  return prisma.liveOrder.update({
+  const newStatus: LiveOrder["status"] = sent && !waitlist ? (missing.length ? "MESSAGED" : "CONFIRMED") : order.status;
+  const updated = await prisma.liveOrder.update({
     where: { id: order.id },
     data: {
       recipientId,
       error: errors.length ? errors.join(" · ") : null,
-      ...(sent && !waitlist ? { status: missing.length ? "MESSAGED" : "CONFIRMED" } : {}),
+      ...(newStatus !== order.status ? { status: newStatus } : {}),
     },
   });
+  await syncProductStock(order.sessionId, order.code, consumesStock(order.status), consumesStock(newStatus), order.quantity, order.quantity);
+  return updated;
 }
 
 async function createOrder(
@@ -170,9 +212,11 @@ async function createOrder(
   const product = detection.product;
   let status: LiveOrder["status"] = "NEW";
   if (product?.stock !== null && product?.stock !== undefined) {
+    // Les commandes déjà confirmées/livrées sont déjà déduites de product.stock ;
+    // seules celles encore en attente de confirmation comptent comme réservation.
     const taken = await prisma.liveOrder.aggregate({
       _sum: { quantity: true },
-      where: { sessionId: session.id, code: product.code, status: { notIn: ["CANCELED", "WAITLIST"] } },
+      where: { sessionId: session.id, code: product.code, status: { in: ["NEW", "MESSAGED", "PARTIAL"] } },
     });
     if ((taken._sum.quantity ?? 0) + detection.quantity > product.stock) status = "WAITLIST";
   }
@@ -291,16 +335,18 @@ export async function handleLiveDirectMessage(account: SocialAccount, msg: Pick<
   const replies = (o: LiveOrder) => `${o.replies ? `${o.replies}\n` : ""}${msg.content}`.slice(-2000);
 
   for (const o of orders) {
+    const newStatus: LiveOrder["status"] = missing.length ? "PARTIAL" : "CONFIRMED";
     await prisma.liveOrder.update({
       where: { id: o.id },
       data: {
         ...contact,
         recipientId: msg.authorId,
         replies: replies(o),
-        status: missing.length ? "PARTIAL" : "CONFIRMED",
+        status: newStatus,
         ...(missing.length ? { reminders: { increment: 1 } } : {}),
       },
     });
+    await syncProductStock(o.sessionId, o.code, consumesStock(o.status), consumesStock(newStatus), o.quantity, o.quantity);
   }
 
   const updated = await prisma.liveOrder.findMany({ where: { id: { in: orders.map((o) => o.id) } }, orderBy: { createdAt: "asc" } });
@@ -317,6 +363,130 @@ export async function handleLiveDirectMessage(account: SocialAccount, msg: Pick<
     return { reply: null, error, orders: updated };
   }
   return { reply, orders: updated };
+}
+
+// ============================================================
+// Factures de fin de live : chaque participant (au moins un JP confirmé) reçoit un
+// récapitulatif (articles + livraison + total), visible et imprimable dans ReplyKA.
+// ============================================================
+
+const INVOICE_STATUSES = ["CONFIRMED", "DELIVERED"] as const;
+const customerKeyOf = (o: Pick<LiveOrder, "customerId" | "customerName">) => o.customerId ?? `nom:${o.customerName}`;
+
+// « 2 x 35 000 Ar = 70 000 Ar » si quantité > 1, simplement « 35 000 Ar » sinon
+function qtyPriceLine(o: Pick<LiveOrder, "quantity" | "unitPrice">): string {
+  if (o.unitPrice === null) return "prix à confirmer";
+  if (o.quantity <= 1) return formatAriary(o.unitPrice);
+  return `${o.quantity} x ${formatAriary(o.unitPrice)} = ${formatAriary(o.unitPrice * o.quantity)}`;
+}
+
+function recapVars(session: LiveSession, account: SocialAccount, orders: LiveOrder[], deliveryFee: number) {
+  const o = orders[0];
+  const itemsTotal = orders.reduce((n, x) => n + (x.unitPrice ?? 0) * x.quantity, 0);
+  return {
+    nom: firstName(o.fullName ?? o.customerName),
+    client: o.fullName ?? o.customerName,
+    articles: orders.map((x) => `• ${productLabel(x)} : ${qtyPriceLine(x)}`).join("\n"),
+    sousTotal: formatAriary(itemsTotal),
+    livraison: formatAriary(deliveryFee),
+    total: formatAriary(itemsTotal + deliveryFee),
+    telephone: o.phone ?? "",
+    adresse: o.address ?? "",
+    page: account.name,
+    live: session.title,
+  };
+}
+
+async function sendInvoiceMessage(
+  session: SessionWithAccount,
+  orders: LiveOrder[],
+  invoice: { id: string; deliveryFee: number; sentAt: Date | null }
+) {
+  // Déjà envoyé une première fois : on prévient d'une mise à jour plutôt que de redire « Bonjour »
+  const isUpdate = invoice.sentAt !== null;
+  const raw = isUpdate ? session.recapUpdateMessage : session.recapMessage;
+  // Filet de sécurité : un modèle vide produirait un message Messenger vide, rejeté par l'API Graph
+  const template = raw.trim() || (isUpdate ? DEFAULT_TEMPLATES.recapUpdateMessage : DEFAULT_TEMPLATES.recapMessage);
+  const text = renderTemplate(template, recapVars(session, session.account, orders, invoice.deliveryFee));
+  const recipientId = orders.find((o) => o.recipientId)?.recipientId ?? null;
+  const commentId = orders.find((o) => o.commentId)?.commentId ?? null;
+  const { account } = session;
+
+  const send = async (tag?: string) => {
+    if (recipientId) return graphClient.sendMessage(recipientId, text, account.accessToken, tag);
+    if (commentId) return graphClient.sendPrivateReply(commentId, text, account.accessToken);
+    throw new Error("Aucun moyen de joindre ce client : pas de conversation ni de commentaire connu.");
+  };
+
+  try {
+    try {
+      await send();
+    } catch (e) {
+      // Fin de live : le dernier échange avec le client date souvent de plus de 24 h.
+      // Messenger autorise malgré tout un suivi de commande, avec l'étiquette dédiée.
+      if (account.platform === "FACEBOOK" && recipientId && /outside of allowed window/i.test(graphErrorMessage(e))) {
+        await send("POST_PURCHASE_UPDATE");
+      } else {
+        throw e;
+      }
+    }
+    await prisma.liveInvoice.update({ where: { id: invoice.id }, data: { sentAt: new Date(), sendError: null } });
+  } catch (e) {
+    await prisma.liveInvoice.update({ where: { id: invoice.id }, data: { sendError: `Message : ${explain(e)}` } });
+  }
+}
+
+// Regroupe les commandes confirmées/livrées par client ; crée/actualise une facture pour
+// chaque participant, et envoie le récapitulatif aux nouvelles factures (si l'envoi auto est actif).
+// autoSend : par défaut, n'envoie que si l'envoi automatique de la session est actif.
+// Passé à false explicitement depuis « Actualiser les factures » : l'envoi doit rester un geste volontaire
+// (clic sur « Envoyer »/« Renvoyer », ou fin du live).
+async function generateInvoices(session: SessionWithAccount, opts: { autoSend?: boolean } = {}) {
+  const autoSend = opts.autoSend ?? session.autoMessage;
+  const orders = await prisma.liveOrder.findMany({
+    where: { sessionId: session.id, status: { in: [...INVOICE_STATUSES] } },
+    orderBy: { createdAt: "asc" },
+  });
+  const groups = new Map<string, LiveOrder[]>();
+  for (const o of orders) groups.set(customerKeyOf(o), [...(groups.get(customerKeyOf(o)) ?? []), o]);
+
+  const invoices = [];
+  for (const [customerKey, group] of groups) {
+    const contact = contactOf(group);
+    const itemsTotal = group.reduce((n, o) => n + (o.unitPrice ?? 0) * o.quantity, 0);
+    const deliveryFee = session.deliveryFee;
+    const existing = await prisma.liveInvoice.findUnique({ where: { sessionId_customerKey: { sessionId: session.id, customerKey } } });
+    // Numéro attribué une seule fois, à la création : les factures existantes ne sont jamais renumérotées
+    const invoiceNumber =
+      existing?.invoiceNumber ||
+      `FA-${String((await prisma.liveInvoice.count({ where: { session: { userId: session.userId } } })) + 1).padStart(6, "0")}`;
+    const invoice = await prisma.liveInvoice.upsert({
+      where: { sessionId_customerKey: { sessionId: session.id, customerKey } },
+      create: {
+        sessionId: session.id,
+        invoiceNumber,
+        customerKey,
+        customerName: group[0].customerName,
+        phone: contact.phone,
+        address: contact.address,
+        deliveryFee,
+        itemsTotal,
+        total: itemsTotal + deliveryFee,
+        orderIds: group.map((o) => o.id),
+      },
+      update: {
+        customerName: group[0].customerName,
+        phone: contact.phone,
+        address: contact.address,
+        itemsTotal,
+        total: (existing?.deliveryFee ?? deliveryFee) + itemsTotal,
+        orderIds: group.map((o) => o.id),
+      },
+    });
+    invoices.push(invoice);
+    if (!invoice.sentAt && autoSend) await sendInvoiceMessage(session, group, invoice);
+  }
+  return invoices;
 }
 
 // ============================================================
@@ -445,6 +615,9 @@ export const liveService = {
         missingMessage: input.missingMessage ?? DEFAULT_TEMPLATES.missingMessage,
         confirmMessage: input.confirmMessage ?? DEFAULT_TEMPLATES.confirmMessage,
         soldOutMessage: input.soldOutMessage ?? DEFAULT_TEMPLATES.soldOutMessage,
+        recapMessage: input.recapMessage ?? DEFAULT_TEMPLATES.recapMessage,
+        recapUpdateMessage: input.recapUpdateMessage ?? DEFAULT_TEMPLATES.recapUpdateMessage,
+        deliveryFee: input.deliveryFee ?? 0,
         // Sans reprise de l'existant : seuls les commentaires publiés à partir de maintenant comptent
         cursor: input.includeExisting ? null : new Date(),
         products: { create: input.products.map((p) => ({ code: p.code, name: p.name, price: p.price ?? null, stock: p.stock ?? null })) },
@@ -461,15 +634,21 @@ export const liveService = {
       const other = await prisma.liveSession.findFirst({ where: { id: { not: id }, accountId: s.accountId, objectId: s.objectId, status: { not: "ENDED" } } });
       if (other) throw new AppError(`Une autre session suit déjà cette source : « ${other.title} »`, 409);
     }
+    const endsNow = input.status === "ENDED" && s.status !== "ENDED";
     await prisma.liveSession.update({
       where: { id },
       data: {
         ...input,
         requiredFields: input.requiredFields?.join(","),
-        ...(input.status === "ENDED" && s.status !== "ENDED" ? { endedAt: new Date() } : {}),
+        ...(endsNow ? { endedAt: new Date() } : {}),
         ...(input.status && input.status !== "ENDED" ? { endedAt: null } : {}),
       },
     });
+    // Clients avec plusieurs JP confirmés : récapitulatif généré et envoyé en tâche de fond
+    if (endsNow) {
+      const ended = await findSession(userId, id);
+      void generateInvoices(ended).catch((e) => console.error(`❌ Factures live ${id} :`, e));
+    }
     return liveService.getSession(userId, id);
   },
 
@@ -548,7 +727,8 @@ export const liveService = {
       { fullName: input.fullName ?? null, phone: input.phone ?? null, address: input.address ?? null },
       parseFields(session.requiredFields)
     );
-    return prisma.liveOrder.create({
+    const status: LiveOrder["status"] = missing.length ? "NEW" : "CONFIRMED";
+    const order = await prisma.liveOrder.create({
       data: {
         sessionId,
         customerName: input.customerName,
@@ -561,19 +741,34 @@ export const liveService = {
         phone: input.phone ?? null,
         address: input.address ?? null,
         note: input.note ?? null,
-        status: missing.length ? "NEW" : "CONFIRMED",
+        status,
       },
     });
+    await syncProductStock(sessionId, order.code, false, consumesStock(status), 0, order.quantity);
+    return order;
   },
 
   async updateOrder(userId: string, id: string, input: UpdateOrderInput) {
-    await findOrder(userId, id);
-    return prisma.liveOrder.update({ where: { id }, data: input });
+    const existing = await findOrder(userId, id);
+    const updated = await prisma.liveOrder.update({ where: { id }, data: input });
+
+    const newCode = input.code !== undefined ? input.code : existing.code;
+    const newQty = input.quantity ?? existing.quantity;
+    const newStatus = input.status ?? existing.status;
+    if (existing.code === newCode) {
+      await syncProductStock(existing.sessionId, existing.code, consumesStock(existing.status), consumesStock(newStatus), existing.quantity, newQty);
+    } else {
+      // L'article a changé : on libère le stock de l'ancien et on consomme celui du nouveau
+      await syncProductStock(existing.sessionId, existing.code, consumesStock(existing.status), false, existing.quantity, existing.quantity);
+      await syncProductStock(existing.sessionId, newCode, false, consumesStock(newStatus), newQty, newQty);
+    }
+    return updated;
   },
 
   async removeOrder(userId: string, id: string) {
-    await findOrder(userId, id);
+    const existing = await findOrder(userId, id);
     await prisma.liveOrder.delete({ where: { id } });
+    await syncProductStock(existing.sessionId, existing.code, consumesStock(existing.status), false, existing.quantity, existing.quantity);
   },
 
   // Message au client : texte libre, ou relance automatique adaptée à la commande
@@ -613,4 +808,59 @@ export const liveService = {
   },
 
   defaults: () => DEFAULT_TEMPLATES,
+
+  // Factures de fin de live (clients avec plusieurs JP confirmés)
+  async listInvoices(userId: string, sessionId: string) {
+    await findSession(userId, sessionId);
+    return prisma.liveInvoice.findMany({ where: { sessionId }, orderBy: { createdAt: "asc" } });
+  },
+
+  // Ne jamais renvoyer invoice.session.account tel quel : il porte le jeton d'accès Facebook
+  async getInvoice(userId: string, id: string) {
+    const invoice = await findInvoice(userId, id);
+    const [orders, user] = await Promise.all([
+      prisma.liveOrder.findMany({ where: { id: { in: invoice.orderIds } }, orderBy: { createdAt: "asc" } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { name: true, companyName: true, phone: true, email: true, address: true } }),
+    ]);
+    const { session, ...rest } = invoice;
+    return {
+      ...rest,
+      orders,
+      seller: {
+        pageName: session.account.name,
+        companyName: user?.companyName && user.companyName !== session.account.name ? user.companyName : null,
+        phone: user?.phone ?? null,
+        email: user?.email ?? null,
+        address: user?.address ?? null,
+      },
+      session: { id: session.id, title: session.title, account: { name: session.account.name, platform: session.account.platform, avatarUrl: session.account.avatarUrl } },
+    };
+  },
+
+  async updateInvoice(userId: string, id: string, input: UpdateInvoiceInput) {
+    const invoice = await findInvoice(userId, id);
+    return prisma.liveInvoice.update({
+      where: { id },
+      data: { deliveryFee: input.deliveryFee, total: invoice.itemsTotal + input.deliveryFee },
+    });
+  },
+
+  // Renvoie le récapitulatif au client, même s'il a déjà été envoyé (relance / après correction)
+  async resendInvoice(userId: string, id: string) {
+    const invoice = await findInvoice(userId, id);
+    const orders = await prisma.liveOrder.findMany({ where: { id: { in: invoice.orderIds } } });
+    if (!orders.length) throw new AppError("Aucune commande associée à cette facture", 422);
+    await sendInvoiceMessage(invoice.session, orders, invoice);
+    const { session: _session, ...updated } = await findInvoice(userId, id);
+    return updated;
+  },
+
+  // Recalcule les factures de la session (nouvelles commandes confirmées depuis la fin du live, montants modifiés…)
+  // Recalcule les montants / crée les factures manquantes, sans jamais envoyer de message :
+  // l'envoi reste un geste volontaire (« Envoyer »/« Renvoyer », ou fin du live).
+  async regenerateInvoices(userId: string, sessionId: string) {
+    const session = await findSession(userId, sessionId);
+    await generateInvoices(session, { autoSend: false });
+    return liveService.listInvoices(userId, sessionId);
+  },
 };

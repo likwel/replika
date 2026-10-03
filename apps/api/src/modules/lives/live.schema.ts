@@ -34,6 +34,9 @@ const settings = {
   missingMessage: template(),
   confirmMessage: template(),
   soldOutMessage: template(),
+  recapMessage: template(1500),
+  recapUpdateMessage: template(1500),
+  deliveryFee: z.number().int().min(0).max(1_000_000_000),
 };
 
 export const createSessionSchema = z
@@ -74,6 +77,10 @@ export const updateOrderSchema = z
 
 export const messageSchema = z.object({ text: optionalText(2000) });
 
+export const updateInvoiceSchema = z.object({
+  deliveryFee: z.number().int().min(0).max(1_000_000_000),
+});
+
 export const markJpSchema = z.object({
   code: optionalText(20),
   quantity: z.number().int().min(1).max(99).default(1),
@@ -89,3 +96,4 @@ export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 export type UpdateSessionInput = z.infer<typeof updateSessionSchema>;
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderInput = z.infer<typeof updateOrderSchema>;
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;

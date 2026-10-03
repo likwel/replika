@@ -122,12 +122,52 @@ async function deliver(account: SocialAccount, msg: SocialMessage, d: Delivery) 
 }
 
 async function applyRule(account: SocialAccount, msg: SocialMessage, rule: AutomationRule) {
-  const reply = renderReply(rule.response, { nom: firstName(msg.authorName), page: account.name });
   await prisma.automationRule.update({
     where: { id: rule.id },
     data: { hitCount: { increment: 1 }, lastTriggeredAt: new Date() },
   });
+  if (rule.useAi) return applyRuleAi(account, msg, rule);
+  const reply = renderReply(rule.response ?? "", { nom: firstName(msg.authorName), page: account.name });
   return deliver(account, msg, { reply, autoSend: rule.autoSend, rule });
+}
+
+// Règle dont la réponse est générée par l'IA (contexte du compte), au lieu d'un texte fixe
+async function applyRuleAi(account: SocialAccount, msg: SocialMessage, rule: AutomationRule) {
+  if (!isAiConfigured()) {
+    return prisma.socialMessage.update({
+      where: { id: msg.id },
+      data: { ruleId: rule.id, error: "IA non configurée" },
+    });
+  }
+
+  let ai: AiReply;
+  try {
+    ai = await generateReplyForMessage(account, msg);
+  } catch (e) {
+    const error = `IA indisponible : ${aiErrorMessage(e)}`;
+    await prisma.activityLog.create({
+      data: { userId: account.userId, action: "AI_REPLY_FAILED", meta: { messageId: msg.id, ruleId: rule.id, error } },
+    });
+    return prisma.socialMessage.update({ where: { id: msg.id }, data: { ruleId: rule.id, error } });
+  }
+
+  // Spam ou message sans objet : on classe, sans répondre
+  if (!ai.reply) {
+    return prisma.socialMessage.update({
+      where: { id: msg.id },
+      data: { ruleId: rule.id, intent: ai.intent },
+    });
+  }
+
+  // Réclamation, information manquante… : un humain valide avant tout envoi
+  if (ai.needsHuman) {
+    return prisma.socialMessage.update({
+      where: { id: msg.id },
+      data: { ruleId: rule.id, aiReply: ai.reply, aiGenerated: true, intent: ai.intent, status: "ESCALATED" },
+    });
+  }
+
+  return deliver(account, msg, { reply: ai.reply, autoSend: rule.autoSend, aiGenerated: true, intent: ai.intent, rule });
 }
 
 const aiAppliesTo = (account: SocialAccount, kind: IncomingKind) =>
@@ -250,7 +290,7 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent) {
   const rules = await prisma.automationRule.findMany({
     where: { userId: account.userId, isActive: true },
   });
-  const candidates = candidateRules(rules, { kind: ev.kind, accountId: account.id });
+  const candidates = candidateRules(rules, { kind: ev.kind, accountId: account.id, postId: ev.postId ?? null });
 
   const keywordRule = candidates.find((r) => r.matchType !== "ANY" && ruleMatchesText(r, msg.content));
   if (keywordRule) return applyRule(account, msg, keywordRule);

@@ -152,6 +152,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
               <li>Les messages sans règle, ou en attente de validation, arrivent dans <strong style={{ color: theme.text }}>Gestion → À traiter</strong>.</li>
               <li>ReplyKA ne répond jamais à ses propres réponses ni aux messages antérieurs à l'activation.</li>
               <li><strong style={{ color: theme.text }}>Pour tester</strong>, commentez depuis un profil personnel : un commentaire publié <em>en tant que Page</em> est ignoré.</li>
+              <li>Une règle « <strong style={{ color: theme.text }}>Réponse par IA</strong> » génère la réponse à la volée, à partir du contexte défini dans Assistant IA. Choisissez une publication précise pour la limiter à ce post, ou laissez « Toutes les publications » pour tout le compte.</li>
               <li>Pendant une session live, les « jp » deviennent des commandes et les autres commentaires (prix, questions…) reçoivent ces réponses automatiques.</li>
             </ul>
           </div>

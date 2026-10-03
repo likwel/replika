@@ -10,6 +10,7 @@ import {
   markJpSchema,
   messageSchema,
   productsSchema,
+  updateInvoiceSchema,
   updateOrderSchema,
   updateSessionSchema,
 } from "./live.schema.js";
@@ -109,5 +110,12 @@ router.post(
   validate(messageSchema),
   catchAsync(async (req, res) => ok(res, await liveService.messageOrder(uid(req), req.params.id, req.body.text)))
 );
+
+// Factures de fin de live (clients avec plusieurs JP confirmés)
+router.get("/sessions/:id/invoices", catchAsync(async (req, res) => ok(res, await liveService.listInvoices(uid(req), req.params.id))));
+router.post("/sessions/:id/invoices/regenerate", catchAsync(async (req, res) => ok(res, await liveService.regenerateInvoices(uid(req), req.params.id))));
+router.get("/invoices/:id", catchAsync(async (req, res) => ok(res, await liveService.getInvoice(uid(req), req.params.id))));
+router.patch("/invoices/:id", validate(updateInvoiceSchema), catchAsync(async (req, res) => ok(res, await liveService.updateInvoice(uid(req), req.params.id, req.body))));
+router.post("/invoices/:id/resend", catchAsync(async (req, res) => ok(res, await liveService.resendInvoice(uid(req), req.params.id))));
 
 export default router;

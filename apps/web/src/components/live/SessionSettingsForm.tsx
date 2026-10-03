@@ -56,6 +56,11 @@ function DetectionTester({ keywords, products }: { keywords: string; products: L
 }
 
 export function SessionSettingsForm({ value: v, onChange, products }: Props) {
+  const [recapDefaults, setRecapDefaults] = useState<{ recapMessage: string; recapUpdateMessage: string } | null>(null);
+  useEffect(() => {
+    liveApi.defaults().then((d) => setRecapDefaults({ recapMessage: d.recapMessage, recapUpdateMessage: d.recapUpdateMessage }));
+  }, []);
+
   const set = <K extends keyof LiveSettings>(k: K, val: LiveSettings[K]) => onChange({ ...v, [k]: val });
   const toggleField = (f: ContactField) =>
     set("requiredFields", v.requiredFields.includes(f) ? v.requiredFields.filter((x) => x !== f) : [...v.requiredFields, f]);
@@ -128,6 +133,77 @@ export function SessionSettingsForm({ value: v, onChange, products }: Props) {
               </span>
             ))}
           </p>
+        </div>
+      </Section>
+
+      <Section title="Récapitulatif de fin de live" hint="Envoyé automatiquement à la fin du live à chaque participant ayant au moins un JP confirmé. Visible et imprimable dans l'onglet « Factures ».">
+        <label className="block">
+          <span className="block text-xs font-medium" style={{ color: theme.text }}>Frais de livraison (Ar)</span>
+          <span className="mb-1 block text-[11px]" style={{ color: theme.textMuted }}>Ajoutés une fois par client dans le total du récapitulatif. Modifiable facture par facture si besoin.</span>
+          <input
+            type="number"
+            min={0}
+            value={v.deliveryFee}
+            onChange={(e) => set("deliveryFee", Math.max(0, Number(e.target.value) || 0))}
+            className={`${input} !w-40`}
+            style={inputStyle}
+          />
+        </label>
+        <label className="block">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium" style={{ color: theme.text }}>Message récapitulatif (premier envoi)</span>
+            {recapDefaults && (
+              <button
+                type="button"
+                onClick={() => set("recapMessage", recapDefaults.recapMessage)}
+                className="text-[11px] font-medium hover:underline"
+                style={{ color: theme.goldDark }}
+              >
+                Rétablir le message par défaut
+              </button>
+            )}
+          </div>
+          <span className="mb-1 block text-[11px]" style={{ color: theme.textMuted }}>Envoyé la première fois qu'un récapitulatif est transmis à ce client.</span>
+          <textarea value={v.recapMessage} onChange={(e) => set("recapMessage", e.target.value)} rows={6} className={input} style={inputStyle} />
+        </label>
+        <label className="block">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium" style={{ color: theme.text }}>Message de mise à jour</span>
+            {recapDefaults && (
+              <button
+                type="button"
+                onClick={() => set("recapUpdateMessage", recapDefaults.recapUpdateMessage)}
+                className="text-[11px] font-medium hover:underline"
+                style={{ color: theme.goldDark }}
+              >
+                Rétablir le message par défaut
+              </button>
+            )}
+          </div>
+          <span className="mb-1 block text-[11px]" style={{ color: theme.textMuted }}>
+            Envoyé à la place du précédent si le récapitulatif avait déjà été transmis (commande modifiée) : évite de redire « Bonjour » à chaque relance.
+          </span>
+          <textarea value={v.recapUpdateMessage} onChange={(e) => set("recapUpdateMessage", e.target.value)} rows={4} className={input} style={inputStyle} />
+        </label>
+        <div className="rounded-xl p-3" style={{ background: theme.bg }}>
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: theme.text }}>
+            <Info size={13} /> Variables disponibles pour ces deux messages
+          </p>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+            {[
+              ["{articles}", "liste détaillée des articles"],
+              ["{sousTotal}", "total des articles, hors livraison"],
+              ["{livraison}", "frais de livraison"],
+              ["{total}", "total à payer (articles + livraison)"],
+              ["{nom}", "prénom du client"],
+              ["{live}", "nom de la session (facultatif)"],
+            ].map(([k, label]) => (
+              <div key={k} className="flex items-baseline gap-1.5 text-[11px]">
+                <dt><code className="rounded px-1 py-0.5" style={{ background: theme.goldSoft, color: theme.goldDark }}>{k}</code></dt>
+                <dd style={{ color: theme.textMuted }}>{label}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </Section>
     </div>

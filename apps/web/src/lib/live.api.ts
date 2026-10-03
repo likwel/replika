@@ -31,6 +31,9 @@ export interface LiveSettings {
   missingMessage: string;
   confirmMessage: string;
   soldOutMessage: string;
+  recapMessage: string;
+  recapUpdateMessage: string;
+  deliveryFee: number;
 }
 
 export interface LiveSession extends Omit<LiveSettings, "requiredFields"> {
@@ -103,6 +106,29 @@ export interface LiveOrder {
   session?: { id: string; title: string; account: { name: string; platform: MetaPlatform } };
 }
 
+export interface LiveInvoice {
+  id: string;
+  invoiceNumber: string;
+  sessionId: string;
+  customerKey: string;
+  customerName: string;
+  phone: string | null;
+  address: string | null;
+  deliveryFee: number;
+  itemsTotal: number;
+  total: number;
+  orderIds: string[];
+  sentAt: string | null;
+  sendError: string | null;
+  createdAt: string;
+}
+
+export interface LiveInvoiceDetail extends LiveInvoice {
+  orders: LiveOrder[];
+  seller: { pageName: string; companyName: string | null; phone: string | null; email: string | null; address: string | null };
+  session: { id: string; title: string; account: { name: string; platform: MetaPlatform; avatarUrl: string | null } };
+}
+
 export interface Detection {
   isJp: boolean;
   code: string | null;
@@ -152,6 +178,12 @@ export const liveApi = {
   updateOrder: (id: string, body: OrderInput) => d(api.patch<Res<LiveOrder>>(`/lives/orders/${id}`, body)),
   removeOrder: (id: string) => api.delete<void>(`/lives/orders/${id}`),
   message: (id: string, text?: string) => d(api.post<Res<LiveOrder>>(`/lives/orders/${id}/message`, { text: text ?? null })),
+
+  invoices: (sessionId: string) => d(api.get<Res<LiveInvoice[]>>(`/lives/sessions/${sessionId}/invoices`)),
+  regenerateInvoices: (sessionId: string) => d(api.post<Res<LiveInvoice[]>>(`/lives/sessions/${sessionId}/invoices/regenerate`)),
+  invoice: (id: string) => d(api.get<Res<LiveInvoiceDetail>>(`/lives/invoices/${id}`)),
+  updateInvoice: (id: string, body: { deliveryFee: number }) => d(api.patch<Res<LiveInvoice>>(`/lives/invoices/${id}`, body)),
+  resendInvoice: (id: string) => d(api.post<Res<LiveInvoice>>(`/lives/invoices/${id}/resend`)),
 };
 
 export const formatAriary = (n: number | null | undefined) =>

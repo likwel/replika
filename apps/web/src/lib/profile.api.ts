@@ -8,6 +8,7 @@ export interface Profile {
   email: string;
   phone: string | null;
   companyName: string | null;
+  address: string | null;
   avatarUrl: string | null;
   role: string;
   createdAt: string;
@@ -29,7 +30,7 @@ type Msg = { status: string; message: string };
 export const profileApi = {
   get: () => api.get<Res<Profile>>("/profile").then((r) => r.data),
 
-  update: (body: Partial<Pick<Profile, "name" | "phone" | "companyName" | "avatarUrl">>) =>
+  update: (body: Partial<Pick<Profile, "name" | "phone" | "companyName" | "address" | "avatarUrl">>) =>
     api.patch<Res<Profile>>("/profile", body).then((r) => r.data),
 
   changeEmail: (email: string, currentPassword: string) =>

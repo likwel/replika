@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { ClipboardPaste, Plus, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ClipboardPaste, FileUp, Loader2, Plus, Trash2 } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
-import type { ProductRow } from "./live";
+import { mergeProductRows, parseImportFile, type ProductRow } from "./live";
 
 interface Props {
   rows: ProductRow[];
@@ -15,6 +15,9 @@ const cellStyle = { background: theme.bg, border: `1px solid ${theme.border}`, c
 // Catalogue du live : code annoncé à l'antenne, nom, prix, stock (facultatif)
 export function ProductsEditor({ rows, onChange }: Props) {
   const [paste, setPaste] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<{ text: string; error?: boolean } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const update = (i: number, k: keyof ProductRow, v: string) => onChange(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
 
   // Colonnes copiées depuis Excel (tabulations) ou saisies « code ; nom ; prix ; stock »
@@ -24,9 +27,26 @@ export function ProductsEditor({ rows, onChange }: Props) {
       .map((l) => l.split(/\t|;/).map((c) => c.trim()))
       .filter((c) => c[0] && c[1])
       .map(([code, name, price = "", stock = ""]) => ({ code, name, price, stock }));
-    const kept = rows.filter((r) => r.code.trim() || r.name.trim());
-    onChange([...kept.filter((r) => !parsed.some((p) => p.code.toLowerCase() === r.code.trim().toLowerCase())), ...parsed]);
+    onChange(mergeProductRows(rows, parsed));
     setPaste(null);
+  };
+
+  const importFile = async (file: File) => {
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const parsed = await parseImportFile(file);
+      if (!parsed.length) {
+        setImportMsg({ text: "Aucun article reconnu dans ce fichier. Colonnes attendues : code, article, prix, stock.", error: true });
+        return;
+      }
+      onChange(mergeProductRows(rows, parsed));
+      setImportMsg({ text: `${parsed.length} article${parsed.length > 1 ? "s" : ""} importé${parsed.length > 1 ? "s" : ""}.` });
+    } catch {
+      setImportMsg({ text: "Fichier illisible. Formats acceptés : .csv, .txt, .xlsx.", error: true });
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -54,10 +74,37 @@ export function ProductsEditor({ rows, onChange }: Props) {
           Sans catalogue, le code tapé après « jp » est repris tel quel (ex. « jp 12 » → article 12).
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="soft" icon={Plus} onClick={() => onChange([...rows, { code: "", name: "", price: "", stock: "" }])}>Ajouter un article</Button>
         <Button size="sm" variant="ghost" icon={ClipboardPaste} onClick={() => setPaste(paste === null ? "" : null)}>Coller une liste</Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={importing ? Loader2 : FileUp}
+          onClick={() => fileInput.current?.click()}
+          disabled={importing}
+          className={importing ? "[&>svg]:animate-spin" : ""}
+        >
+          Importer un fichier
+        </Button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // permet de réimporter le même fichier
+            if (file) importFile(file);
+          }}
+        />
       </div>
+      {importMsg && (
+        <p className="text-xs" style={{ color: importMsg.error ? theme.red : theme.goldDark }}>{importMsg.text}</p>
+      )}
+      <p className="text-[11px]" style={{ color: theme.textMuted }}>
+        CSV, TXT ou Excel (.xlsx) — colonnes : code, article, prix, stock. Les codes déjà présents sont remplacés.
+      </p>
       {paste !== null && (
         <div className="rounded-xl p-3" style={{ border: `1px solid ${theme.border}` }}>
           <p className="mb-1.5 text-xs" style={{ color: theme.textMuted }}>

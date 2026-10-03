@@ -6,18 +6,21 @@ export const EMPTY_RULE: RuleInput = {
   matchType: "CONTAINS",
   trigger: "",
   response: "",
+  useAi: false,
   privateReply: null,
   autoSend: false,
   isActive: true,
   priority: 0,
   accountId: null,
+  postId: null,
+  postLabel: null,
 };
 
 export const splitKeywords = (trigger: string) =>
   trigger.split(",").map((k) => k.trim()).filter(Boolean);
 
-export const splitVariants = (response: string) =>
-  response.split("||").map((v) => v.trim()).filter(Boolean);
+export const splitVariants = (response: string | null) =>
+  (response ?? "").split("||").map((v) => v.trim()).filter(Boolean);
 
 // Modèles de départ proposés quand aucune règle n'existe (validation manuelle par défaut)
 export const RULE_PRESETS: Array<{ label: string; rule: Partial<RuleInput> }> = [

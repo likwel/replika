@@ -4,7 +4,7 @@ import { MENUS } from "@/data/menus";
 import { Title } from "@/components/ui/Title";
 
 const SEG_TO_ID: Record<string, string> = {
-  lives: "live", automatisation: "auto", historique: "hist", parametres: "set",
+  lives: "live", automatisation: "auto", parametres: "set",
 };
 
 export function PlaceholderPage() {

@@ -13,6 +13,7 @@ import uploadRoutes from "../modules/uploads/upload.routes.js";
 import scheduleRoutes from "../modules/schedules/schedule.routes.js";
 import liveRoutes from "../modules/lives/live.routes.js";
 import leadRoutes from "../modules/leads/lead.routes.js";
+import statsRoutes from "../modules/stats/stats.routes.js";
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use("/uploads", uploadRoutes);
 router.use("/schedules", scheduleRoutes);
 router.use("/lives", liveRoutes);
 router.use("/leads", leadRoutes);
+router.use("/stats", statsRoutes);
 
 export default router;

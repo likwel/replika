@@ -12,6 +12,7 @@ const PROFILE_FIELDS = {
   email: true,
   phone: true,
   companyName: true,
+  address: true,
   avatarUrl: true,
   role: true,
   createdAt: true,

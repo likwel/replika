@@ -33,7 +33,7 @@ export function ProfileSection() {
 function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: Profile) => void }) {
   const { updateUser } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
-  const initial = { name: profile.name, phone: profile.phone ?? "", companyName: profile.companyName ?? "" };
+  const initial = { name: profile.name, phone: profile.phone ?? "", companyName: profile.companyName ?? "", address: profile.address ?? "" };
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState<"save" | "photo" | null>(null);
@@ -125,6 +125,7 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
           <TextField label="Nom complet" value={form.name} onChange={(e) => set("name", e.target.value)} required minLength={2} maxLength={80} />
           <TextField label="Téléphone" type="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+261 34 00 000 00" maxLength={30} />
           <TextField label="Entreprise" value={form.companyName} onChange={(e) => set("companyName", e.target.value)} placeholder="Nom de votre activité" maxLength={100} />
+          <TextField label="Adresse" value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Lot II A, Antananarivo" maxLength={200} hint="Affichée sur vos factures imprimées (Lives)." />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Feedback ok={ok} error={error} />

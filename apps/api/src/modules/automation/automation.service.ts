@@ -18,6 +18,13 @@ function assertKeywords(matchType: string | undefined, trigger: string | undefin
   }
 }
 
+// Sans réponse IA, il faut un texte de réponse fixe
+function assertResponse(useAi: boolean | undefined, response: string | undefined | null) {
+  if (!useAi && !(response ?? "").trim()) {
+    throw new AppError("Écrivez la réponse à envoyer, ou activez la réponse par IA", 422);
+  }
+}
+
 async function assertAccountOwned(userId: string, accountId: string | null | undefined) {
   if (!accountId) return;
   const acc = await prisma.socialAccount.findFirst({ where: { id: accountId, userId } });
@@ -40,6 +47,7 @@ export const automationService = {
 
   async create(userId: string, data: RuleInput) {
     assertKeywords(data.matchType, data.trigger);
+    assertResponse(data.useAi, data.response);
     await assertAccountOwned(userId, data.accountId);
     return prisma.automationRule.create({ data: { ...data, trigger: data.trigger ?? "", userId } });
   },
@@ -48,6 +56,7 @@ export const automationService = {
     const rule = await prisma.automationRule.findFirst({ where: { id, userId } });
     if (!rule) throw new AppError("Règle introuvable", 404);
     assertKeywords(data.matchType ?? rule.matchType, data.trigger ?? rule.trigger);
+    assertResponse(data.useAi ?? rule.useAi, data.response ?? rule.response);
     await assertAccountOwned(userId, data.accountId);
     return prisma.automationRule.update({ where: { id }, data });
   },
@@ -110,16 +119,20 @@ export const automationService = {
       : null;
 
     // Sans compte choisi, seules les règles « tous les comptes » sont candidates
-    const rule = candidateRules(rules, { kind: input.kind, accountId: account?.id ?? "" }).find((r) =>
-      ruleMatchesText(r, input.text)
-    );
+    const rule = candidateRules(rules, {
+      kind: input.kind,
+      accountId: account?.id ?? "",
+      postId: input.postId ?? null,
+    }).find((r) => ruleMatchesText(r, input.text));
 
     if (!rule) return { matched: false as const };
     const vars = { nom: "Rakoto", page: account?.name ?? "Votre page" };
     return {
       matched: true as const,
-      rule: { id: rule.id, name: rule.name, autoSend: rule.autoSend },
-      reply: renderReply(rule.response, vars),
+      rule: { id: rule.id, name: rule.name, autoSend: rule.autoSend, useAi: rule.useAi },
+      reply: rule.useAi
+        ? "(réponse générée par l'IA au moment de l'envoi, selon le contexte du compte)"
+        : renderReply(rule.response ?? "", vars),
       privateReply:
         rule.privateReply && input.kind === "COMMENT" ? renderReply(rule.privateReply, vars) : null,
     };

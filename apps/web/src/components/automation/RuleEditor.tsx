@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { X, Layers, MessageCircle, Mail, Loader2 } from "lucide-react";
+import { X, Layers, MessageCircle, Mail, Loader2, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -7,6 +7,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Segmented } from "@/components/ui/Segmented";
 import { ApiError } from "@/lib/api";
 import type { SocialAccount } from "@/lib/account.api";
+import { workspaceApi, type WsPost } from "@/lib/workspace.api";
 import { EMPTY_RULE, splitKeywords, splitVariants } from "./rules";
 import {
   automationApi,
@@ -15,6 +16,10 @@ import {
   type RuleChannel,
   type RuleInput,
 } from "@/lib/automation.api";
+
+// Extrait court de la publication, pour l'affichage dans le sélecteur et dans la liste des règles
+const postSnippet = (p: Pick<WsPost, "text" | "kind">) =>
+  (p.text.trim() || (p.kind === "photo" ? "Photo sans légende" : "Publication sans texte")).slice(0, 80);
 
 const CHANNELS: Array<{ value: RuleChannel; label: string; icon: LucideIcon }> = [
   { value: "ALL", label: "Tout", icon: Layers },
@@ -57,19 +62,36 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
           matchType: rule.matchType,
           trigger: rule.trigger,
           response: rule.response,
+          useAi: rule.useAi,
           privateReply: rule.privateReply,
           autoSend: rule.autoSend,
           isActive: rule.isActive,
           priority: rule.priority,
           accountId: rule.accountId,
+          postId: rule.postId,
+          postLabel: rule.postLabel,
         }
       : { ...EMPTY_RULE, ...preset }
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [posts, setPosts] = useState<WsPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   const set = <K extends keyof RuleInput>(key: K, value: RuleInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Les publications ne peuvent être listées que pour un compte précis
+  useEffect(() => {
+    if (!form.accountId) return setPosts([]);
+    setPostsLoading(true);
+    workspaceApi
+      .posts([form.accountId])
+      .then((d) => setPosts(d.posts))
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.accountId]);
 
   // Fermeture au clavier
   useEffect(() => {
@@ -87,7 +109,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
     setError(null);
     if (!form.name.trim()) return setError("Donnez un nom à la règle.");
     if (form.matchType !== "ANY" && keywords.length === 0) return setError("Ajoutez au moins un mot-clé.");
-    if (!form.response.trim()) return setError("Écrivez la réponse à envoyer.");
+    if (!form.useAi && !form.response?.trim()) return setError("Écrivez la réponse à envoyer, ou activez la réponse par IA.");
 
     const body: RuleInput = {
       ...form,
@@ -149,7 +171,10 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
               className={inputClass}
               style={inputStyle}
               value={form.accountId ?? ""}
-              onChange={(e) => set("accountId", e.target.value || null)}
+              onChange={(e) => {
+                const accountId = e.target.value || null;
+                setForm((f) => ({ ...f, accountId, postId: null, postLabel: null }));
+              }}
             >
               <option value="">Tous les comptes</option>
               {replyAccounts.map((a) => (
@@ -159,6 +184,35 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
               ))}
             </select>
           </div>
+
+          {form.accountId && (
+            <div>
+              <Label hint="Laissez sur « Toutes les publications » pour une règle valable sur l'ensemble du compte.">
+                Publication (optionnel)
+              </Label>
+              <select
+                className={inputClass}
+                style={inputStyle}
+                value={form.postId ?? ""}
+                disabled={postsLoading}
+                onChange={(e) => {
+                  const p = posts.find((x) => x.id === e.target.value);
+                  setForm((f) => ({ ...f, postId: p?.id ?? null, postLabel: p ? postSnippet(p) : null }));
+                }}
+              >
+                <option value="">Toutes les publications</option>
+                {form.postId && !posts.some((p) => p.id === form.postId) && (
+                  <option value={form.postId}>{form.postLabel ?? "Publication choisie"}</option>
+                )}
+                {posts.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {postSnippet(p)} · {p.comments} commentaire{p.comments > 1 ? "s" : ""}
+                  </option>
+                ))}
+              </select>
+              {postsLoading && <p className="mt-1 text-[11px]" style={{ color: theme.textMuted }}>Chargement des publications…</p>}
+            </div>
+          )}
 
           <div>
             <Label>Déclencheur</Label>
@@ -194,22 +248,38 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
             )}
           </div>
 
-          <div>
-            <Label hint="Variables : {nom} (prénom de l'auteur), {page}. Séparez plusieurs variantes par || : l'une sera choisie au hasard.">
-              Réponse
-            </Label>
-            <textarea
-              className={inputClass}
-              style={inputStyle}
-              rows={3}
-              value={form.response}
-              onChange={(e) => set("response", e.target.value)}
-              placeholder="Bonjour {nom} ! Nous vous envoyons le prix en message privé 📩"
-            />
-            {variants.length > 1 && (
-              <p className="mt-1 text-[11px]" style={{ color: theme.goldDark }}>{variants.length} variantes</p>
-            )}
+          <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
+            <div className="flex-1">
+              <p className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: theme.text }}>
+                <Sparkles size={13} style={{ color: theme.gold }} /> Réponse par IA
+              </p>
+              <p className="text-[11px]" style={{ color: theme.textMuted }}>
+                {form.useAi
+                  ? "La réponse est rédigée par l'IA à chaque fois, à partir du contexte et des consignes du compte (Automatisation → Assistant IA)."
+                  : "Désactivé : la règle envoie un texte fixe, écrit ci-dessous."}
+              </p>
+            </div>
+            <Toggle checked={form.useAi} onChange={(v) => set("useAi", v)} label="Réponse par IA" />
           </div>
+
+          {!form.useAi && (
+            <div>
+              <Label hint="Variables : {nom} (prénom de l'auteur), {page}. Séparez plusieurs variantes par || : l'une sera choisie au hasard.">
+                Réponse
+              </Label>
+              <textarea
+                className={inputClass}
+                style={inputStyle}
+                rows={3}
+                value={form.response ?? ""}
+                onChange={(e) => set("response", e.target.value)}
+                placeholder="Bonjour {nom} ! Nous vous envoyons le prix en message privé 📩"
+              />
+              {variants.length > 1 && (
+                <p className="mt-1 text-[11px]" style={{ color: theme.goldDark }}>{variants.length} variantes</p>
+              )}
+            </div>
+          )}
 
           {form.channel !== "DIRECT" && (
             <div>

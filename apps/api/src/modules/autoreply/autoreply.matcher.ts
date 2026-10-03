@@ -4,7 +4,7 @@ export type IncomingKind = "COMMENT" | "DIRECT";
 
 type MatchableRule = Pick<
   AutomationRule,
-  "id" | "matchType" | "trigger" | "channel" | "accountId" | "priority" | "createdAt"
+  "id" | "matchType" | "trigger" | "channel" | "accountId" | "postId" | "priority" | "createdAt"
 >;
 
 // Minuscules, sans accents, espaces compactés : "Prix ?" et "prix?" deviennent comparables
@@ -40,15 +40,16 @@ export function ruleMatchesText(rule: Pick<AutomationRule, "matchType" | "trigge
   return keywords.some((k) => containsWord(t, k));
 }
 
-// Règles applicables à ce canal / compte, dans l'ordre d'évaluation :
+// Règles applicables à ce canal / compte / publication, dans l'ordre d'évaluation :
 // mots-clés d'abord (par priorité), puis les réponses par défaut (« tout message »)
 export function candidateRules<R extends MatchableRule>(
   rules: R[],
-  ctx: { kind: IncomingKind; accountId: string }
+  ctx: { kind: IncomingKind; accountId: string; postId?: string | null }
 ): R[] {
   return rules
     .filter((r) => r.channel === "ALL" || r.channel === ctx.kind)
     .filter((r) => !r.accountId || r.accountId === ctx.accountId)
+    .filter((r) => !r.postId || r.postId === ctx.postId)
     .sort((a, b) => b.priority - a.priority || +a.createdAt - +b.createdAt)
     .sort((a, b) => Number(a.matchType === "ANY") - Number(b.matchType === "ANY"));
 }

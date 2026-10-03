@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ExternalLink, MessageCircle, Package, Pause, Play, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
+  AlertTriangle, ArrowLeft, CheckCircle2, ExternalLink, MessageCircle, Package, Pause, Play, Receipt, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -14,6 +14,7 @@ import { OrderEditor } from "./OrderEditor";
 import { CommentsFeed } from "./CommentsFeed";
 import { ProductsEditor } from "./ProductsEditor";
 import { SessionSettingsForm } from "./SessionSettingsForm";
+import { InvoicesPanel } from "./InvoicesPanel";
 import { fromRows, toRows, type ProductRow } from "./live";
 
 interface Props {
@@ -22,11 +23,12 @@ interface Props {
   onDeleted: () => void;
 }
 
-type Tab = "orders" | "comments" | "products" | "settings";
+type Tab = "orders" | "comments" | "products" | "invoices" | "settings";
 const TABS: Array<{ id: Tab; label: string; icon: LucideIcon }> = [
   { id: "orders", label: "Commandes JP", icon: ShoppingBag },
   { id: "comments", label: "Commentaires", icon: MessageCircle },
   { id: "products", label: "Articles", icon: Package },
+  { id: "invoices", label: "Factures", icon: Receipt },
   { id: "settings", label: "Réglages", icon: Settings2 },
 ];
 const REFRESH_MS = 4000;
@@ -41,6 +43,9 @@ const settingsOf = (s: LiveSession): LiveSettings => ({
   missingMessage: s.missingMessage,
   confirmMessage: s.confirmMessage,
   soldOutMessage: s.soldOutMessage,
+  recapMessage: s.recapMessage,
+  recapUpdateMessage: s.recapUpdateMessage,
+  deliveryFee: s.deliveryFee,
 });
 
 export function SessionView({ sessionId, onBack, onDeleted }: Props) {
@@ -230,6 +235,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
         />
       )}
       {tab === "comments" && <CommentsFeed sessionId={sessionId} active={session.status === "ACTIVE"} onOrder={upsertOrder} />}
+      {tab === "invoices" && <InvoicesPanel sessionId={sessionId} sessionEnded={session.status === "ENDED"} />}
       {tab === "products" && rows && (
         <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
           <ProductsEditor

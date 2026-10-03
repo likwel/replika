@@ -1,5 +1,6 @@
 import { theme } from "@/theme";
 import type { ContactField, LiveOrder, LiveProduct, OrderStatus } from "@/lib/live.api";
+import type { CellValue } from "exceljs";
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; color: string; bg: string; hint: string }> = {
   NEW: { label: "Nouveau", color: theme.textMuted, bg: theme.bg, hint: "JP capturé, client pas encore contacté" },
@@ -95,4 +96,66 @@ export function fromRows(rows: ProductRow[]): { products: LiveProduct[]; error: 
   const codes = products.map((p) => p.code.toLowerCase());
   const dup = codes.find((c, i) => codes.indexOf(c) !== i);
   return { products, error: dup ? `Le code « ${dup.toUpperCase()} » apparaît deux fois.` : null };
+}
+
+// Remplace, dans la liste existante, les articles dont le code est repris par l'import ; garde les autres
+export function mergeProductRows(existing: ProductRow[], imported: ProductRow[]): ProductRow[] {
+  const kept = existing.filter((r) => r.code.trim() || r.name.trim());
+  return [
+    ...kept.filter((r) => !imported.some((p) => p.code.toLowerCase() === r.code.trim().toLowerCase())),
+    ...imported,
+  ];
+}
+
+// ============================================================
+// Import de fichier : CSV, TXT (texte délimité) ou Excel (.xlsx)
+// ============================================================
+
+const HEADER_WORDS = new Set(["code", "article", "nom", "produit", "name", "prix", "price", "stock", "quantite", "quantité"]);
+
+function looksLikeHeader(row: string[]): boolean {
+  return HEADER_WORDS.has((row[0] ?? "").toLowerCase()) && HEADER_WORDS.has((row[1] ?? "").toLowerCase());
+}
+
+function rowsFromCells(cells: string[][]): ProductRow[] {
+  return cells
+    .map((r) => r.map((c) => (c ?? "").trim()))
+    .filter((r, i) => r[0] && r[1] && !(i === 0 && looksLikeHeader(r)))
+    .map(([code, name, price = "", stock = ""]) => ({ code, name, price, stock }));
+}
+
+function detectDelimiter(text: string): RegExp {
+  const sample = text.split(/\r?\n/).slice(0, 5).join("\n");
+  if (sample.includes("\t")) return /\t/;
+  if (sample.includes(";")) return /;/;
+  return /,/;
+}
+
+// Lit un fichier .csv/.txt (texte délimité) ou .xlsx (classeur Excel) et en extrait les lignes d'articles.
+// Colonnes attendues, dans l'ordre : code, article, prix, stock — avec ou sans ligne d'en-tête.
+export async function parseImportFile(file: File): Promise<ProductRow[]> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "xlsx" || ext === "xls") {
+    const { default: ExcelJSModule } = await import("exceljs");
+    const workbook = new ExcelJSModule.Workbook();
+    const buffer = await file.arrayBuffer();
+    // Le build navigateur accepte un ArrayBuffer malgré le typage Node ciblant Buffer
+    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+    const sheet = workbook.worksheets[0];
+    if (!sheet) return [];
+    const cells: string[][] = [];
+    sheet.eachRow((row) => {
+      const values = (row.values as CellValue[]).slice(1); // values[0] est vide (1-indexé)
+      cells.push(values.map((v) => (v === null || v === undefined ? "" : String(v))));
+    });
+    return rowsFromCells(cells);
+  }
+
+  const text = await file.text();
+  const delimiter = detectDelimiter(text);
+  const cells = text
+    .split(/\r?\n/)
+    .filter((l) => l.trim())
+    .map((l) => l.split(delimiter));
+  return rowsFromCells(cells);
 }

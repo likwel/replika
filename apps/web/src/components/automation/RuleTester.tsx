@@ -89,7 +89,10 @@ export function RuleTester({ accounts }: { accounts: SocialAccount[] }) {
                   </span>
                 </span>
               </p>
-              <p className="mt-2 rounded-lg px-3 py-2 text-sm" style={{ background: theme.goldSoft, color: theme.text }}>
+              <p
+                className="mt-2 rounded-lg px-3 py-2 text-sm"
+                style={{ background: theme.goldSoft, color: theme.text, fontStyle: result.rule.useAi ? "italic" : "normal" }}
+              >
                 {result.reply}
               </p>
               {result.privateReply && (

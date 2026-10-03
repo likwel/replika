@@ -54,6 +54,9 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
         missingMessage: d.missingMessage,
         confirmMessage: d.confirmMessage,
         soldOutMessage: d.soldOutMessage,
+        recapMessage: d.recapMessage,
+        recapUpdateMessage: d.recapUpdateMessage,
+        deliveryFee: d.deliveryFee,
       })
     );
   }, []);

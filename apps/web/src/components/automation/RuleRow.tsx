@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Layers, MessageCircle, Mail, Zap, UserCheck, Lock, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, Layers, MessageCircle, Mail, Zap, UserCheck, Lock, AlertTriangle, Sparkles, Image } from "lucide-react";
 import type { ReactNode } from "react";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
@@ -45,6 +45,9 @@ export function RuleRow({ rule, onToggle, onEdit, onDelete }: Props) {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <p className="mr-1 text-sm font-semibold" style={{ color: theme.text }}>{rule.name}</p>
+            {rule.useAi && (
+              <Chip color={theme.goldDark} bg={theme.goldSoft}><Sparkles size={11} /> Réponse IA</Chip>
+            )}
             {rule.autoSend ? (
               <Chip color={theme.goldDark} bg={theme.goldSoft}><Zap size={11} /> Envoi auto</Chip>
             ) : (
@@ -55,6 +58,7 @@ export function RuleRow({ rule, onToggle, onEdit, onDelete }: Props) {
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Chip><channel.icon size={11} /> {channel.label}</Chip>
             {rule.account && <Chip>{rule.account.name}</Chip>}
+            {rule.postId && <Chip><Image size={11} /> {rule.postLabel ?? "1 publication"}</Chip>}
             {rule.account && (!rule.account.isActive || /non autoris/i.test(rule.account.syncError ?? "")) && (
               <Chip color={theme.red} bg="#FDECEC"><AlertTriangle size={11} /> Compte inutilisable : la règle ne se déclenche pas</Chip>
             )}
@@ -71,7 +75,7 @@ export function RuleRow({ rule, onToggle, onEdit, onDelete }: Props) {
           </div>
 
           <p className="mt-2 line-clamp-2 text-[13px]" style={{ color: theme.text }}>
-            « {variants[0]} »
+            {rule.useAi ? "Réponse générée par l'IA selon le contexte du compte" : `« ${variants[0]} »`}
           </p>
 
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px]" style={{ color: theme.textMuted }}>
@@ -80,7 +84,7 @@ export function RuleRow({ rule, onToggle, onEdit, onDelete }: Props) {
                 ? `Déclenchée ${plural(rule.hitCount, "fois", "fois")}${rule.lastTriggeredAt ? ` · ${timeAgo(rule.lastTriggeredAt)}` : ""}`
                 : "Jamais déclenchée"}
             </span>
-            {variants.length > 1 && <span>· {variants.length} variantes</span>}
+            {!rule.useAi && variants.length > 1 && <span>· {variants.length} variantes</span>}
             {rule.privateReply && rule.channel !== "DIRECT" && (
               <span className="inline-flex items-center gap-0.5">· <Lock size={10} /> message privé</span>
             )}

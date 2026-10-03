@@ -9,7 +9,8 @@ export interface AutomationRule {
   channel: RuleChannel;
   matchType: MatchType;
   trigger: string;
-  response: string;
+  response: string | null;
+  useAi: boolean;
   privateReply: string | null;
   autoSend: boolean;
   isActive: boolean;
@@ -17,6 +18,8 @@ export interface AutomationRule {
   hitCount: number;
   lastTriggeredAt: string | null;
   accountId: string | null;
+  postId: string | null;
+  postLabel: string | null;
   account: { name: string; platform: "FACEBOOK" | "INSTAGRAM" | "TIKTOK"; isActive: boolean; syncError: string | null } | null;
   createdAt: string;
 }
@@ -28,11 +31,14 @@ export type RuleInput = Pick<
   | "matchType"
   | "trigger"
   | "response"
+  | "useAi"
   | "privateReply"
   | "autoSend"
   | "isActive"
   | "priority"
   | "accountId"
+  | "postId"
+  | "postLabel"
 >;
 
 export interface AutomationSettings {
@@ -62,7 +68,7 @@ export type TestResult =
   | { matched: false }
   | {
       matched: true;
-      rule: { id: string; name: string; autoSend: boolean };
+      rule: { id: string; name: string; autoSend: boolean; useAi: boolean };
       reply: string;
       privateReply: string | null;
     };
@@ -118,6 +124,6 @@ export const automationApi = {
   sync: () => api.post<Res<SyncResult>>("/automation/sync").then((r) => r.data),
 
   // Simule un message entrant (rien n'est envoyé)
-  test: (body: { text: string; kind: "COMMENT" | "DIRECT"; accountId?: string }) =>
+  test: (body: { text: string; kind: "COMMENT" | "DIRECT"; accountId?: string; postId?: string }) =>
     api.post<Res<TestResult>>("/automation/test", body).then((r) => r.data),
 };

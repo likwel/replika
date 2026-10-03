@@ -13,6 +13,7 @@ export const profileSchema = z.object({
   name: z.string().trim().min(2, "Le nom est trop court").max(80, "Nom trop long").optional(),
   phone: optionalText(30).refine((v) => !v || /^\+?[\d\s().-]{6,}$/.test(v), "Numéro de téléphone invalide"),
   companyName: optionalText(100),
+  address: optionalText(200),
   // Photo recadrée et compressée par le navigateur (~30 Ko)
   avatarUrl: z
     .string()

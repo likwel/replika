@@ -20,6 +20,7 @@ model User {
   avatarUrl            String? // photo de profil (data URL compressée côté navigateur)
   phone                String?
   companyName          String?
+  address              String? // affichée sur les factures imprimées (Lives)
   // Préférences
   defaultPage          String           @default("gestion") // page ouverte après connexion
   desktopNotifications Boolean          @default(false) // notification du navigateur pour les messages à traiter
@@ -96,7 +97,8 @@ model AutomationRule {
   channel         RuleChannel     @default(ALL)
   matchType       MatchType       @default(CONTAINS)
   trigger         String          @default("") // mots-clés séparés par des virgules (ignoré si ANY)
-  response        String // variantes séparées par ||, variables {nom} et {page}
+  response        String? // variantes séparées par ||, variables {nom} et {page} (ignoré si useAi)
+  useAi           Boolean         @default(false) // réponse générée par l'IA (contexte du compte) au lieu du texte fixe
   privateReply    String? // commentaires : message privé envoyé en plus à l'auteur
   autoSend        Boolean         @default(false)
   isActive        Boolean         @default(true)
@@ -105,6 +107,8 @@ model AutomationRule {
   lastTriggeredAt DateTime?
   account         SocialAccount?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId       String? // null = tous les comptes
+  postId          String? // identifiant Facebook/Instagram de la publication ; null = toutes les publications
+  postLabel       String? // extrait de la publication, mis en cache pour l'affichage
   messages        SocialMessage[]
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
@@ -242,6 +246,9 @@ model LiveSession {
   missingMessage String
   confirmMessage String
   soldOutMessage String
+  recapMessage       String        @default("") // message récapitulatif envoyé la première fois à un client
+  recapUpdateMessage String        @default("") // renvoyé si le récapitulatif avait déjà été envoyé (commande modifiée) : pas de salutation répétée
+  deliveryFee        Int           @default(0) // frais de livraison (Ar), ajoutés une fois par client dans le récapitulatif
   cursor         DateTime? // date du dernier commentaire lu
   lastPolledAt   DateTime?
   syncError      String?
@@ -253,10 +260,33 @@ model LiveSession {
   products       LiveProduct[]
   comments       LiveComment[]
   orders         LiveOrder[]
+  invoices       LiveInvoice[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
   @@index([accountId, status])
+}
+
+// Récapitulatif + facture d'un client ayant pris plusieurs JP dans un même live
+model LiveInvoice {
+  id            String      @id @default(cuid())
+  invoiceNumber String      @default("") // ex. FA-000123, attribué une fois à la création
+  session       LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId    String
+  customerKey  String // customerId, ou "nom:<customerName>" si inconnu
+  customerName String
+  phone        String?
+  address      String?
+  deliveryFee  Int         @default(0)
+  itemsTotal   Int // somme des commandes incluses, hors livraison
+  total        Int // itemsTotal + deliveryFee
+  orderIds     String[] // commandes JP incluses dans ce récapitulatif
+  sentAt       DateTime?
+  sendError    String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([sessionId, customerKey])
 }
 
 model LiveProduct {
