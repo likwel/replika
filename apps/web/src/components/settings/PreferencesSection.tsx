@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingRow, SettingsCard } from "./SettingsUi";
 
 const PAGES: Array<{ value: DefaultPage; label: string; icon: LucideIcon }> = [
+  { value: "connexions", label: "Connexions", icon: LayoutDashboard },
   { value: "gestion", label: "Gestion", icon: LayoutDashboard },
   { value: "automatisation", label: "Automatisation", icon: Bot },
   { value: "statistiques", label: "Statistiques", icon: BarChart3 },

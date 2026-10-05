@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Mail, User, ShieldCheck, SlidersHorizontal, LogOut } from "lucide-react";
+import { Search, Bell, Mail, User, ShieldCheck, SlidersHorizontal, LogOut, MailCheck, Clock10Icon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Logo } from "@/components/ui/Logo";
@@ -49,6 +49,7 @@ export function Header({ attention, onOpenQueue, onOpenSettings }: Props) {
   const items: Array<{ label: string; icon: LucideIcon; sub: number }> = [
     { label: "Mon profil", icon: User, sub: 0 },
     { label: "Sécurité", icon: ShieldCheck, sub: 1 },
+    { label: "Historiques", icon: Clock10Icon, sub: 1 },
     { label: "Préférences", icon: SlidersHorizontal, sub: 2 },
   ];
 

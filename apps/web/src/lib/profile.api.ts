@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type DefaultPage = "gestion" | "automatisation" | "statistiques";
+export type DefaultPage = "connexions" | "gestion" | "automatisation" | "statistiques";
 
 export interface Profile {
   id: string;

@@ -123,7 +123,7 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
     .map((a) => ({ accountId: a.id, accountName: a.accountName, message: a.syncError! }));
 
   return (
-    <div className={active ? "mx-auto flex w-full max-w-3xl flex-col gap-4" : "hidden"}>
+    <div className={active ? "mx-auto flex w-full max-w-7xl flex-col gap-4" : "hidden"}>
       {active &&
         toolbar &&
         createPortal(

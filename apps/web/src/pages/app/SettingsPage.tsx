@@ -13,7 +13,7 @@ interface Ctx { sub: number }
 export function SettingsPage() {
   const { sub } = useOutletContext<Ctx>();
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-5">
+    <div className="mx-auto flex max-w-7xl flex-col gap-5">
       {sub === 1 ? (
         <SecuritySection />
       ) : sub === 2 ? (

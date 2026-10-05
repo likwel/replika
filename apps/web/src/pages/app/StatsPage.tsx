@@ -66,7 +66,7 @@ function OverviewView() {
       </div>
       <p className="text-xs" style={{ color: theme.textMuted }}>Sur les {data.windowDays} derniers jours, comparé aux {data.windowDays} jours précédents.</p>
 
-      <div className="mx-auto w-full max-w-xl rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+      <div className="mx-auto w-full max-w-7xl rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
         <Title className="text-base mb-1">Taux de Réponse</Title>
         {responseRate.total === 0 ? (
           <p className="py-6 text-center text-sm" style={{ color: theme.textMuted }}>Aucun commentaire ni message reçu sur la période.</p>

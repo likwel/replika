@@ -61,7 +61,7 @@ export function HistoryPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="mx-auto flex max-w-7xl flex-col gap-4">
       <div>
         <Title className="text-lg">{TITLE_OF_SUB[sub] ?? TITLE_OF_SUB[0]}</Title>
         <p className="text-xs" style={{ color: theme.textMuted }}>

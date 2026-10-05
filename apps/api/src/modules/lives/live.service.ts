@@ -387,7 +387,8 @@ function recapVars(session: LiveSession, account: SocialAccount, orders: LiveOrd
     nom: firstName(o.fullName ?? o.customerName),
     client: o.fullName ?? o.customerName,
     articles: orders.map((x) => `• ${productLabel(x)} : ${qtyPriceLine(x)}`).join("\n"),
-    sousTotal: formatAriary(itemsTotal),
+    // renderTemplate met en minuscules la clé lue dans {sousTotal} avant de chercher ici : la clé doit l'être aussi
+    soustotal: formatAriary(itemsTotal),
     livraison: formatAriary(deliveryFee),
     total: formatAriary(itemsTotal + deliveryFee),
     telephone: o.phone ?? "",

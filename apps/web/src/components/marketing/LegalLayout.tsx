@@ -16,7 +16,7 @@ export function LegalLayout({ title, subtitle, updatedAt, children }: Props) {
   return (
     <div style={{ background: theme.bg }}>
       <header className="sticky top-0 z-50 backdrop-blur" style={{ background: "rgba(242,239,233,0.85)", borderBottom: `1px solid ${theme.border}` }}>
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-3.5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5">
           <Link to="/"><Logo /></Link>
           <Link to="/" className="flex items-center gap-1.5 text-sm font-medium hover:opacity-70" style={{ color: theme.text }}>
             <ArrowLeft size={15} /> Accueil
@@ -24,7 +24,7 @@ export function LegalLayout({ title, subtitle, updatedAt, children }: Props) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-12 sm:py-16">
+      <main className="mx-auto max-w-7xl px-5 py-12 sm:py-16">
         <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: theme.text }}>{title}</h1>
         {subtitle && <p className="mt-3 text-base" style={{ color: theme.textMuted }}>{subtitle}</p>}
         {updatedAt && <p className="mt-1 text-xs" style={{ color: theme.textMuted }}>Dernière mise à jour : {updatedAt}</p>}
