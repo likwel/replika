@@ -3,6 +3,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { PlatIcon } from "@/components/ui/PlatIcon";
 import { timeAgo } from "@/lib/format";
 import type { WsConversation } from "@/lib/workspace.api";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 
 interface Props {
   conversations: WsConversation[];
@@ -11,9 +13,11 @@ interface Props {
 }
 
 export function ConversationList({ conversations, selectedId, onSelect }: Props) {
+  const { pageItems, page, pageCount, setPage, total } = usePagination(conversations, 20);
   return (
+    <>
     <ul className="flex flex-col gap-2">
-      {conversations.map((c) => {
+      {pageItems.map((c) => {
         const active = c.id === selectedId;
         const unread = c.unread > 0;
         return (
@@ -66,5 +70,7 @@ export function ConversationList({ conversations, selectedId, onSelect }: Props)
         );
       })}
     </ul>
+    <Pagination page={page} pageCount={pageCount} onChange={setPage} total={total} pageSize={20} />
+    </>
   );
 }

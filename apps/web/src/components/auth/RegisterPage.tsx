@@ -25,7 +25,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(form.name, form.email, form.password);
-      nav("/app");
+      nav("/app", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Inscription impossible");
     } finally {

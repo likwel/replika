@@ -11,6 +11,8 @@ import { RuleTester } from "@/components/automation/RuleTester";
 import { RULE_PRESETS } from "@/components/automation/rules";
 import { AiAssistantView } from "@/components/automation/AiAssistantView";
 import { AutomationHealth } from "@/components/automation/AutomationHealth";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { accountApi, type SocialAccount } from "@/lib/account.api";
 import { automationApi, type AutomationRule, type RuleChannel, type RuleInput } from "@/lib/automation.api";
 
@@ -53,6 +55,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
     () => (channel ? rules.filter((r) => r.channel === "ALL" || r.channel === channel) : rules),
     [rules, channel]
   );
+  const rulesPage = usePagination(visible, 20);
 
   const toggleActive = async (rule: AutomationRule) => {
     setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, isActive: !r.isActive } : r)));
@@ -125,7 +128,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {visible.map((r) => (
+              {rulesPage.pageItems.map((r) => (
                 <RuleRow
                   key={r.id}
                   rule={r}
@@ -134,6 +137,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
                   onDelete={() => remove(r)}
                 />
               ))}
+              <Pagination page={rulesPage.page} pageCount={rulesPage.pageCount} onChange={rulesPage.setPage} total={rulesPage.total} pageSize={20} />
             </div>
           )}
         </div>

@@ -26,12 +26,16 @@ model User {
   desktopNotifications Boolean          @default(false) // notification du navigateur pour les messages à traiter
   // Incrémenté pour invalider toutes les sessions (changement de mot de passe, « déconnecter partout »)
   tokenVersion         Int              @default(0)
+  // Jeton Facebook utilisateur (longue durée) : requis pour Gescom (Business Manager / Catalogue),
+  // qu'un jeton de Page ne peut pas interroger. Jamais exposé au frontend.
+  fbUserToken          String?
   accounts             SocialAccount[]
   rules                AutomationRule[]
   logs                 ActivityLog[]
   schedules            Schedule[]
   liveSessions         LiveSession[]
   leads                Lead[]
+  marketplaceListings  MarketplaceListing[]
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 }
@@ -54,6 +58,10 @@ model SocialAccount {
   aiChannel       RuleChannel      @default(ALL)
   aiContext       String? // base de connaissances : produits, prix, livraison, horaires…
   aiInstructions  String? // consignes de ton, signature…
+  // Gescom : Catalogue Facebook connecté (Commerce Manager), pour importer les produits publiés sur Marketplace
+  catalogId       String?
+  catalogName     String?
+  catalogSyncedAt DateTime?
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId          String
   messages        SocialMessage[]
@@ -61,6 +69,7 @@ model SocialAccount {
   scheduleTargets ScheduleTarget[]
   liveSessions    LiveSession[]
   leads           Lead[]
+  marketplaceListings MarketplaceListing[]
   createdAt       DateTime         @default(now())
 
   @@unique([platform, externalId, userId])
@@ -401,4 +410,73 @@ enum LeadStatus {
   QUALIFIED
   WON
   LOST
+}
+
+// ============================================================
+// Marketplace : catalogue d'annonces + suivi manuel des commandes
+// (pas de publication automatique : l'API Graph ne le permet pas pour les comptes standards)
+// ============================================================
+
+model MarketplaceListing {
+  id          String                   @id @default(cuid())
+  account     SocialAccount            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  title       String
+  description String?
+  price       Int? // en ariary
+  stock       Int? // null : illimité
+  category    String?
+  images      String[]
+  status      MarketplaceListingStatus @default(ACTIVE)
+  source      MarketplaceListingSource @default(MANUAL)
+  externalId  String? // identifiant du produit dans le Catalogue Facebook (source CATALOG) : clé de resynchronisation
+  retailerId  String? // « retailer_id » côté Catalogue : clé d'écriture (items_batch) vers Facebook
+  pushedAt    DateTime? // dernier envoi réussi vers le Catalogue Facebook
+  orders      MarketplaceOrder[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@index([userId, status])
+  @@index([accountId])
+  @@index([accountId, externalId])
+}
+
+enum MarketplaceListingStatus {
+  ACTIVE
+  SOLD_OUT
+  ARCHIVED
+}
+
+enum MarketplaceListingSource {
+  MANUAL // ajouté à la main dans ReplyKA
+  CATALOG // importé du Catalogue Facebook connecté (Marketplace via Commerce Manager)
+}
+
+model MarketplaceOrder {
+  id           String               @id @default(cuid())
+  listing      MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId    String
+  customerId   String? // identifiant Messenger (PSID) si connu
+  customerName String
+  quantity     Int                  @default(1)
+  unitPrice    Int?
+  fullName     String?
+  phone        String?
+  address      String?
+  note         String?
+  status       MarketplaceOrderStatus @default(NEW)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([listingId, status])
+}
+
+enum MarketplaceOrderStatus {
+  NEW
+  CONTACTED
+  CONFIRMED
+  DELIVERED
+  CANCELED
 }

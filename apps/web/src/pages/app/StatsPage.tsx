@@ -7,6 +7,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Segmented } from "@/components/ui/Segmented";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { EmptyState } from "@/components/workspace/WorkspaceUi";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { plural, timeAgo } from "@/lib/format";
 import { statsApi, DAY_RANGES, type AccountStats, type DayRange, type EngagementDay, type RuleStats, type StatsOverview } from "@/lib/stats.api";
 
@@ -167,6 +169,8 @@ function ReportsView() {
   }, []);
 
   const sortedAccounts = accounts ? [...accounts].sort((a, b) => b.comments + b.messages - (a.comments + a.messages)) : null;
+  const accountsPage = usePagination(sortedAccounts ?? [], 10);
+  const rulesPage = usePagination(rules ?? [], 10);
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-start">
@@ -178,19 +182,22 @@ function ReportsView() {
         ) : sortedAccounts.length === 0 ? (
           <EmptyState icon={Users} title="Aucun compte connecté" dashed>Connectez une Page depuis Connexions.</EmptyState>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {sortedAccounts.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 rounded-xl p-2.5" style={{ background: theme.bg }}>
-                <AccountAvatar name={a.name} src={a.avatarUrl} platform={a.platform} size={34} />
-                <p className="min-w-0 flex-1 truncate text-sm font-medium" style={{ color: theme.text }}>{a.name}</p>
-                <div className="flex flex-shrink-0 items-center gap-3 text-xs" style={{ color: theme.textMuted }}>
-                  <span title="Commentaires">💬 {a.comments}</span>
-                  <span title="Messages">✉️ {a.messages}</span>
-                  {a.leads > 0 && <span className="rounded-full px-1.5 py-0.5 font-semibold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{a.leads} lead{a.leads > 1 ? "s" : ""}</span>}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-2">
+              {accountsPage.pageItems.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 rounded-xl p-2.5" style={{ background: theme.bg }}>
+                  <AccountAvatar name={a.name} src={a.avatarUrl} platform={a.platform} size={34} />
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium" style={{ color: theme.text }}>{a.name}</p>
+                  <div className="flex flex-shrink-0 items-center gap-3 text-xs" style={{ color: theme.textMuted }}>
+                    <span title="Commentaires">💬 {a.comments}</span>
+                    <span title="Messages">✉️ {a.messages}</span>
+                    {a.leads > 0 && <span className="rounded-full px-1.5 py-0.5 font-semibold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{a.leads} lead{a.leads > 1 ? "s" : ""}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Pagination page={accountsPage.page} pageCount={accountsPage.pageCount} onChange={accountsPage.setPage} total={accountsPage.total} pageSize={10} />
+          </>
         )}
       </div>
 
@@ -202,19 +209,22 @@ function ReportsView() {
         ) : rules.length === 0 ? (
           <EmptyState icon={Megaphone} title="Aucune règle déclenchée" dashed>Vos règles de réponse automatique apparaîtront ici une fois utilisées.</EmptyState>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {rules.map((r) => (
-              <li key={r.id} className="rounded-xl p-2.5" style={{ background: theme.bg }}>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="min-w-0 truncate text-sm font-medium" style={{ color: theme.text }}>{r.name}</p>
-                  <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{r.hitCount}×</span>
-                </div>
-                <p className="mt-0.5 truncate text-[11px]" style={{ color: theme.textMuted }}>
-                  {CHANNEL_LABEL[r.channel]}{r.account ? ` · ${r.account.name}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="flex flex-col gap-2">
+              {rulesPage.pageItems.map((r) => (
+                <li key={r.id} className="rounded-xl p-2.5" style={{ background: theme.bg }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="min-w-0 truncate text-sm font-medium" style={{ color: theme.text }}>{r.name}</p>
+                    <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{r.hitCount}×</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[11px]" style={{ color: theme.textMuted }}>
+                    {CHANNEL_LABEL[r.channel]}{r.account ? ` · ${r.account.name}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <Pagination page={rulesPage.page} pageCount={rulesPage.pageCount} onChange={rulesPage.setPage} total={rulesPage.total} pageSize={10} />
+          </>
         )}
       </div>
     </div>

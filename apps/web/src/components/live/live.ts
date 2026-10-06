@@ -1,12 +1,18 @@
 import { theme } from "@/theme";
-import type { ContactField, LiveOrder, LiveProduct, OrderStatus } from "@/lib/live.api";
+import type { ContactField, LiveOrder, LiveProduct, OrderStatus, SessionStatus } from "@/lib/live.api";
 import type { CellValue } from "exceljs";
+
+export const SESSION_STATUS: Record<SessionStatus, { label: string; color: string; bg: string }> = {
+  ACTIVE: { label: "Capture active", color: theme.green, bg: theme.greenSoft },
+  PAUSED: { label: "En pause", color: theme.amber, bg: theme.amberSoft },
+  ENDED: { label: "Terminée", color: theme.textMuted, bg: theme.bg },
+};
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; color: string; bg: string; hint: string }> = {
   NEW: { label: "Nouveau", color: theme.textMuted, bg: theme.bg, hint: "JP capturé, client pas encore contacté" },
   MESSAGED: { label: "Message envoyé", color: "#2563eb", bg: "#E8F0FE", hint: "En attente de la réponse du client" },
-  PARTIAL: { label: "Infos incomplètes", color: "#b45309", bg: "#FEF3C7", hint: "Le client a répondu, il manque des informations" },
-  CONFIRMED: { label: "Confirmé", color: "#15803d", bg: "#E7F6EC", hint: "Coordonnées complètes" },
+  PARTIAL: { label: "Infos incomplètes", color: theme.amber, bg: theme.amberSoft, hint: "Le client a répondu, il manque des informations" },
+  CONFIRMED: { label: "Confirmé", color: theme.green, bg: theme.greenSoft, hint: "Coordonnées complètes" },
   WAITLIST: { label: "Liste d'attente", color: "#7c3aed", bg: "#F1ECFE", hint: "Article épuisé" },
   DELIVERED: { label: "Livré", color: theme.goldDark, bg: theme.goldSoft, hint: "Commande livrée" },
   CANCELED: { label: "Annulé", color: theme.red, bg: "#FDECEC", hint: "Commande annulée" },

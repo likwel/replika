@@ -104,7 +104,7 @@ export function ListSkeleton({ height = 88, count = 4 }: { height?: number; coun
 export function EmptyState({ icon: Icon, title, children, dashed }: { icon: LucideIcon; title: string; children?: ReactNode; dashed?: boolean }) {
   return (
     <div
-      className="flex flex-col items-center rounded-2xl px-6 py-14 text-center"
+      className="flex flex-col items-center rounded-2xl px-6 py-10 text-center"
       style={{ background: theme.bgCard, border: `1px ${dashed ? "dashed" : "solid"} ${theme.border}` }}
     >
       <Icon size={26} style={{ color: theme.gold }} />

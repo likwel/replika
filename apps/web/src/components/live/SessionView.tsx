@@ -5,6 +5,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ApiError } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -15,7 +16,7 @@ import { CommentsFeed } from "./CommentsFeed";
 import { ProductsEditor } from "./ProductsEditor";
 import { SessionSettingsForm } from "./SessionSettingsForm";
 import { InvoicesPanel } from "./InvoicesPanel";
-import { fromRows, toRows, type ProductRow } from "./live";
+import { SESSION_STATUS, fromRows, toRows, type ProductRow } from "./live";
 
 interface Props {
   sessionId: string;
@@ -159,15 +160,17 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
           <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2">
               <span className="truncate text-base font-semibold" style={{ color: theme.text }}>{session.title}</span>
-              {isLive && <span className="rounded px-1.5 text-[10px] font-bold text-white" style={{ background: "#dc2626" }}>EN DIRECT</span>}
+              {isLive && (
+                <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: "#dc2626" }}>
+                  <StatusDot color="#fff" size={5} pulse /> EN DIRECT
+                </span>
+              )}
               <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{
-                  background: session.status === "ACTIVE" ? "#E7F6EC" : session.status === "PAUSED" ? "#FEF3C7" : theme.bg,
-                  color: session.status === "ACTIVE" ? "#15803d" : session.status === "PAUSED" ? "#b45309" : theme.textMuted,
-                }}
+                className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ background: SESSION_STATUS[session.status].bg, color: SESSION_STATUS[session.status].color }}
               >
-                {session.status === "ACTIVE" ? "Capture active" : session.status === "PAUSED" ? "En pause" : "Terminée"}
+                {session.status === "ACTIVE" && <StatusDot color={theme.green} size={6} pulse />}
+                {SESSION_STATUS[session.status].label}
               </span>
             </p>
             <p className="truncate text-xs" style={{ color: theme.textMuted }}>

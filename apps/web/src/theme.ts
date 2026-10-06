@@ -5,6 +5,12 @@ export const theme = {
   goldSoft: "#FBF1E0",
   red: "#9B1C1C",
   redLight: "#C0392B",
+  // Statuts : le vert signale « en ligne / actif / inclus », le jaune « à surveiller »
+  green: "#15803D",
+  greenLight: "#22C55E",
+  greenSoft: "#E7F6EC",
+  amber: "#B45309",
+  amberSoft: "#FEF3C7",
   bg: "#F2EFE9",
   bgCard: "#FFFFFF",
   bgDark: "#1C1813",

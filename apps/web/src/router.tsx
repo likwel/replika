@@ -13,6 +13,7 @@ import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
 
 import { PlannerPage } from "@/pages/app/PlannerPage";
 import { LivePage } from "@/pages/app/LivePage";
+import { MarketplacePage } from "@/pages/app/MarketplacePage";
 import { LeadsPage } from "@/pages/app/LeadsPage";
 import { StatsPage } from "@/pages/app/StatsPage";
 import { HistoryPage } from "@/pages/app/HistoryPage";
@@ -49,6 +50,7 @@ export const router = createBrowserRouter([
           { path: "actualites", element: <HubRedirect tab={0} /> },
           { path: "planifier", element: <PlannerPage /> },
           { path: "lives", element: <LivePage /> },
+          { path: "gescom", element: <MarketplacePage /> },
           { path: "leads", element: <LeadsPage /> },
           { path: "statistiques", element: <StatsPage /> },
           { path: "historique", element: <HistoryPage /> },

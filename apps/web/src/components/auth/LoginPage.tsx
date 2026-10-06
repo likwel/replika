@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -12,7 +12,10 @@ import { Button } from "@/components/ui/Button";
 
 export function LoginPage() {
   const nav = useNavigate();
+  const loc = useLocation();
   const { login } = useAuth();
+  // Page demandée avant la redirection vers la connexion (session expirée)
+  const from = (loc.state as { from?: string } | null)?.from;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,7 +26,8 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      nav("/app"); // page d'ouverture choisie dans les préférences
+      // Sinon /app → page d'ouverture choisie dans les préférences. replace : « précédent » ne revient pas au formulaire.
+      nav(from?.startsWith("/app") ? from : "/app", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Connexion impossible");
     } finally {

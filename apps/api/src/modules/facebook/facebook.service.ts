@@ -17,7 +17,10 @@ function requestedScopes(): string[] {
     "pages_show_list",
     "pages_read_engagement",
     "read_insights",
-    "business_management", // ← aide à voir toutes les pages
+    "business_management", // ← aide à voir toutes les pages, et requis pour lire les catalogues (Gescom)
+    "catalog_management", // Gescom : lire les produits du Catalogue Facebook connecté à Marketplace
+    //   ⚠️ permission avancée : nécessite la validation de l'app par Meta (Business Verification + revue).
+    //   En mode développement, elle fonctionne directement pour les comptes testeurs.
     // Réponses automatiques
     "pages_read_user_content", // lire les commentaires
     "pages_manage_engagement", // répondre aux commentaires
@@ -200,6 +203,9 @@ export const facebookService = {
       if (acc.platform === "TIKTOK") continue;
       await prisma.socialAccount.update({ where: { id: acc.id }, data: { syncError: NOT_SELECTED[acc.platform] } });
     }
+
+    // Jeton utilisateur (longue durée) : conservé pour Gescom (Business Manager / Catalogue), inaccessible avec un jeton de Page
+    await prisma.user.update({ where: { id: userId }, data: { fbUserToken: longToken } });
 
     await prisma.activityLog.create({
       data: {

@@ -2,6 +2,8 @@ import { Heart, MessageCircle, Share2, Play, FileText } from "lucide-react";
 import { theme } from "@/theme";
 import { timeAgo } from "@/lib/format";
 import type { WsPost } from "@/lib/workspace.api";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { AccountAvatar } from "./AccountAvatar";
 import { KIND_LABEL } from "./labels";
 
@@ -12,9 +14,11 @@ interface Props {
 }
 
 export function PostList({ posts, selectedId, onSelect }: Props) {
+  const { pageItems, page, pageCount, setPage, total } = usePagination(posts, 20);
   return (
+    <>
     <ul className="flex flex-col gap-2">
-      {posts.map((p) => {
+      {pageItems.map((p) => {
         const active = p.id === selectedId;
         return (
           <li key={`${p.accountId}:${p.id}`}>
@@ -68,5 +72,7 @@ export function PostList({ posts, selectedId, onSelect }: Props) {
         );
       })}
     </ul>
+    <Pagination page={page} pageCount={pageCount} onChange={setPage} total={total} pageSize={20} />
+    </>
   );
 }

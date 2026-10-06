@@ -23,6 +23,12 @@ body { margin: 0; }
   from { opacity: 0; transform: scale(0.92) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+/* Halo qui s'étend autour d'une pastille de statut (« en ligne ») */
+@keyframes pulseRing {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  70%, 100% { transform: scale(2.4); opacity: 0; }
+}
+.animate-pulse-ring { animation: pulseRing 2.2s ease-out infinite; }
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; }
 .reveal-visible { opacity: 1; transform: translateY(0); }
 .animate-float { animation: floatY 4.5s ease-in-out infinite; }

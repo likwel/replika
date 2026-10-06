@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Bot, RefreshCw, Power, AlertTriangle, Facebook } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { ApiError } from "@/lib/api";
 import { plural } from "@/lib/format";
 import { automationApi, type AutomationSettings } from "@/lib/automation.api";
@@ -72,14 +73,14 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
             <h3 className="font-semibold">Réponses automatiques</h3>
             {settings && (
               <span
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
                 style={{
-                  background: enabled ? "rgba(229,172,95,0.2)" : "rgba(255,255,255,0.08)",
-                  color: enabled ? theme.goldLight : "#FFFFFF99",
+                  background: enabled ? "rgba(34,197,94,0.16)" : "rgba(255,255,255,0.08)",
+                  color: enabled ? theme.greenLight : "#FFFFFF99",
                 }}
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: enabled ? theme.gold : "#FFFFFF66" }} />
-                {enabled ? "Actif" : "En pause"}
+                <StatusDot color={enabled ? theme.greenLight : "#FFFFFF66"} size={6} pulse={enabled} />
+                {enabled ? "En ligne" : "En pause"}
               </span>
             )}
           </div>

@@ -9,10 +9,11 @@ import { MobileNav } from "./MobileNav";
 
 // map id menu -> segment d'URL
 const PATHS: Record<string, string> = {
-  hub: "gestion", leads: "leads", plan: "planifier", stat: "statistiques", conn: "connexions", live: "lives", auto: "automatisation", hist: "historique", set: "parametres",
+  hub: "gestion", leads: "leads", plan: "planifier", stat: "statistiques", conn: "connexions", live: "lives", market: "gescom", auto: "automatisation", hist: "historique", set: "parametres",
 };
 
 const QUEUE_SUB = 2; // Gestion → À traiter
+const MESSAGES_SUB = 1; // Gestion → Messages privés
 
 export function AppLayout() {
   const nav = useNavigate();
@@ -35,6 +36,8 @@ export function AppLayout() {
     setSub(subIndex);
   };
   const openQueue = () => goTo("hub", QUEUE_SUB);
+  const openMessages = () => goTo("hub", MESSAGES_SUB);
+  const openHistory = () => goTo("hist", 0);
   // Chaque page / sous-menu s'ouvre en haut
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
@@ -46,8 +49,15 @@ export function AppLayout() {
     <div className="flex h-screen overflow-hidden font-sans" style={{ background: theme.bg }}>
       <Sidebar active={active} setActive={setActive} sub={sub} setSub={setSub} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header attention={attention} onOpenQueue={openQueue} onOpenSettings={(i) => goTo("set", i)} />
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24 md:pb-5">
+        <Header
+          attention={attention}
+          onOpenQueue={openQueue}
+          onOpenMessages={openMessages}
+          onOpenHistory={openHistory}
+          onOpenSettings={(i) => goTo("set", i)}
+          onNavigate={goTo}
+        />
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4">
           <Outlet context={{ active, sub, setSub }} />
         </main>
       </div>

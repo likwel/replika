@@ -16,9 +16,25 @@ export function AuthShell({ title, subtitle, children }: Props) {
       <div className="hidden lg:flex w-1/2 flex-col justify-between p-12" style={{ background: theme.bgDark }}>
         <Link to="/"><Logo dark /></Link>
         <div>
-          <h2 className="text-3xl font-bold text-white leading-snug">
+          {/* Le serif italique a une hauteur d'x plus faible que le sans : il est agrandi optiquement. */}
+          <h2
+            className="font-extrabold text-white"
+            style={{ fontSize: "clamp(1.75rem, 2.5vw, 2.35rem)", lineHeight: 1.14, letterSpacing: "-0.025em" }}
+          >
             Répondez plus vite,<br />
-            <em style={{ color: theme.goldLight, fontFamily: "'Playfair Display', serif", fontStyle: "italic" }}>vendez plus</em>.
+            <em
+              style={{
+                color: theme.goldLight,
+                fontFamily: "'Playfair Display', serif",
+                fontStyle: "italic",
+                fontWeight: 700,
+                fontSize: "1.12em",
+                letterSpacing: "-0.005em",
+              }}
+            >
+              vendez plus
+            </em>
+            <span style={{ color: theme.gold }}>.</span>
           </h2>
           <p className="mt-4 max-w-sm" style={{ color: "#ffffff99" }}>
             Automatisez vos commentaires et messages Facebook & Instagram avec l'intelligence artificielle.

@@ -7,7 +7,12 @@ export interface Menu {
   id: string;
   icon: LucideIcon;
   label: string;
+  color: string; // accent du menu : icône colorée du rail, indicateur de sous-onglet actif
+  short?: string; // libellé court du rail d'icônes, quand le nom complet y serait tronqué
   sub: string[];
+  hidden?: boolean; // masqué du rail d'icônes (accessible autrement : en-tête, sous-menu fusionné…)
+  iconRailAlias?: string; // icône du rail à garder active quand ce menu (masqué) est actif
+  mergeGroups?: Array<{ menuId: string; label: string }>; // sous-listes d'autres menus ajoutées après la sienne
 }
 
 export interface Tab {

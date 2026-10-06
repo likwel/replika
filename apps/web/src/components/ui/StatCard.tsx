@@ -14,19 +14,19 @@ export function StatCard({ icon: Icon, label, value, trend, color }: Props) {
   const down = trend?.trimStart().startsWith("-");
   const TrendIcon = down ? TrendingDown : TrendingUp;
   return (
-    <div className="rounded-2xl p-5 transition-all hover:shadow-md" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <div className="rounded-2xl p-4 transition-all hover:shadow-md" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
       <div className="flex items-start justify-between">
-        <div className="rounded-xl p-2.5" style={{ background: `${color}1A` }}>
-          <Icon size={20} style={{ color }} />
+        <div className="rounded-xl p-2" style={{ background: `${color}1A`, border: `1px solid ${color}2E` }}>
+          <Icon size={18} style={{ color }} />
         </div>
         {trend && (
-          <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: down ? theme.red : theme.gold }}>
+          <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: down ? theme.red : theme.green }}>
             <TrendIcon size={12} /> {trend}
           </span>
         )}
       </div>
-      <p className="mt-4 text-2xl font-bold" style={{ color: theme.text }}>{value}</p>
-      <p className="text-sm" style={{ color: theme.textMuted }}>{label}</p>
+      <p className="mt-3 text-xl font-bold" style={{ color: theme.text }}>{value}</p>
+      <p className="text-[12.5px]" style={{ color: theme.textMuted }}>{label}</p>
     </div>
   );
 }

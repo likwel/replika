@@ -7,10 +7,13 @@ import {
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { AssistantCard } from "@/components/automation/AssistantCard";
 import { ReconnectDialog } from "@/components/connections/ReconnectDialog";
 import { accountApi, type AccountCheck, type SocialAccount } from "@/lib/account.api";
 import { isPermissionError, permissionLabel } from "@/lib/meta";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 
 const PLATFORM_META = {
   FACEBOOK: { icon: Facebook, color: "#1877F2", label: "Facebook" },
@@ -19,8 +22,8 @@ const PLATFORM_META = {
 } as const;
 
 const CHECK_META: Record<AccountCheck["status"], { label: string; color: string; bg: string }> = {
-  ok: { label: "Opérationnel", color: "#15803d", bg: "#E7F6EC" },
-  missing: { label: "Autorisations manquantes", color: "#b45309", bg: "#FEF3C7" },
+  ok: { label: "Opérationnel", color: theme.green, bg: theme.greenSoft },
+  missing: { label: "Autorisations manquantes", color: theme.amber, bg: theme.amberSoft },
   not_authorized: { label: "Page non autorisée", color: theme.red, bg: "#FDECEC" },
   expired: { label: "Connexion expirée", color: theme.red, bg: "#FDECEC" },
   error: { label: "Vérification impossible", color: theme.textMuted, bg: theme.bg },
@@ -45,6 +48,7 @@ export function ConnectionsPage() {
   const [menuId, setMenuId] = useState<string | null>(null);
   const [reconnect, setReconnect] = useState<{ name?: string } | null>(null);
   const [checks, setChecks] = useState<Record<string, AccountCheck | "loading">>({});
+  const accountsPage = usePagination(accounts, 20);
 
   const load = () => {
     setLoading(true);
@@ -181,7 +185,7 @@ export function ConnectionsPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {accounts.map((acc) => {
+                {accountsPage.pageItems.map((acc) => {
                   const meta = PLATFORM_META[acc.platform];
                   const Icon = meta.icon;
                   const result = checks[acc.id];
@@ -216,9 +220,15 @@ export function ConnectionsPage() {
                         {broken ? (
                           <Button size="sm" variant="danger" onClick={() => setReconnect({ name: acc.name })}>Reconnecter</Button>
                         ) : (
-                          <span className="hidden items-center gap-1 text-xs sm:flex" style={{ color: acc.isActive ? theme.gold : theme.textMuted }}>
-                            <span className="h-2 w-2 rounded-full" style={{ background: acc.isActive ? theme.gold : theme.textMuted }} />
-                            {acc.isActive ? "Actif" : "Inactif"}
+                          <span
+                            className="hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:flex"
+                            style={{
+                              color: acc.isActive ? theme.green : theme.textMuted,
+                              background: acc.isActive ? theme.greenSoft : theme.bgCard,
+                            }}
+                          >
+                            <StatusDot color={acc.isActive ? theme.green : theme.textMuted} size={6} pulse={acc.isActive} />
+                            {acc.isActive ? "En ligne" : "Inactif"}
                           </span>
                         )}
                         <button onClick={() => setMenuId(menuId === acc.id ? null : acc.id)} className="rounded-lg p-1.5 hover:bg-black/5" aria-label={`Actions pour ${acc.name}`}>
@@ -241,7 +251,7 @@ export function ConnectionsPage() {
                               {result.features.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-1.5">
                                   {result.features.map((f) => (
-                                    <span key={f.label} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]" style={{ background: f.ok ? "#E7F6EC" : "#FDECEC", color: f.ok ? "#15803d" : theme.red }}>
+                                    <span key={f.label} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]" style={{ background: f.ok ? theme.greenSoft : "#FDECEC", color: f.ok ? theme.green : theme.red }}>
                                       {f.ok ? <CheckCircle2 size={11} /> : <XCircle size={11} />} {f.label}
                                     </span>
                                   ))}
@@ -280,6 +290,7 @@ export function ConnectionsPage() {
                 })}
               </div>
             )}
+            <Pagination page={accountsPage.page} pageCount={accountsPage.pageCount} onChange={accountsPage.setPage} total={accountsPage.total} pageSize={20} />
           </div>
         </div>
 

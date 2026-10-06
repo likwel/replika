@@ -7,6 +7,8 @@ import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { EmptyState, FilterChips, ListSkeleton } from "@/components/workspace/WorkspaceUi";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { LeadDetail } from "@/components/leads/LeadDetail";
 import { LEAD_STATUS, LEAD_STATUSES, SOURCE_LABEL, TEMPERATURE, exportLeadsCsv, temperatureOf } from "@/components/leads/leads";
 import { timeAgo } from "@/lib/format";
@@ -124,6 +126,7 @@ export function LeadsPage() {
   );
 
   const byStatus = useMemo(() => Object.fromEntries(LEAD_STATUSES.map((s) => [s, (leads ?? []).filter((l) => l.status === s)])) as Record<LeadStatus, Lead[]>, [leads]);
+  const leadsPage = usePagination(leads ?? [], 20);
 
   return (
     <div className="flex flex-col gap-4">
@@ -237,7 +240,7 @@ export function LeadsPage() {
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-2">
-          {leads.map((l) => (
+          {leadsPage.pageItems.map((l) => (
             <li key={l.id}>
               <button
                 onClick={() => setOpenId(l.id)}
@@ -272,6 +275,9 @@ export function LeadsPage() {
             </li>
           ))}
         </ul>
+      )}
+      {leads && leads.length > 0 && view !== "pipeline" && (
+        <Pagination page={leadsPage.page} pageCount={leadsPage.pageCount} onChange={leadsPage.setPage} total={leadsPage.total} pageSize={20} />
       )}
 
       {openId && <LeadDetail leadId={openId} onClose={() => setOpenId(null)} onChanged={(l) => changed(l, openId)} />}

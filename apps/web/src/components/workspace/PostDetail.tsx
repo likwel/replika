@@ -113,11 +113,26 @@ export function PostDetail({ post, highlightId, onBack, onChange }: Props) {
   const suggest = (c: WsComment) =>
     workspaceApi.suggestComment(post.accountId, { text: c.text, authorName: c.author, postId: post.id });
 
+  // Personnes mentionnables : tous les auteurs du fil, sauf la Page elle-même
+  const participants = (() => {
+    const names: string[] = [];
+    const walk = (list: WsComment[]) => {
+      for (const c of list) {
+        if (!c.isOwn && !names.includes(c.author)) names.push(c.author);
+        walk(c.replies);
+      }
+    };
+    walk(comments ?? []);
+    return names;
+  })();
+
   const renderComment = (c: WsComment, parent?: WsComment) => (
     <CommentItem
       key={c.id}
       comment={c}
       accountName={post.accountName}
+      // L'auteur du commentaire d'abord : c'est la mention la plus probable
+      mentions={[c.author, ...participants.filter((n) => n !== c.author)]}
       isReply={Boolean(parent)}
       highlighted={c.id === highlightId}
       highlightRef={c.id === highlightId ? highlightRef : undefined}
@@ -216,6 +231,7 @@ export function PostDetail({ post, highlightId, onBack, onChange }: Props) {
             hint={<span className="flex items-center gap-1" style={{ color: theme.textMuted }}><MessageSquarePlus size={11} /> Nouveau commentaire sous la publication</span>}
             maxLength={8000}
             submitLabel="Publier"
+            mentions={participants}
             onSend={commentOnPost}
           />
         </div>

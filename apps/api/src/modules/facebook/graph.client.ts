@@ -24,6 +24,42 @@ const PAGE_POST_FIELDS = [
   "shares",
 ].join(",");
 
+// Produit tel que renvoyé par /{catalog-id}/products (prix au format "35000 MGA")
+export interface GraphCatalogProduct {
+  id: string;
+  retailer_id?: string;
+  name: string;
+  description?: string;
+  price?: string;
+  currency?: string;
+  availability?: string; // "in stock" | "out of stock" | …
+  image_url?: string;
+  url?: string;
+  category?: string;
+  brand?: string;
+}
+
+// Écriture vers le Catalogue : une entrée de /{catalog-id}/items_batch
+export interface CatalogItemRequest {
+  method: "UPDATE" | "DELETE";
+  retailer_id: string;
+  data?: {
+    title: string;
+    description: string;
+    availability: "in stock" | "out of stock";
+    condition: "new";
+    price: string; // « montant CODE », ex. « 35000 MGA » (même format qu'en lecture)
+    link: string;
+    image_link: string;
+    brand: string;
+  };
+}
+
+export interface CatalogBatchResult {
+  handles?: string[];
+  validation_status?: Array<{ retailer_id?: string; errors?: Array<{ message?: string; description?: string }> }>;
+}
+
 export interface PagePost {
   id: string;
   message?: string;
@@ -135,6 +171,55 @@ export const graphClient = {
       picture?: { data: { url: string } };
       instagram_business_account?: { id: string; username?: string; profile_picture_url?: string };
     }>;
+  },
+
+  // Gescom : entreprises (Business Manager) administrées par l'utilisateur — nécessite business_management
+  async getUserBusinesses(userToken: string) {
+    const { data } = await axios.get(`${GRAPH}/me/businesses`, {
+      params: { access_token: userToken, fields: "id,name" },
+    });
+    return data.data as Array<{ id: string; name: string }>;
+  },
+
+  // Gescom : catalogues produits appartenant à une entreprise — nécessite catalog_management
+  async getOwnedCatalogs(businessId: string, userToken: string) {
+    const { data } = await axios.get(`${GRAPH}/${businessId}/owned_product_catalogs`, {
+      params: { access_token: userToken, fields: "id,name,product_count" },
+    });
+    return data.data as Array<{ id: string; name: string; product_count?: number }>;
+  },
+
+  // Gescom : produits d'un catalogue (ceux publiés sur Marketplace si ce canal est activé dans Commerce Manager)
+  async getCatalogProducts(catalogId: string, userToken: string) {
+    type CatalogPage = { data: GraphCatalogProduct[]; paging?: { next?: string } };
+    const products: GraphCatalogProduct[] = [];
+    let nextUrl: string | undefined = `${GRAPH}/${catalogId}/products`;
+    const firstParams = {
+      access_token: userToken,
+      fields: "id,retailer_id,name,description,price,currency,availability,image_url,url,category,brand",
+      limit: 200,
+    };
+    let first = true;
+    // Suit la pagination du Catalogue (peut compter plusieurs centaines de produits)
+    while (nextUrl && products.length < 2000) {
+      const res: { data: CatalogPage } = await axios.get(nextUrl, first ? { params: firstParams } : undefined);
+      products.push(...res.data.data);
+      nextUrl = res.data.paging?.next;
+      first = false;
+    }
+    return products;
+  },
+
+  // Gescom : publie (ou retire) des articles dans le Catalogue — allow_upsert crée ceux qui n'existent pas encore.
+  // Meta limite chaque appel ; l'appelant découpe en lots.
+  async upsertCatalogItems(catalogId: string, userToken: string, requests: CatalogItemRequest[]) {
+    const { data } = await axios.post(`${GRAPH}/${catalogId}/items_batch`, {
+      item_type: "PRODUCT_ITEM",
+      allow_upsert: true,
+      requests,
+      access_token: userToken,
+    });
+    return data as CatalogBatchResult;
   },
 
   // Publications d'une Page (via /feed pour inclure vidéos, reels, partages, etc.)

@@ -1,6 +1,11 @@
 import { api } from "./api";
 
-export type DefaultPage = "connexions" | "gestion" | "automatisation" | "statistiques";
+// Pages d'ouverture acceptées : doit rester aligné sur DEFAULT_PAGES du serveur
+// (apps/api/src/modules/profile/profile.schema.ts), qui rejette toute autre valeur.
+export const DEFAULT_PAGES = ["gestion", "automatisation", "statistiques"] as const;
+export type DefaultPage = (typeof DEFAULT_PAGES)[number];
+export const resolveDefaultPage = (page: string | null | undefined): DefaultPage =>
+  DEFAULT_PAGES.includes(page as DefaultPage) ? (page as DefaultPage) : "gestion";
 
 export interface Profile {
   id: string;

@@ -159,13 +159,14 @@ async function applyRuleAi(account: SocialAccount, msg: SocialMessage, rule: Aut
     });
   }
 
-  // Réclamation, information manquante… : un humain valide avant tout envoi
-  if (ai.needsHuman) {
+  // Idem règle par règle : « envoi automatique » coché veut dire envoyer, y compris les accusés de réception
+  if (ai.needsHuman && !rule.autoSend) {
     return prisma.socialMessage.update({
       where: { id: msg.id },
       data: { ruleId: rule.id, aiReply: ai.reply, aiGenerated: true, intent: ai.intent, status: "ESCALATED" },
     });
   }
+  if (ai.needsHuman) await logNeedsReview(account, msg, rule.id);
 
   return deliver(account, msg, { reply: ai.reply, autoSend: rule.autoSend, aiGenerated: true, intent: ai.intent, rule });
 }
@@ -191,8 +192,9 @@ async function applyAi(account: SocialAccount, msg: SocialMessage) {
     return { handled: await prisma.socialMessage.update({ where: { id: msg.id }, data: { intent: ai.intent } }) };
   }
 
-  // Réclamation, information manquante… : un humain valide avant tout envoi
-  if (ai.needsHuman) {
+  // Réclamation, information manquante… : un humain valide avant l'envoi — sauf si l'envoi automatique est demandé,
+  // auquel cas l'accusé de réception part quand même et le cas reste tracé dans l'historique.
+  if (ai.needsHuman && !account.aiAutoSend) {
     return {
       handled: await prisma.socialMessage.update({
         where: { id: msg.id },
@@ -200,6 +202,7 @@ async function applyAi(account: SocialAccount, msg: SocialMessage) {
       }),
     };
   }
+  if (ai.needsHuman) await logNeedsReview(account, msg, null);
 
   return {
     handled: await deliver(account, msg, {

@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, Facebook, Loader2, Plus, Powe
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ReconnectDialog } from "@/components/connections/ReconnectDialog";
 import { accountApi } from "@/lib/account.api";
@@ -15,8 +16,8 @@ interface Props {
 }
 
 const STATUS = {
-  ok: { label: "Opérationnel", color: "#15803d", bg: "#E7F6EC" },
-  warning: { label: "À compléter", color: "#b45309", bg: "#FEF3C7" },
+  ok: { label: "Opérationnel", color: theme.green, bg: theme.greenSoft },
+  warning: { label: "À compléter", color: theme.amber, bg: theme.amberSoft },
   blocked: { label: "Bloqué", color: theme.red, bg: "#FDECEC" },
 } as const;
 const ORDER = { blocked: 0, warning: 1, ok: 2 };
@@ -88,8 +89,12 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
       </p>
 
       <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-        <span className="rounded-full px-2 py-0.5 font-medium" style={diag.autoReplyEnabled ? { background: "#E7F6EC", color: "#15803d" } : { background: "#FDECEC", color: theme.red }}>
-          Réponses automatiques {diag.autoReplyEnabled ? "activées" : "en pause"}
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold"
+          style={diag.autoReplyEnabled ? { background: theme.greenSoft, color: theme.green } : { background: "#FDECEC", color: theme.red }}
+        >
+          <StatusDot color={diag.autoReplyEnabled ? theme.green : theme.red} size={6} pulse={diag.autoReplyEnabled} />
+          Réponses automatiques {diag.autoReplyEnabled ? "en ligne" : "en pause"}
         </span>
         <span className="rounded-full px-2 py-0.5" style={{ background: theme.bg, color: theme.textMuted }}>
           {diag.sync.mode === "webhook" ? "Réception instantanée (webhooks)" : `Relève toutes les ${diag.sync.pollSeconds} s`}
@@ -134,7 +139,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
                 <ul className="flex flex-col gap-1.5 border-t px-3 py-3" style={{ borderColor: theme.border }}>
                   {a.checks.map((c) => {
                     const Icon = c.ok && !c.warn ? CheckCircle2 : c.ok ? AlertTriangle : XCircle;
-                    const color = c.ok && !c.warn ? "#15803d" : c.ok ? "#b45309" : theme.red;
+                    const color = c.ok && !c.warn ? theme.green : c.ok ? theme.amber : theme.red;
                     const action = c.action ? ACTION_LABEL[c.action] : null;
                     return (
                       <li key={c.id} className="flex flex-wrap items-start gap-2">

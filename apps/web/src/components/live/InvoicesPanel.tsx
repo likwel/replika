@@ -2,8 +2,12 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, Phone, Printer, Receipt, RefreshCw, Send } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { EmptyState } from "@/components/workspace/WorkspaceUi";
 import { formatAriary, liveApi, type LiveInvoice } from "@/lib/live.api";
+
+const PAGE_SIZE = 15;
 
 interface Props {
   sessionId: string;
@@ -44,9 +48,8 @@ function DeliveryFeeInput({ invoice, onSaved }: { invoice: LiveInvoice; onSaved:
   );
 }
 
-function InvoiceRow({ invoice, onSaved }: { invoice: LiveInvoice; onSaved: (inv: LiveInvoice) => void }) {
+function useResend(invoice: LiveInvoice, onSaved: (inv: LiveInvoice) => void) {
   const [sending, setSending] = useState(false);
-
   const resend = async () => {
     setSending(true);
     try {
@@ -55,47 +58,33 @@ function InvoiceRow({ invoice, onSaved }: { invoice: LiveInvoice; onSaved: (inv:
       setSending(false);
     }
   };
+  return { sending, resend };
+}
 
-  const items = invoice.orderIds.length;
+function SendState({ invoice }: { invoice: LiveInvoice }) {
+  if (invoice.sentAt) {
+    return <span className="flex items-center gap-1 text-xs font-medium" style={{ color: theme.green }}><CheckCircle2 size={12} /> Envoyé</span>;
+  }
+  if (invoice.sendError) {
+    return (
+      <span className="flex items-center gap-1 text-xs font-medium" style={{ color: theme.red }} title={invoice.sendError}>
+        <AlertTriangle size={12} /> Échec d'envoi
+      </span>
+    );
+  }
+  return <span className="text-xs" style={{ color: theme.textMuted }}>En attente</span>;
+}
 
+function InvoiceActions({ invoice, onSaved }: { invoice: LiveInvoice; onSaved: (inv: LiveInvoice) => void }) {
+  const { sending, resend } = useResend(invoice, onSaved);
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl p-3.5 sm:flex-row sm:items-center" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold" style={{ color: theme.text }}>
-          {invoice.customerName} <span className="font-normal" style={{ color: theme.textMuted }}>· {invoice.invoiceNumber}</span>
-        </p>
-        <p className="flex flex-wrap items-center gap-x-2 text-xs" style={{ color: theme.textMuted }}>
-          {invoice.phone ? <span className="flex items-center gap-1"><Phone size={11} /> {invoice.phone}</span> : "Téléphone —"}
-          <span>· {items} article{items > 1 ? "s" : ""}</span>
-          {invoice.sentAt ? (
-            <span className="flex items-center gap-1" style={{ color: "#15803d" }}><CheckCircle2 size={11} /> Envoyé</span>
-          ) : invoice.sendError ? (
-            <span className="flex items-center gap-1" style={{ color: theme.red }} title={invoice.sendError}><AlertTriangle size={11} /> Échec d'envoi</span>
-          ) : (
-            <span>· En attente d'envoi</span>
-          )}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3 text-xs" style={{ color: theme.textMuted }}>
-        <span className="flex flex-col items-end">
-          <span>Livraison</span>
-          <DeliveryFeeInput invoice={invoice} onSaved={onSaved} />
-        </span>
-        <span className="flex flex-col items-end">
-          <span>Total</span>
-          <span className="text-base font-bold" style={{ color: theme.text }}>{formatAriary(invoice.total)}</span>
-        </span>
-      </div>
-
-      <div className="flex gap-2">
-        <a href={`/print/invoice/${invoice.id}`} target="_blank" rel="noreferrer">
-          <Button size="sm" variant="ghost" icon={Printer}>Imprimer</Button>
-        </a>
-        <Button size="sm" variant="soft" icon={sending ? Loader2 : Send} onClick={resend} disabled={sending} className={sending ? "[&>svg]:animate-spin" : ""}>
-          {invoice.sentAt ? "Renvoyer" : "Envoyer"}
-        </Button>
-      </div>
+    <div className="flex justify-end gap-2">
+      <a href={`/print/invoice/${invoice.id}`} target="_blank" rel="noreferrer">
+        <Button size="sm" variant="ghost" icon={Printer}>Imprimer</Button>
+      </a>
+      <Button size="sm" variant="soft" icon={sending ? Loader2 : Send} onClick={resend} disabled={sending} className={sending ? "[&>svg]:animate-spin" : ""}>
+        {invoice.sentAt ? "Renvoyer" : "Envoyer"}
+      </Button>
     </div>
   );
 }
@@ -118,6 +107,11 @@ export function InvoicesPanel({ sessionId, sessionEnded }: Props) {
 
   const update = (inv: LiveInvoice) => setInvoices((list) => list?.map((x) => (x.id === inv.id ? inv : x)) ?? null);
 
+  const list = invoices ?? [];
+  const { pageItems, page, pageCount, setPage, total } = usePagination(list, PAGE_SIZE);
+  const grandTotal = list.reduce((n, i) => n + i.total, 0);
+  const th = "px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide";
+
   return (
     <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -136,15 +130,79 @@ export function InvoicesPanel({ sessionId, sessionEnded }: Props) {
 
       {invoices === null ? (
         <div className="h-24 animate-pulse rounded-xl" style={{ background: theme.bg }} />
-      ) : invoices.length === 0 ? (
+      ) : list.length === 0 ? (
         <EmptyState icon={Receipt} title="Aucun récapitulatif pour l'instant">
           Un client doit avoir au moins un JP confirmé pour recevoir un récapitulatif.
         </EmptyState>
       ) : (
-        <div className="flex flex-col gap-2">
-          {invoices.map((inv) => (
-            <InvoiceRow key={inv.id} invoice={inv} onSaved={update} />
-          ))}
+        <div className="flex flex-col gap-3">
+          {/* Grand écran : tableau */}
+          <div className="hidden overflow-x-auto rounded-xl md:block" style={{ border: `1px solid ${theme.border}` }}>
+            <table className="w-full min-w-[760px] text-sm">
+              <thead style={{ background: theme.bg, color: theme.textMuted }}>
+                <tr>
+                  <th className={`${th} text-left`}>N° / Client</th>
+                  <th className={`${th} text-left`}>Téléphone</th>
+                  <th className={`${th} text-right`}>Articles</th>
+                  <th className={`${th} text-right`}>Livraison</th>
+                  <th className={`${th} text-right`}>Total</th>
+                  <th className={`${th} text-left`}>Envoi</th>
+                  <th className={`${th} text-right`}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((inv) => (
+                  <tr key={inv.id} style={{ borderTop: `1px solid ${theme.border}` }}>
+                    <td className="max-w-[240px] px-3 py-2.5">
+                      <p className="truncate font-medium" style={{ color: theme.text }}>{inv.customerName}</p>
+                      <p className="truncate text-xs" style={{ color: theme.textMuted }}>{inv.invoiceNumber}</p>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-xs" style={{ color: inv.phone ? theme.text : theme.textMuted }}>
+                      {inv.phone ? <span className="flex items-center gap-1"><Phone size={11} /> {inv.phone}</span> : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-right" style={{ color: theme.text }}>{inv.orderIds.length}</td>
+                    <td className="px-3 py-2.5 text-right"><DeliveryFeeInput invoice={inv} onSaved={update} /></td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-bold" style={{ color: theme.text }}>{formatAriary(inv.total)}</td>
+                    <td className="px-3 py-2.5"><SendState invoice={inv} /></td>
+                    <td className="px-3 py-2.5"><InvoiceActions invoice={inv} onSaved={update} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile : cartes */}
+          <ul className="flex flex-col gap-2 md:hidden">
+            {pageItems.map((inv) => (
+              <li key={inv.id} className="rounded-xl p-3" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
+                <p className="truncate text-sm font-semibold" style={{ color: theme.text }}>
+                  {inv.customerName} <span className="font-normal" style={{ color: theme.textMuted }}>· {inv.invoiceNumber}</span>
+                </p>
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs" style={{ color: theme.textMuted }}>
+                  {inv.phone ? <span className="flex items-center gap-1"><Phone size={11} /> {inv.phone}</span> : <span>Téléphone —</span>}
+                  <span>· {inv.orderIds.length} article{inv.orderIds.length > 1 ? "s" : ""}</span>
+                  <SendState invoice={inv} />
+                </p>
+                <div className="mt-2 flex items-end justify-between gap-3">
+                  <span className="flex flex-col text-xs" style={{ color: theme.textMuted }}>
+                    Livraison
+                    <DeliveryFeeInput invoice={inv} onSaved={update} />
+                  </span>
+                  <span className="flex flex-col items-end text-xs" style={{ color: theme.textMuted }}>
+                    Total
+                    <strong className="text-base" style={{ color: theme.text }}>{formatAriary(inv.total)}</strong>
+                  </span>
+                </div>
+                <div className="mt-2"><InvoiceActions invoice={inv} onSaved={update} /></div>
+              </li>
+            ))}
+          </ul>
+
+          <Pagination page={page} pageCount={pageCount} onChange={setPage} total={total} pageSize={PAGE_SIZE} />
+          <p className="text-xs" style={{ color: theme.textMuted }}>
+            {list.length} récapitulatif{list.length > 1 ? "s" : ""} · total facturé :{" "}
+            <strong style={{ color: theme.text }}>{formatAriary(grandTotal)}</strong>
+          </p>
         </div>
       )}
     </div>

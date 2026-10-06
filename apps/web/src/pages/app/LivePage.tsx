@@ -1,73 +1,18 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AlertTriangle, MessageCircle, Plus, Radio, ShoppingBag, Users, Wallet } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Plus, Radio } from "lucide-react";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
-import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { NewSessionWizard } from "@/components/live/NewSessionWizard";
 import { SessionView } from "@/components/live/SessionView";
+import { SessionsList } from "@/components/live/SessionsList";
 import { OrdersTable } from "@/components/live/OrdersTable";
 import { OrderEditor } from "@/components/live/OrderEditor";
-import { timeAgo } from "@/lib/format";
-import { formatAriary, liveApi, type LiveOrder, type LiveSession } from "@/lib/live.api";
+import { liveApi, type LiveOrder, type LiveSession } from "@/lib/live.api";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
-
-const STATUS = {
-  ACTIVE: { label: "Capture active", color: "#15803d", bg: "#E7F6EC" },
-  PAUSED: { label: "En pause", color: "#b45309", bg: "#FEF3C7" },
-  ENDED: { label: "Terminée", color: theme.textMuted, bg: theme.bg },
-} as const;
-
-function SessionCard({ s, onOpen }: { s: LiveSession; onOpen: () => void }) {
-  const todo = (s.stats.byStatus.NEW ?? 0) + (s.stats.byStatus.MESSAGED ?? 0) + (s.stats.byStatus.PARTIAL ?? 0);
-  const status = STATUS[s.status];
-  const counters: Array<{ icon: LucideIcon; n: number; label: string; warn?: boolean }> = [
-    { icon: MessageCircle, n: s._count.comments, label: "comment." },
-    { icon: ShoppingBag, n: s.stats.orders, label: "JP" },
-    { icon: Users, n: s.stats.customers, label: "clients" },
-    { icon: AlertTriangle, n: todo, label: "à compléter", warn: todo > 0 },
-  ];
-  return (
-    <button onClick={onOpen} className="flex w-full flex-col gap-3 rounded-2xl p-4 text-left transition-all hover:shadow-md" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-start gap-3">
-        <span className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl" style={{ background: theme.bg }}>
-          {s.thumbnail ? <img src={s.thumbnail} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center"><Radio size={20} style={{ color: theme.textMuted }} /></span>}
-          {s.liveStatus === "LIVE" && s.status !== "ENDED" && (
-            <span className="absolute bottom-1 left-1 rounded px-1 text-[8px] font-bold text-white" style={{ background: "#dc2626" }}>LIVE</span>
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold" style={{ color: theme.text }}>{s.title}</p>
-          <p className="flex items-center gap-1.5 truncate text-xs" style={{ color: theme.textMuted }}>
-            <AccountAvatar name={s.account.name} src={s.account.avatarUrl} platform={s.account.platform} size={16} />
-            {s.account.name} · {timeAgo(s.createdAt)}
-          </p>
-          <span className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: status.bg, color: status.color }}>
-            {status.label}
-          </span>
-        </div>
-      </div>
-      <div className="grid grid-cols-4 gap-2 text-center">
-        {counters.map((c) => (
-          <div key={c.label} className="rounded-lg py-1.5" style={{ background: theme.bg }}>
-            <p className="flex items-center justify-center gap-1 text-sm font-bold" style={{ color: c.warn ? "#b45309" : theme.text }}>
-              <c.icon size={12} style={{ color: theme.textMuted }} /> {c.n}
-            </p>
-            <p className="text-[10px]" style={{ color: theme.textMuted }}>{c.label}</p>
-          </div>
-        ))}
-      </div>
-      <p className="flex items-center gap-1.5 text-xs" style={{ color: theme.textMuted }}>
-        <Wallet size={12} /> Confirmé : <strong style={{ color: theme.text }}>{formatAriary(s.stats.revenue)}</strong>
-        {s.syncError && s.status === "ACTIVE" && <span className="ml-auto flex items-center gap-1" style={{ color: theme.red }}><AlertTriangle size={11} /> Lecture en échec</span>}
-      </p>
-    </button>
-  );
-}
 
 export function LivePage() {
   const { sub, setSub } = useOutletContext<Ctx>();
@@ -138,9 +83,7 @@ export function LivePage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {sessions.map((s) => <SessionCard key={s.id} s={s} onOpen={() => setOpenId(s.id)} />)}
-            </div>
+            <SessionsList sessions={sessions} onOpen={setOpenId} />
           )}
         </>
       ) : (

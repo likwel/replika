@@ -12,6 +12,7 @@ import { Composer } from "./Composer";
 interface Props {
   comment: WsComment;
   accountName: string;
+  mentions?: string[]; // auteurs du fil, proposés après « @ » dans la réponse
   isReply?: boolean;
   highlighted?: boolean; // ouvert depuis « À traiter »
   highlightRef?: Ref<HTMLDivElement>;
@@ -28,6 +29,7 @@ interface Props {
 export function CommentItem({
   comment: c,
   accountName,
+  mentions,
   isReply,
   highlighted,
   highlightRef,
@@ -131,6 +133,7 @@ export function CommentItem({
                 hint={suggestion ? <span className="flex items-center gap-1"><Sparkles size={11} /> Suggestion préparée par l'automatisation — modifiable</span> : undefined}
                 maxLength={8000}
                 submitLabel="Répondre"
+                mentions={mentions}
                 autoFocus
                 onSend={onReply}
                 onSuggest={onSuggest}

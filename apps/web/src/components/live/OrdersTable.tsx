@@ -3,9 +3,13 @@ import { AlertTriangle, Download, MessageSquare, Package, Phone, Plus, Search, S
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
+import { Pagination } from "@/components/ui/Pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { EmptyState, FilterChips } from "@/components/workspace/WorkspaceUi";
 import { formatAriary, liveApi, type LiveOrder, type LiveProduct, type OrderStatus } from "@/lib/live.api";
 import { ORDER_STATUS, ORDER_STATUSES, articleLabel, customerKey, exportCsv, orderTotal } from "./live";
+
+const PAGE_SIZE = 20;
 
 interface Props {
   orders: LiveOrder[] | null;
@@ -118,6 +122,11 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
   const revenue = visible.filter((o) => SOLD.includes(o.status)).reduce((n, o) => n + orderTotal(o), 0);
   const th = "px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide";
 
+  const ordersPage = usePagination(visible, PAGE_SIZE);
+  const customersPage = usePagination(customers, PAGE_SIZE);
+  const articlesPage = usePagination(articles, PAGE_SIZE);
+  const activePage = group === "orders" ? ordersPage : group === "customers" ? customersPage : articlesPage;
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -174,7 +183,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
                 </tr>
               </thead>
               <tbody>
-                {visible.map((o) => (
+                {ordersPage.pageItems.map((o) => (
                   <tr key={o.id} onClick={() => onOpen(o)} className="cursor-pointer align-top hover:bg-black/[0.02]" style={{ borderTop: `1px solid ${theme.border}` }}>
                     <td className="whitespace-nowrap px-3 py-2.5 text-xs" style={{ color: theme.textMuted }}>
                       {new Date(o.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
@@ -214,7 +223,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
 
           {/* Mobile : cartes */}
           <ul className="flex flex-col gap-2 md:hidden">
-            {visible.map((o) => (
+            {ordersPage.pageItems.map((o) => (
               <li key={o.id}>
                 <button onClick={() => onOpen(o)} className="w-full rounded-2xl p-3 text-left" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
                   <div className="flex items-start gap-2">
@@ -237,8 +246,73 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
           </ul>
         </>
       ) : group === "customers" ? (
-        <ul className="grid gap-2 lg:grid-cols-2">
-          {customers.map((c) => (
+        <>
+          {/* Grand écran : tableau */}
+          <div className="hidden overflow-x-auto rounded-2xl md:block" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+            <table className="w-full min-w-[720px] text-sm">
+              <thead style={{ background: theme.bg, color: theme.textMuted }}>
+                <tr>
+                  <th className={th}>Client</th>
+                  <th className={th}>Coordonnées</th>
+                  <th className={th}>Articles</th>
+                  <th className={`${th} text-right`}>JP</th>
+                  <th className={`${th} text-right`}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customersPage.pageItems.map((c) => (
+                  <tr key={c.key} className="align-top" style={{ borderTop: `1px solid ${theme.border}` }}>
+                    <td className="max-w-[200px] px-3 py-2.5">
+                      <p className="truncate font-medium" style={{ color: theme.text }}>{c.fullName ?? c.name}</p>
+                      {c.fullName && c.fullName !== c.name && (
+                        <p className="truncate text-[11px]" style={{ color: theme.textMuted }}>Facebook : {c.name}</p>
+                      )}
+                      {c.todo && (
+                        <button
+                          onClick={() => onOpen(c.orders.find((o) => ["NEW", "MESSAGED", "PARTIAL"].includes(o.status))!)}
+                          className="mt-1 flex items-center gap-1 text-[11px] font-medium"
+                          style={{ color: theme.goldDark }}
+                        >
+                          <MessageSquare size={11} /> Compléter / relancer
+                        </button>
+                      )}
+                    </td>
+                    <td className="max-w-[220px] px-3 py-2.5 text-xs" style={{ color: theme.textMuted }}>
+                      {c.phone ? <p className="flex items-center gap-1" style={{ color: theme.text }}><Phone size={11} /> {c.phone}</p> : <p>Téléphone —</p>}
+                      {c.address ? (
+                        <p className="flex items-start gap-1"><MapPin size={11} className="mt-0.5 flex-shrink-0" /> <span className="truncate">{c.address}</span></p>
+                      ) : (
+                        <p>Adresse —</p>
+                      )}
+                    </td>
+                    <td className="max-w-[300px] px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        {c.orders.map((o) => (
+                          <button
+                            key={o.id}
+                            onClick={() => onOpen(o)}
+                            className="max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-medium hover:brightness-95"
+                            style={{ background: ORDER_STATUS[o.status].bg, color: ORDER_STATUS[o.status].color }}
+                            title={`${articleLabel(o)} — ${ORDER_STATUS[o.status].label}`}
+                          >
+                            {o.code ? `${o.code} · ` : ""}{articleLabel(o)}{o.quantity > 1 ? ` ×${o.quantity}` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right" style={{ color: theme.text }}>{c.orders.length}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold" style={{ color: c.total ? theme.green : theme.textMuted }}>
+                      {c.total ? formatAriary(c.total) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile : cartes */}
+          <ul className="grid gap-2 md:hidden">
+          {customersPage.pageItems.map((c) => (
             <li key={c.key} className="rounded-2xl p-3.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
@@ -272,7 +346,8 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
               )}
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       ) : (
         <div className="overflow-x-auto rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
           <table className="w-full min-w-[560px] text-sm">
@@ -287,7 +362,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
               </tr>
             </thead>
             <tbody>
-              {articles.map((a) => (
+              {articlesPage.pageItems.map((a) => (
                 <tr key={a.key} className="cursor-pointer hover:bg-black/[0.02]" style={{ borderTop: `1px solid ${theme.border}` }} onClick={() => setSearch(a.code ?? a.name)}>
                   <td className="px-3 py-2.5">
                     {a.code && <span className="mr-1.5 rounded px-1 text-[11px] font-bold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{a.code}</span>}
@@ -308,10 +383,13 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
       )}
 
       {visible.length > 0 && (
-        <p className="text-xs" style={{ color: theme.textMuted }}>
-          {visible.length} commande{visible.length > 1 ? "s" : ""} · {customers.length} client{customers.length > 1 ? "s" : ""} · confirmé ou livré :{" "}
-          <strong style={{ color: theme.text }}>{formatAriary(revenue)}</strong>
-        </p>
+        <>
+          <Pagination page={activePage.page} pageCount={activePage.pageCount} onChange={activePage.setPage} total={activePage.total} pageSize={PAGE_SIZE} />
+          <p className="text-xs" style={{ color: theme.textMuted }}>
+            {visible.length} commande{visible.length > 1 ? "s" : ""} · {customers.length} client{customers.length > 1 ? "s" : ""} · confirmé ou livré :{" "}
+            <strong style={{ color: theme.text }}>{formatAriary(revenue)}</strong>
+          </p>
+        </>
       )}
     </div>
   );
