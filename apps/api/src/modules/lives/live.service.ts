@@ -16,6 +16,7 @@ import {
   type Detection,
   type JpProduct,
 } from "./live.matcher.js";
+import { accrueLiveTime, assertCanRunLive } from "../billing/usage.js";
 import type { CreateOrderInput, CreateSessionInput, UpdateInvoiceInput, UpdateOrderInput, UpdateSessionInput } from "./live.schema.js";
 
 type MetaAccount = SocialAccount & { platform: "FACEBOOK" | "INSTAGRAM" };
@@ -367,7 +368,7 @@ export async function handleLiveDirectMessage(account: SocialAccount, msg: Pick<
 
 // ============================================================
 // Factures de fin de live : chaque participant (au moins un JP confirmé) reçoit un
-// récapitulatif (articles + livraison + total), visible et imprimable dans ReplyKA.
+// récapitulatif (articles + livraison + total), visible et imprimable dans SuiteFlow.
 // ============================================================
 
 const INVOICE_STATUSES = ["CONFIRMED", "DELIVERED"] as const;
@@ -596,6 +597,7 @@ export const liveService = {
     }
     const active = await prisma.liveSession.findFirst({ where: { accountId: acc.id, status: { not: "ENDED" }, objectId: src.objectId } });
     if (active) throw new AppError(`Une session suit déjà cette ${src.type === "live" ? "vidéo" : "publication"} : « ${active.title} »`, 409);
+    await assertCanRunLive(userId); // abonnement actif et heures de live restantes
 
     const session = await prisma.liveSession.create({
       data: {
@@ -619,6 +621,7 @@ export const liveService = {
         recapMessage: input.recapMessage ?? DEFAULT_TEMPLATES.recapMessage,
         recapUpdateMessage: input.recapUpdateMessage ?? DEFAULT_TEMPLATES.recapUpdateMessage,
         deliveryFee: input.deliveryFee ?? 0,
+        activeSince: new Date(), // décompte des heures de live
         // Sans reprise de l'existant : seuls les commentaires publiés à partir de maintenant comptent
         cursor: input.includeExisting ? null : new Date(),
         products: { create: input.products.map((p) => ({ code: p.code, name: p.name, price: p.price ?? null, stock: p.stock ?? null })) },
@@ -636,10 +639,15 @@ export const liveService = {
       if (other) throw new AppError(`Une autre session suit déjà cette source : « ${other.title} »`, 409);
     }
     const endsNow = input.status === "ENDED" && s.status !== "ENDED";
+    // Heures de live : décomptées à la sortie de l'état ACTIVE ; reprise soumise à l'abonnement et au quota
+    const resumes = input.status === "ACTIVE" && s.status !== "ACTIVE";
+    if (resumes) await assertCanRunLive(userId);
+    if (input.status && input.status !== "ACTIVE" && s.status === "ACTIVE") await accrueLiveTime(s, { stop: true });
     await prisma.liveSession.update({
       where: { id },
       data: {
         ...input,
+        ...(resumes ? { activeSince: new Date() } : {}),
         requiredFields: input.requiredFields?.join(","),
         ...(endsNow ? { endedAt: new Date() } : {}),
         ...(input.status && input.status !== "ENDED" ? { endedAt: null } : {}),
@@ -654,7 +662,8 @@ export const liveService = {
   },
 
   async removeSession(userId: string, id: string) {
-    await findSession(userId, id);
+    const s = await findSession(userId, id);
+    if (s.status === "ACTIVE") await accrueLiveTime(s, { stop: true });
     await prisma.liveSession.delete({ where: { id } });
   },
 

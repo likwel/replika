@@ -14,6 +14,8 @@ import { usePagination } from "@/hooks/usePagination";
 import { plural, timeAgo } from "@/lib/format";
 import { formatAriaryMk } from "@/lib/marketplace.api";
 import { exportReportCsv } from "./stats";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { usePlan } from "@/hooks/usePlan";
 import {
   statsApi,
   DAY_RANGES,
@@ -44,10 +46,23 @@ const DESCRIPTIONS = [
 
 export function StatsPage() {
   const { sub } = useOutletContext<Ctx>();
+  const { can } = usePlan();
+  // Vue globale : toutes les formules ; engagement et rapports : formule Pro et plus
+  const locked = sub > 0 && !can("advancedStats");
   return (
     <div className="flex flex-col gap-4">
       <PageHeader className="mb-1" description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]} />
-      {sub === 1 ? <EngagementView /> : sub === 2 ? <ReportsView /> : <OverviewView />}
+      {locked ? (
+        <UpgradeCard icon={BarChart3} title="Statistiques avancées">
+          Engagement jour par jour, performance de chaque compte et de chaque règle, chiffre d'affaires des ventes et export des rapports. Disponible avec la formule Pro.
+        </UpgradeCard>
+      ) : sub === 1 ? (
+        <EngagementView />
+      ) : sub === 2 ? (
+        <ReportsView />
+      ) : (
+        <OverviewView withRevenue={can("advancedStats")} />
+      )}
     </div>
   );
 }
@@ -56,7 +71,7 @@ export function StatsPage() {
 // Vue globale
 // ============================================================
 
-function OverviewView() {
+function OverviewView({ withRevenue }: { withRevenue: boolean }) {
   const [days, setDays] = useState<DayRange>(7);
   const [data, setData] = useState<StatsOverview | null>(null);
   const [revenue, setRevenue] = useState<RevenueStats | null>(null);
@@ -67,8 +82,8 @@ function OverviewView() {
   }, [days]);
 
   useEffect(() => {
-    statsApi.revenue().then(setRevenue).catch(() => setRevenue(null));
-  }, []);
+    if (withRevenue) statsApi.revenue().then(setRevenue).catch(() => setRevenue(null));
+  }, [withRevenue]);
 
   if (!data) {
     return (

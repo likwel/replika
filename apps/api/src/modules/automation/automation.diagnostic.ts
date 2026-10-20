@@ -77,7 +77,7 @@ export async function diagnose(userId: string) {
       const checks: Check[] = [];
       checks.push(
         acc.isActive
-          ? { id: "active", ok: true, label: "Compte actif", detail: "Activé dans ReplyKA." }
+          ? { id: "active", ok: true, label: "Compte actif", detail: "Activé dans SuiteFlow." }
           : { id: "active", ok: false, label: "Compte actif", detail: "Désactivé dans Connexions : rien n'est relevé ni envoyé.", action: "activate" }
       );
 

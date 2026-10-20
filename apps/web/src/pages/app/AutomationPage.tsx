@@ -17,6 +17,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { accountApi, type SocialAccount } from "@/lib/account.api";
 import { automationApi, type AutomationRule, type RuleChannel, type RuleInput } from "@/lib/automation.api";
+import { swal } from "@/lib/swal";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
 
@@ -75,7 +76,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
   };
 
   const remove = async (rule: AutomationRule) => {
-    if (!window.confirm(`Supprimer la règle « ${rule.name} » ?`)) return;
+    if (!(await swal.confirm({ title: `Supprimer la règle « ${rule.name} » ?`, text: "Les réponses automatiques qu'elle envoyait s'arrêtent immédiatement.", confirmText: "Supprimer", variant: "danger" }))) return;
     await automationApi.remove(rule.id);
     setRules((prev) => prev.filter((r) => r.id !== rule.id));
     setRevision((n) => n + 1);
@@ -154,7 +155,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
               <li><strong style={{ color: theme.text }}>{"{nom}"}</strong> est remplacé par le prénom de l'auteur, <strong style={{ color: theme.text }}>{"{page}"}</strong> par le nom du compte.</li>
               <li>Plusieurs variantes séparées par <strong style={{ color: theme.text }}>||</strong> évitent les réponses identiques, que Meta peut considérer comme du spam.</li>
               <li>Les messages sans règle, ou en attente de validation, arrivent dans <strong style={{ color: theme.text }}>Gestion → À traiter</strong>.</li>
-              <li>ReplyKA ne répond jamais à ses propres réponses ni aux messages antérieurs à l'activation.</li>
+              <li>SuiteFlow ne répond jamais à ses propres réponses ni aux messages antérieurs à l'activation.</li>
               <li><strong style={{ color: theme.text }}>Pour tester</strong>, commentez depuis un profil personnel : un commentaire publié <em>en tant que Page</em> est ignoré.</li>
               <li>Une règle « <strong style={{ color: theme.text }}>Réponse par IA</strong> » génère la réponse à la volée, à partir du contexte défini dans Assistant IA. Choisissez une publication précise pour la limiter à ce post, ou laissez « Toutes les publications » pour tout le compte.</li>
               <li>Pendant une session live, les « jp » deviennent des commandes et les autres commentaires (prix, questions…) reçoivent ces réponses automatiques.</li>

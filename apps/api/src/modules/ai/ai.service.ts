@@ -2,6 +2,7 @@ import type { SocialAccount, SocialMessage } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { graphClient } from "../facebook/graph.client.js";
 import { chatCompletion, type ChatMessage } from "./ai.client.js";
+import { consumeAiReply, refundAiReply } from "../billing/usage.js";
 
 export const INTENTS = [
   "prix",
@@ -30,7 +31,8 @@ export interface AiReplyInput {
   history?: string;
 }
 
-type AiProfile = Pick<SocialAccount, "name" | "platform" | "aiContext" | "aiInstructions">;
+// userId : propriétaire du compte, à qui la réponse est décomptée (quota mensuel de la formule)
+type AiProfile = Pick<SocialAccount, "name" | "platform" | "aiContext" | "aiInstructions" | "userId">;
 
 // Limites de sécurité : Messenger refuse au-delà de 2 000 caractères
 const MAX_REPLY_CHARS = 1000;
@@ -99,12 +101,20 @@ export function parseAiOutput(raw: string): AiReply {
   return { reply: raw.trim().slice(0, MAX_REPLY_CHARS), intent: "autre", needsHuman: true };
 }
 
+// Point de passage unique de toute réponse IA : abonnement actif et quota du mois vérifiés ici
+// (AppError 402 SUBSCRIPTION_INACTIVE / QUOTA_EXCEEDED, à laisser remonter telle quelle)
 export async function generateReply(account: AiProfile, input: AiReplyInput): Promise<AiReply> {
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(account, input.kind) },
     { role: "user", content: userPrompt(input) },
   ];
-  return parseAiOutput(await chatCompletion(messages));
+  const month = await consumeAiReply(account.userId);
+  try {
+    return parseAiOutput(await chatCompletion(messages));
+  } catch (e) {
+    await refundAiReply(account.userId, month); // le modèle n'a pas répondu : non décompté
+    throw e;
+  }
 }
 
 // Le texte d'une publication change rarement : cache mémoire de 10 min pour épargner l'API Graph

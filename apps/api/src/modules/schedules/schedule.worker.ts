@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { graphClient, graphErrorDetails, graphErrorMessage } from "../facebook/graph.client.js";
 import { isPublicAddress, localUploadName, publicImageUrl, readUpload } from "../uploads/upload.service.js";
+import { getEntitlements } from "../billing/entitlements.js";
 
 // Au-delà, une publication restée « en cours » vient d'un arrêt du serveur pendant l'envoi
 const STUCK_MS = 10 * 60 * 1000;
@@ -60,7 +61,7 @@ async function publishPost(s: Schedule, acc: SocialAccount): Promise<Result> {
   }
 
   if (s.imageUrl) {
-    // Image téléversée sur ReplyKA : envoyée directement, sans que Facebook ait besoin de la télécharger
+    // Image téléversée sur SuiteFlow : envoyée directement, sans que Facebook ait besoin de la télécharger
     const local = localUploadName(s.imageUrl);
     const res = await graphClient.publishPagePhoto(acc.externalId, acc.accessToken, {
       caption: s.link ? `${s.text}\n\n${s.link}` : s.text,
@@ -137,6 +138,14 @@ let running = false;
 let again = false;
 
 // Publie tout ce qui est arrivé à échéance ; un appel pendant un passage relance un tour à la fin
+async function skipForSubscription(id: string, userId: string) {
+  const { count } = await prisma.schedule.updateMany({
+    where: { id, status: "SCHEDULED" },
+    data: { status: "FAILED", error: "Abonnement expiré : publication non envoyée. Renouvelez votre formule puis reprogrammez-la." },
+  });
+  if (count) await prisma.activityLog.create({ data: { userId, action: "SCHEDULE_SKIPPED_SUBSCRIPTION", meta: { scheduleId: id } } });
+}
+
 export async function runDueSchedules() {
   if (running) {
     again = true;
@@ -150,9 +159,14 @@ export async function runDueSchedules() {
         where: { status: "SCHEDULED", scheduledAt: { lte: new Date() } },
         orderBy: { scheduledAt: "asc" },
         take: 20,
-        select: { id: true },
+        select: { id: true, userId: true },
       });
-      for (const { id } of due) {
+      for (const { id, userId } of due) {
+        // Abonnement expiré : la publication n'est pas envoyée (elle pourra être reprogrammée après renouvellement)
+        if (!(await getEntitlements(userId)).active) {
+          await skipForSubscription(id, userId);
+          continue;
+        }
         await executeSchedule(id).catch((e) => console.error(`❌ Planification ${id} :`, e));
       }
       if (due.length === 20) again = true;

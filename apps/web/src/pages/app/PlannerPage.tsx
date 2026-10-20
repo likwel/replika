@@ -14,6 +14,7 @@ import { ScheduleDetails } from "@/components/planner/ScheduleDetails";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { dayKey, formatSlot, monthRange } from "@/components/planner/planner";
 import { scheduleApi, type Schedule } from "@/lib/schedule.api";
+import { swal } from "@/lib/swal";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
 
@@ -79,10 +80,14 @@ export function PlannerPage() {
 
   const saved = (s: Schedule, warnings: string[]) => {
     setComposer(null);
-    setNotice({
-      ok: s.status === "DRAFT" ? "Brouillon enregistré." : s.scheduledAt && new Date(s.scheduledAt).getTime() > Date.now() + 5000 ? `Programmé : ${formatSlot(s.scheduledAt)}.` : "Envoi en cours…",
-      warnings,
-    });
+    const ok =
+      s.status === "DRAFT" ? "Brouillon enregistré." : s.scheduledAt && new Date(s.scheduledAt).getTime() > Date.now() + 5000 ? `Programmé : ${formatSlot(s.scheduledAt)}.` : "Envoi en cours…";
+    // Avertissements à lire (comptes ignorés…) : bannière qui reste ; sinon simple notification
+    if (warnings.length) setNotice({ ok, warnings });
+    else {
+      setNotice(null);
+      swal.toast({ title: ok });
+    }
     load();
   };
 

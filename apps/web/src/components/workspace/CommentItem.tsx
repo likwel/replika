@@ -8,6 +8,7 @@ import { timeAgo } from "@/lib/format";
 import type { AiReply } from "@/lib/ai.api";
 import type { WsComment } from "@/lib/workspace.api";
 import { Composer } from "./Composer";
+import { swal } from "@/lib/swal";
 
 interface Props {
   comment: WsComment;
@@ -58,8 +59,8 @@ export function CommentItem({
     }
   };
 
-  const remove = () => {
-    if (!window.confirm("Supprimer définitivement ce commentaire ? Son auteur ne sera pas prévenu.")) return;
+  const remove = async () => {
+    if (!(await swal.confirm({ title: "Supprimer ce commentaire ?", text: "Il sera supprimé définitivement. Son auteur ne sera pas prévenu.", confirmText: "Supprimer", variant: "danger" }))) return;
     void run("delete", onDelete);
   };
 

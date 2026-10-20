@@ -64,6 +64,7 @@ export const router = createBrowserRouter([
           { path: "messages", element: <HubRedirect tab={2} /> },
           { path: "automatisation", element: <AutomationPage /> },
           { path: "parametres", element: <SettingsPage /> },
+          { path: "facturation", element: <HubRedirect tab={4} to="/app/parametres" /> },
           { path: ":section", element: <PlaceholderPage /> },
         ],
       },

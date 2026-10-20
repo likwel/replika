@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api";
 import type { SocialAccount } from "@/lib/account.api";
 import { workspaceApi, type WsPost } from "@/lib/workspace.api";
 import { EMPTY_RULE, splitKeywords, splitVariants } from "./rules";
+import { usePlan } from "@/hooks/usePlan";
 import {
   automationApi,
   type AutomationRule,
@@ -102,6 +103,9 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
 
   const keywords = splitKeywords(form.trigger);
   const variants = splitVariants(form.response);
+  // Règle IA ciblée sur une publication : formule Pro et plus (mots-clés par publication : toutes formules)
+  const { can } = usePlan();
+  const postAiLocked = !can("postAiRules") && Boolean(form.postId) && form.useAi;
   const replyAccounts = accounts.filter((a) => a.platform !== "TIKTOK");
 
   const submit = async (e: FormEvent) => {
@@ -110,6 +114,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
     if (!form.name.trim()) return setError("Donnez un nom à la règle.");
     if (form.matchType !== "ANY" && keywords.length === 0) return setError("Ajoutez au moins un mot-clé.");
     if (!form.useAi && !form.response?.trim()) return setError("Écrivez la réponse à envoyer, ou activez la réponse par IA.");
+    if (postAiLocked) return setError("Les règles IA ciblées sur une publication sont réservées à la formule Pro.");
 
     const body: RuleInput = {
       ...form,
@@ -252,6 +257,9 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
             <div className="flex-1">
               <p className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: theme.text }}>
                 <Sparkles size={13} style={{ color: theme.gold }} /> Réponse par IA
+                {!can("postAiRules") && form.postId && (
+                  <span className="rounded-full px-1.5 py-px text-[10px] font-bold" style={{ background: theme.goldSoft, color: theme.goldDark }}>PRO</span>
+                )}
               </p>
               <p className="text-[11px]" style={{ color: theme.textMuted }}>
                 {form.useAi
@@ -259,8 +267,20 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
                   : "Désactivé : la règle envoie un texte fixe, écrit ci-dessous."}
               </p>
             </div>
-            <Toggle checked={form.useAi} onChange={(v) => set("useAi", v)} label="Réponse par IA" />
+            <Toggle
+              checked={form.useAi}
+              onChange={(v) => set("useAi", v)}
+              disabled={!can("postAiRules") && Boolean(form.postId) && !form.useAi}
+              label="Réponse par IA"
+            />
           </div>
+          {postAiLocked && (
+            <p className="-mt-2 rounded-lg px-3 py-2 text-[12px]" style={{ background: theme.amberSoft, color: theme.amber }}>
+              Les règles IA ciblées sur une publication sont réservées à la formule Pro : choisissez « Toutes les publications »,
+              ou une réponse fixe pour cette publication.{" "}
+              <a href="/app/facturation" className="font-semibold underline">Voir les formules</a>
+            </p>
+          )}
 
           {!form.useAi && (
             <div>

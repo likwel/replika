@@ -34,10 +34,11 @@ export const facebookController = {
       if (!(e instanceof AppError)) console.error("❌ Connexion Facebook :", e);
       return res.redirect(`${env.clientUrl}/app/connexions?${new URLSearchParams({ fb: "error", reason })}`);
     }
-    const { pages, instagram, missing, absent } = result;
+    const { pages, instagram, missing, absent, limited } = result;
     const params = new URLSearchParams({ fb: "success", pages: String(pages), ig: String(instagram) });
     if (missing.length) params.set("missing", missing.join(","));
     if (absent.length) params.set("absent", absent.join("|"));
+    if (limited.length) params.set("limited", limited.join("|"));
     res.redirect(`${env.clientUrl}/app/connexions?${params}`);
   }),
 

@@ -72,7 +72,7 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
       .catch(() => {
         if (id !== request.current) return;
         setPosts((p) => p ?? []);
-        setErrors([{ accountId: "", accountName: "ReplyKA", message: "Chargement impossible, réessayez." }]);
+        setErrors([{ accountId: "", accountName: "SuiteFlow", message: "Chargement impossible, réessayez." }]);
       })
       .finally(() => {
         if (id !== request.current) return;
@@ -222,7 +222,7 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
             />
           ) : (
             <EmptyState icon={MousePointerClick} title="Sélectionnez une publication" dashed>
-              Ses commentaires s'affichent ici : répondez, masquez ou supprimez sans quitter ReplyKA.
+              Ses commentaires s'affichent ici : répondez, masquez ou supprimez sans quitter SuiteFlow.
             </EmptyState>
           )}
         </section>

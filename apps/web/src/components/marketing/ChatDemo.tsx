@@ -36,7 +36,7 @@ export function ChatDemo() {
           <Icon size={13} /> {s.kind}
         </span>
         <span className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: theme.goldSoft, color: theme.goldDark }}>
-          <Sparkles size={10} /> ReplyKA
+          <Sparkles size={10} /> SuiteFlow
         </span>
       </div>
 

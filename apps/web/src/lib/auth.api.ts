@@ -1,4 +1,5 @@
 import { api, BASE_URL } from "./api";
+import type { SubscriptionSummary } from "./billing.api";
 
 export type SocialProvider = "facebook" | "google";
 
@@ -12,6 +13,7 @@ export interface User {
   desktopNotifications: boolean;
   darkMode: boolean;
   accentTheme: string; // "whatsapp" | "classic"
+  subscription: SubscriptionSummary; // formule, échéance, limites
 }
 
 interface AuthResponse {

@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { liveApi, type LiveOrder, type LiveProduct, type OrderInput, type OrderStatus } from "@/lib/live.api";
 import { ORDER_STATUS, ORDER_STATUSES } from "./live";
+import { swal } from "@/lib/swal";
 
 interface Props {
   order?: LiveOrder | null; // absent : nouvelle commande manuelle
@@ -38,7 +39,6 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<"save" | "delete" | "send" | "relaunch" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   // Code du catalogue : article et prix remplis automatiquement
@@ -50,7 +50,6 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
   const run = async (action: NonNullable<typeof busy>, fn: () => Promise<void>) => {
     setBusy(action);
     setError(null);
-    setOk(null);
     try {
       await fn();
     } catch (e) {
@@ -78,8 +77,9 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
       onSaved(saved);
     });
 
-  const remove = () => {
-    if (!order || !window.confirm("Supprimer cette commande ?")) return;
+  const remove = async () => {
+    if (!order) return;
+    if (!(await swal.confirm({ title: "Supprimer cette commande ?", text: "Elle sera retirée de la session. Cette action est définitive.", confirmText: "Supprimer", variant: "danger" }))) return;
     void run("delete", async () => {
       await liveApi.removeOrder(order.id);
       onRemoved?.(order.id);
@@ -90,7 +90,7 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
     run(text ? "send" : "relaunch", async () => {
       const updated = await liveApi.message(order!.id, text);
       if (updated.error) throw new ApiError(updated.error, 502);
-      setOk(text ? "Message envoyé." : "Relance envoyée.");
+      swal.toast({ title: text ? "Message envoyé." : "Relance envoyée." });
       setMessage("");
       onMessageSent?.(updated);
     });
@@ -111,7 +111,6 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
       footer={
         <>
           {error && <p className="mr-auto flex items-center gap-1 text-xs" style={{ color: theme.red }}><AlertTriangle size={12} /> {error}</p>}
-          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#166534" }}>{ok}</p>}
           {order && (
             <Button variant="ghost" size="sm" icon={Trash2} onClick={remove} disabled={busy !== null}>Supprimer</Button>
           )}

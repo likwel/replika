@@ -10,6 +10,7 @@ import { ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { ApiError } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { marketplaceApi, type FacebookCatalog, type GescomAccount } from "@/lib/marketplace.api";
+import { swal } from "@/lib/swal";
 
 interface Props {
   onSynced: () => void;
@@ -20,7 +21,7 @@ export function CatalogPanel({ onSynced }: Props) {
   const [catalogs, setCatalogs] = useState<FacebookCatalog[] | null>(null);
   const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ ok?: string; error?: string } | null>(null);
+  const [message, setMessage] = useState<{ error: string } | null>(null);
 
   const load = () => {
     marketplaceApi.accounts().then(setAccounts).catch(() => setAccounts([]));
@@ -46,7 +47,7 @@ export function CatalogPanel({ onSynced }: Props) {
     try {
       await marketplaceApi.connectCatalog(accountId, { catalogId: catalog?.id ?? null, catalogName: catalog?.name ?? null });
       load();
-      setMessage({ ok: catalog ? `Catalogue « ${catalog.name} » connecté.` : "Catalogue déconnecté." });
+      swal.toast({ title: catalog ? `Catalogue « ${catalog.name} » connecté` : "Catalogue déconnecté" });
     } catch (e) {
       setMessage({ error: e instanceof ApiError ? e.message : "Connexion impossible." });
     } finally {
@@ -59,7 +60,7 @@ export function CatalogPanel({ onSynced }: Props) {
     setMessage(null);
     try {
       const r = await marketplaceApi.syncCatalog(accountId);
-      setMessage({ ok: `${r.total} produit${r.total > 1 ? "s" : ""} lu${r.total > 1 ? "s" : ""} · ${r.created} ajouté${r.created > 1 ? "s" : ""}, ${r.updated} mis à jour.` });
+      swal.toast({ title: "Catalogue importé", text: `${r.total} produit${r.total > 1 ? "s" : ""} lu${r.total > 1 ? "s" : ""} · ${r.created} ajouté${r.created > 1 ? "s" : ""}, ${r.updated} mis à jour.` });
       load();
       onSynced();
     } catch (e) {
@@ -75,10 +76,13 @@ export function CatalogPanel({ onSynced }: Props) {
     setMessage(null);
     try {
       const r = await marketplaceApi.pushCatalog(accountId);
-      const parts = [`${r.sent} annonce${r.sent > 1 ? "s" : ""} publiée${r.sent > 1 ? "s" : ""} vers Facebook`];
-      if (r.skipped.length) parts.push(`${r.skipped.length} ignorée${r.skipped.length > 1 ? "s" : ""} : ${r.skipped.map((s) => `« ${s.title} » (${s.reason})`).join(", ")}`);
-      if (r.errors.length) parts.push(`Refus de Meta : ${r.errors.join(" · ")}`);
-      setMessage(r.errors.length ? { error: parts.join(" — ") } : { ok: parts.join(" — ") });
+      const sent = `${r.sent} annonce${r.sent > 1 ? "s" : ""} publiée${r.sent > 1 ? "s" : ""} vers Facebook`;
+      const skipped = r.skipped.length
+        ? `${r.skipped.length} ignorée${r.skipped.length > 1 ? "s" : ""} : ${r.skipped.map((s) => `« ${s.title} » (${s.reason})`).join(", ")}`
+        : "";
+      // Refus de Meta : bannière qui reste affichée ; sinon notification (plus longue s'il y a des annonces ignorées)
+      if (r.errors.length) setMessage({ error: [sent, skipped, `Refus de Meta : ${r.errors.join(" · ")}`].filter(Boolean).join(" — ") });
+      else swal.toast({ title: sent, text: skipped || undefined, variant: skipped ? "warning" : "success", duration: skipped ? 8000 : 3500 });
       load();
     } catch (e) {
       setMessage({ error: e instanceof ApiError ? e.message : "Publication impossible." });
@@ -110,7 +114,7 @@ export function CatalogPanel({ onSynced }: Props) {
         </Alert>
       )}
 
-      {message && <Alert variant={message.error ? "error" : "success"}>{message.error ?? message.ok}</Alert>}
+      {message && <Alert variant="error">{message.error}</Alert>}
 
       <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

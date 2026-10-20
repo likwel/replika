@@ -32,7 +32,7 @@ export function LegalLayout({ title, subtitle, updatedAt, children }: Props) {
       </main>
 
       <footer className="px-5 py-8 text-center text-xs" style={{ borderTop: `1px solid ${theme.border}`, color: theme.textMuted }}>
-        © 2026 ReplyKA. Tous droits réservés. ·{" "}
+        © 2026 SuiteFlow. Tous droits réservés. ·{" "}
         <Link to="/cgu" className="underline hover:opacity-70">CGU</Link> ·{" "}
         <Link to="/confidentialite" className="underline hover:opacity-70">Confidentialité</Link> ·{" "}
         <Link to="/guide" className="underline hover:opacity-70">Guide</Link>

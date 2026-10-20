@@ -4,6 +4,7 @@ import { AppError } from "../../utils/AppError.js";
 import { graphClient, graphErrorMessage } from "./graph.client.js";
 import { aiErrorMessage, isAiConfigured } from "../ai/ai.client.js";
 import { generateReply, type AiReply } from "../ai/ai.service.js";
+import { pageSlotsLeft } from "../billing/entitlements.js";
 
 // ============================================================
 // Helpers (hors de l'objet service)
@@ -134,9 +135,19 @@ export const facebookService = {
 
     if (!pages.length) throw new AppError("Aucune Page Facebook trouvée sur ce compte", 404);
 
+    // Nombre de Pages de la formule : une Page déjà active le reste, les nouvelles prennent les places libres
+    let slots = await pageSlotsLeft(userId);
+    const limited: string[] = [];
+
     let instagramCount = 0;
     for (const page of pages) {
       const avatarUrl = page.picture?.data?.url ?? null;
+      const existing = await prisma.socialAccount.findUnique({
+        where: { platform_externalId_userId: { platform: "FACEBOOK", externalId: page.id, userId } },
+        select: { isActive: true },
+      });
+      const isActive = existing?.isActive || slots-- > 0;
+      if (!isActive) limited.push(page.name);
       await prisma.socialAccount.upsert({
         where: {
           platform_externalId_userId: {
@@ -149,7 +160,7 @@ export const facebookService = {
           accessToken: page.access_token,
           name: page.name,
           avatarUrl,
-          isActive: true,
+          isActive,
           syncError: null, // nouveau jeton : l'erreur éventuelle sera réévaluée à la prochaine relève
         },
         create: {
@@ -159,6 +170,7 @@ export const facebookService = {
           name: page.name,
           avatarUrl,
           accessToken: page.access_token,
+          isActive,
         },
       });
 
@@ -169,10 +181,12 @@ export const facebookService = {
           name: ig.username ? `@${ig.username}` : page.name,
           avatarUrl: ig.profile_picture_url ?? null,
           accessToken: page.access_token,
+          linkedPageId: page.id, // activé et désactivé avec sa Page
+          isActive,
         };
         await prisma.socialAccount.upsert({
           where: { platform_externalId_userId: { platform: "INSTAGRAM", externalId: ig.id, userId } },
-          update: { ...igData, isActive: true, syncError: null },
+          update: { ...igData, syncError: null },
           create: { userId, platform: "INSTAGRAM", externalId: ig.id, ...igData },
         });
         instagramCount++;
@@ -208,7 +222,7 @@ export const facebookService = {
       data: {
         userId,
         action: "FACEBOOK_CONNECTED",
-        meta: { pages: pages.length, instagram: instagramCount, absent: absent.length },
+        meta: { pages: pages.length, instagram: instagramCount, absent: absent.length, limited: limited.length },
       },
     });
 
@@ -217,6 +231,7 @@ export const facebookService = {
       instagram: instagramCount,
       missing,
       absent: absent.filter((a) => a.platform !== "TIKTOK").map((a) => a.name),
+      limited, // Pages connectées mais laissées inactives : limite de la formule atteinte
     };
   },
 
@@ -306,6 +321,7 @@ export const facebookService = {
         postText,
       });
     } catch (e) {
+      if (e instanceof AppError) throw e; // abonnement expiré, quota atteint
       throw new AppError(`IA indisponible : ${aiErrorMessage(e)}`, 502);
     }
     if (!ai.reply) throw new AppError("L'IA estime que ce commentaire ne demande pas de réponse.", 422);

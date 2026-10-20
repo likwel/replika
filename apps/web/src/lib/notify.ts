@@ -1,4 +1,4 @@
-// Notifications du navigateur (API Notification) : fonctionnent tant que ReplyKA est ouvert dans un onglet
+// Notifications du navigateur (API Notification) : fonctionnent tant que SuiteFlow est ouvert dans un onglet
 export type NotifyPermission = NotificationPermission | "unsupported";
 
 export const notifyPermission = (): NotifyPermission =>
@@ -11,7 +11,7 @@ export async function requestNotifyPermission(): Promise<NotifyPermission> {
 
 export function showNotification(body: string, onClick?: () => void) {
   if (notifyPermission() !== "granted") return;
-  const n = new Notification("ReplyKA", { body, tag: "replyka-attention" });
+  const n = new Notification("SuiteFlow", { body, tag: "replyka-attention" });
   n.onclick = () => {
     window.focus();
     onClick?.();

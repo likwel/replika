@@ -22,6 +22,9 @@ import { ListingEditor } from "@/components/marketplace/ListingEditor";
 import { MarketplaceOrdersTable } from "@/components/marketplace/MarketplaceOrdersTable";
 import { MarketplaceOrderEditor } from "@/components/marketplace/MarketplaceOrderEditor";
 import { CatalogPanel } from "@/components/marketplace/CatalogPanel";
+import { swal } from "@/lib/swal";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { usePlan } from "@/hooks/usePlan";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
 
@@ -42,7 +45,26 @@ function StatsRow({ stats }: { stats: MarketplaceStats | null }) {
   );
 }
 
+const MARKET_DESCRIPTION =
+  "Vos produits publiés sur Facebook Marketplace, importés depuis votre Catalogue Facebook, et le suivi des commandes des acheteurs qui vous contactent.";
+
+// Module Marketplace : formule Pro et plus
 export function MarketplacePage() {
+  const { can } = usePlan();
+  if (!can("marketplace")) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader className="mb-1" description={MARKET_DESCRIPTION} tabs={false} />
+        <UpgradeCard icon={Store} title="Vendez sur Marketplace depuis SuiteFlow">
+          Importez les produits de votre Catalogue Facebook, publiez-les sur Marketplace et suivez les commandes de chaque acheteur. Disponible avec la formule Pro.
+        </UpgradeCard>
+      </div>
+    );
+  }
+  return <MarketplaceView />;
+}
+
+function MarketplaceView() {
   const { sub, setSub } = useOutletContext<Ctx>();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [listings, setListings] = useState<MarketplaceListing[] | null>(null);
@@ -72,7 +94,7 @@ export function MarketplacePage() {
     loadStats();
     // L'API tente la publication vers Facebook à l'enregistrement : on dit toujours ce qu'il en est
     if (!l.push) return;
-    if (l.push.ok) setNotice({ ok: l.push.message });
+    if (l.push.ok) swal.toast({ title: l.push.message });
     else if (l.push.code === NO_CATALOG) {
       setNotice({
         noCatalog: `« ${l.title} » est enregistrée dans Gescom, mais pas encore sur Facebook : la Page « ${l.account.name} » n'a pas de catalogue connecté.`,
@@ -86,7 +108,7 @@ export function MarketplacePage() {
     setNotice(null);
     try {
       await marketplaceApi.pushListing(l.id);
-      setNotice({ ok: `« ${l.title} » publiée dans votre Catalogue Facebook.` });
+      swal.toast({ title: `« ${l.title} » publiée dans votre Catalogue Facebook` });
       loadListings();
     } catch (e) {
       if (e instanceof ApiError && e.code === NO_CATALOG) {
@@ -99,7 +121,7 @@ export function MarketplacePage() {
     }
   };
   const removeListing = async (l: MarketplaceListing) => {
-    if (!window.confirm(`Supprimer l'annonce « ${l.title} » et ses commandes ?`)) return;
+    if (!(await swal.confirm({ title: `Supprimer l'annonce « ${l.title} » ?`, text: "Ses commandes seront aussi supprimées. Cette action est définitive.", confirmText: "Supprimer", variant: "danger" }))) return;
     await marketplaceApi.removeListing(l.id);
     setListings((list) => list?.filter((x) => x.id !== l.id) ?? null);
     loadStats();
@@ -127,8 +149,7 @@ export function MarketplacePage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         className="mb-1"
-        title="Gescom"
-        description="Vos produits publiés sur Facebook Marketplace, importés depuis votre Catalogue Facebook, et le suivi des commandes des acheteurs qui vous contactent."
+        description={MARKET_DESCRIPTION}
       />
 
       <StatsRow stats={stats} />

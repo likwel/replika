@@ -8,29 +8,29 @@ datasource db {
 }
 
 model User {
-  id                   String           @id @default(cuid())
-  email                String           @unique
+  id                   String               @id @default(cuid())
+  email                String               @unique
   password             String
   name                 String
-  role                 Role             @default(USER)
+  role                 Role                 @default(USER)
   resetToken           String?
   resetExpires         DateTime?
   // Connexion via Facebook / Google : identifiant du compte chez le fournisseur
-  facebookId           String?          @unique
-  googleId             String?          @unique
-  autoReplyEnabled     Boolean          @default(true) // interrupteur global des réponses automatiques
+  facebookId           String?              @unique
+  googleId             String?              @unique
+  autoReplyEnabled     Boolean              @default(true) // interrupteur global des réponses automatiques
   // Profil
   avatarUrl            String? // photo de profil (data URL compressée côté navigateur)
   phone                String?
   companyName          String?
   address              String? // affichée sur les factures imprimées (Lives)
   // Préférences
-  defaultPage          String           @default("gestion") // page ouverte après connexion
-  desktopNotifications Boolean          @default(false) // notification du navigateur pour les messages à traiter
-  darkMode             Boolean          @default(false) // mode sombre
-  accentTheme          String           @default("whatsapp") // "whatsapp" | "classic"
+  defaultPage          String               @default("gestion") // page ouverte après connexion
+  desktopNotifications Boolean              @default(false) // notification du navigateur pour les messages à traiter
+  darkMode             Boolean              @default(false) // mode sombre
+  accentTheme          String               @default("whatsapp") // "whatsapp" | "classic"
   // Incrémenté pour invalider toutes les sessions (changement de mot de passe, « déconnecter partout »)
-  tokenVersion         Int              @default(0)
+  tokenVersion         Int                  @default(0)
   // Jeton Facebook utilisateur (longue durée) : requis pour Gescom (Business Manager / Catalogue),
   // qu'un jeton de Page ne peut pas interroger. Jamais exposé au frontend.
   fbUserToken          String?
@@ -41,41 +41,45 @@ model User {
   liveSessions         LiveSession[]
   leads                Lead[]
   marketplaceListings  MarketplaceListing[]
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  subscription         Subscription?
+  payments             Payment[]
+  usages               Usage[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 }
 
 model SocialAccount {
-  id              String           @id @default(cuid())
-  platform        Platform
-  externalId      String
-  name            String
-  avatarUrl       String?
-  accessToken     String
-  expiresAt       DateTime?
-  isActive        Boolean          @default(true)
-  lastSyncedAt    DateTime? // curseur du polling des commentaires : seuls les éléments plus récents sont traités
-  dmSyncedAt      DateTime? // curseur du polling des messages privés (avance indépendamment)
-  syncError       String? // dernière erreur de relève (ex. permission manquante), null si tout va bien
+  id                  String               @id @default(cuid())
+  platform            Platform
+  externalId          String
+  name                String
+  avatarUrl           String?
+  accessToken         String
+  expiresAt           DateTime?
+  isActive            Boolean              @default(true)
+  lastSyncedAt        DateTime? // curseur du polling des commentaires : seuls les éléments plus récents sont traités
+  dmSyncedAt          DateTime? // curseur du polling des messages privés (avance indépendamment)
+  syncError           String? // dernière erreur de relève (ex. permission manquante), null si tout va bien
   // Assistant IA (propre à chaque compte : chaque Page est une activité différente)
-  aiEnabled       Boolean          @default(false)
-  aiAutoSend      Boolean          @default(false) // sinon : suggestion à valider
-  aiChannel       RuleChannel      @default(ALL)
-  aiContext       String? // base de connaissances : produits, prix, livraison, horaires…
-  aiInstructions  String? // consignes de ton, signature…
+  aiEnabled           Boolean              @default(false)
+  aiAutoSend          Boolean              @default(false) // sinon : suggestion à valider
+  aiChannel           RuleChannel          @default(ALL)
+  aiContext           String? // base de connaissances : produits, prix, livraison, horaires…
+  aiInstructions      String? // consignes de ton, signature…
   // Gescom : Catalogue Facebook connecté (Commerce Manager), pour importer les produits publiés sur Marketplace
-  catalogId       String?
-  catalogName     String?
-  catalogSyncedAt DateTime?
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String
-  messages        SocialMessage[]
-  rules           AutomationRule[]
-  scheduleTargets ScheduleTarget[]
-  liveSessions    LiveSession[]
-  leads           Lead[]
+  catalogId           String?
+  catalogName         String?
+  catalogSyncedAt     DateTime?
+  linkedPageId        String? // Instagram : externalId de la Page Facebook liée (activée et désactivée avec elle)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String
+  messages            SocialMessage[]
+  rules               AutomationRule[]
+  scheduleTargets     ScheduleTarget[]
+  liveSessions        LiveSession[]
+  leads               Lead[]
   marketplaceListings MarketplaceListing[]
-  createdAt       DateTime         @default(now())
+  createdAt           DateTime             @default(now())
 
   @@unique([platform, externalId, userId])
 }
@@ -242,41 +246,42 @@ enum TargetStatus {
 // ============================================================
 
 model LiveSession {
-  id             String            @id @default(cuid())
-  title          String
-  status         LiveSessionStatus @default(ACTIVE)
-  sourceType     String // "live" (vidéo en direct) ou "post" (publication)
-  objectId       String // objet dont on lit les commentaires : vidéo Facebook, publication ou média Instagram
-  postId         String? // identifiant de publication reçu par les webhooks (Facebook : {pageId}_{videoId})
-  liveVideoId    String? // Facebook : live_video, pour suivre l'état du direct
-  liveStatus     String? // LIVE, VOD… (dernier état connu)
-  permalink      String?
-  thumbnail      String?
-  keywords       String            @default("jp, j'prends, jprends, je prends")
-  requiredFields String            @default("nom,telephone,adresse")
-  autoMessage    Boolean           @default(true) // message privé automatique à chaque JP
-  replyPublic    String? // réponse publique sous le commentaire JP (vide : aucune)
-  firstMessage   String
-  missingMessage String
-  confirmMessage String
-  soldOutMessage String
-  recapMessage       String        @default("") // message récapitulatif envoyé la première fois à un client
-  recapUpdateMessage String        @default("") // renvoyé si le récapitulatif avait déjà été envoyé (commande modifiée) : pas de salutation répétée
-  deliveryFee        Int           @default(0) // frais de livraison (Ar), ajoutés une fois par client dans le récapitulatif
-  cursor         DateTime? // date du dernier commentaire lu
-  lastPolledAt   DateTime?
-  syncError      String?
-  endedAt        DateTime?
-  account        SocialAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  accountId      String
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  products       LiveProduct[]
-  comments       LiveComment[]
-  orders         LiveOrder[]
-  invoices       LiveInvoice[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id                 String            @id @default(cuid())
+  title              String
+  status             LiveSessionStatus @default(ACTIVE)
+  sourceType         String // "live" (vidéo en direct) ou "post" (publication)
+  objectId           String // objet dont on lit les commentaires : vidéo Facebook, publication ou média Instagram
+  postId             String? // identifiant de publication reçu par les webhooks (Facebook : {pageId}_{videoId})
+  liveVideoId        String? // Facebook : live_video, pour suivre l'état du direct
+  liveStatus         String? // LIVE, VOD… (dernier état connu)
+  permalink          String?
+  thumbnail          String?
+  keywords           String            @default("jp, j'prends, jprends, je prends")
+  requiredFields     String            @default("nom,telephone,adresse")
+  autoMessage        Boolean           @default(true) // message privé automatique à chaque JP
+  replyPublic        String? // réponse publique sous le commentaire JP (vide : aucune)
+  firstMessage       String
+  missingMessage     String
+  confirmMessage     String
+  soldOutMessage     String
+  recapMessage       String            @default("") // message récapitulatif envoyé la première fois à un client
+  recapUpdateMessage String            @default("") // renvoyé si le récapitulatif avait déjà été envoyé (commande modifiée) : pas de salutation répétée
+  deliveryFee        Int               @default(0) // frais de livraison (Ar), ajoutés une fois par client dans le récapitulatif
+  cursor             DateTime? // date du dernier commentaire lu
+  lastPolledAt       DateTime?
+  activeSince        DateTime? // début de la tranche active pas encore décomptée du quota d'heures de live
+  syncError          String?
+  endedAt            DateTime?
+  account            SocialAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId          String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  products           LiveProduct[]
+  comments           LiveComment[]
+  orders             LiveOrder[]
+  invoices           LiveInvoice[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([accountId, status])
 }
@@ -286,19 +291,19 @@ model LiveInvoice {
   id            String      @id @default(cuid())
   invoiceNumber String      @default("") // ex. FA-000123, attribué une fois à la création
   session       LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sessionId    String
-  customerKey  String // customerId, ou "nom:<customerName>" si inconnu
-  customerName String
-  phone        String?
-  address      String?
-  deliveryFee  Int         @default(0)
-  itemsTotal   Int // somme des commandes incluses, hors livraison
-  total        Int // itemsTotal + deliveryFee
-  orderIds     String[] // commandes JP incluses dans ce récapitulatif
-  sentAt       DateTime?
-  sendError    String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  sessionId     String
+  customerKey   String // customerId, ou "nom:<customerName>" si inconnu
+  customerName  String
+  phone         String?
+  address       String?
+  deliveryFee   Int         @default(0)
+  itemsTotal    Int // somme des commandes incluses, hors livraison
+  total         Int // itemsTotal + deliveryFee
+  orderIds      String[] // commandes JP incluses dans ce récapitulatif
+  sentAt        DateTime?
+  sendError     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@unique([sessionId, customerKey])
 }
@@ -460,20 +465,20 @@ enum MarketplaceListingSource {
 }
 
 model MarketplaceOrder {
-  id           String               @id @default(cuid())
-  listing      MarketplaceListing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  id           String                 @id @default(cuid())
+  listing      MarketplaceListing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId    String
   customerId   String? // identifiant Messenger (PSID) si connu
   customerName String
-  quantity     Int                  @default(1)
+  quantity     Int                    @default(1)
   unitPrice    Int?
   fullName     String?
   phone        String?
   address      String?
   note         String?
   status       MarketplaceOrderStatus @default(NEW)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
 
   @@index([listingId, status])
 }
@@ -484,4 +489,93 @@ enum MarketplaceOrderStatus {
   CONFIRMED
   DELIVERED
   CANCELED
+}
+
+// ─── Abonnements (paiement Papi.mg) ─────────────────────────────────────────
+
+// Formule en cours d'un utilisateur. L'expiration se déduit de periodEnd (aucun statut à basculer).
+model Subscription {
+  id            String           @id @default(cuid())
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String           @unique
+  plan          PlanId           @default(PRO)
+  kind          SubscriptionKind @default(TRIAL)
+  billingPeriod BillingPeriod? // période du dernier paiement (sert à convertir les jours restants)
+  periodEnd     DateTime? // null = sans échéance (MANUAL uniquement)
+  trialEndsAt   DateTime? // posé une fois à l'inscription
+  customLimits  Json? // Agence : { pages, aiReplies, liveHours } ; null = illimité
+  note          String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+// Un lien de paiement Papi = une période achetée
+model Payment {
+  id                String        @id @default(cuid())
+  reference         String        @unique // envoyée à Papi (clé d'idempotence)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  plan              PlanId
+  period            BillingPeriod
+  amount            Int // Ar, calculé par le serveur
+  status            PaymentStatus @default(PENDING)
+  paymentLink       String?
+  shortLink         String?
+  linkExpiresAt     DateTime?
+  notificationToken String? // renvoyé par Papi dans la notification ; jamais exposé au front
+  papiReference     String?
+  paymentMethod     String?
+  fee               Int?
+  payerPhone        String?
+  failureMessage    String?
+  lastCheckedAt     DateTime?
+  paidAt            DateTime?
+  appliedPeriodEnd  DateTime? // échéance obtenue à l'activation
+  extraDays         Int? // jours convertis depuis la formule précédente
+  raw               Json? // dernière notification ou dernier statut reçu
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+// Consommation mensuelle (mois calendaire, heure de Madagascar : "2026-10")
+model Usage {
+  id             String    @id @default(cuid())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  month          String
+  aiReplies      Int       @default(0)
+  liveSeconds    Int       @default(0)
+  aiQuotaHitAt   DateTime? // journalise « quota atteint » une seule fois par mois
+  liveQuotaHitAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, month])
+}
+
+enum PlanId {
+  STARTER
+  PRO
+  BUSINESS
+  AGENCY
+}
+
+enum BillingPeriod {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubscriptionKind {
+  TRIAL
+  PAID
+  MANUAL // posé par un administrateur (Agence, prolongation, geste commercial)
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
 }

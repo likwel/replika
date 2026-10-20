@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
+import { requirePlanFeature } from "../../middlewares/plan.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { catchAsync } from "../../utils/catchAsync.js";
 import { bulkStatusSchema, connectCatalogSchema, listingSchema, listingUpdateSchema, orderSchema, orderUpdateSchema } from "./marketplace.schema.js";
@@ -8,6 +9,7 @@ import { marketplaceService } from "./marketplace.service.js";
 // Marketplace : catalogue d'annonces + suivi manuel des commandes (pas de publication automatique)
 const router = Router();
 router.use(authenticate);
+router.use(requirePlanFeature("marketplace")); // formule Pro et plus
 
 const uid = (req: Request) => req.user!.userId;
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);

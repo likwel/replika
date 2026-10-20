@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search } from "lucide-react";
+import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
-import { LogoMark } from "@/components/ui/Logo";
+import { LogoMark, Wordmark } from "@/components/ui/Logo";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { MENUS } from "@/data/menus";
 import { getRenderedSub } from "@/lib/menu";
@@ -57,7 +57,7 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
       <div className="flex items-center gap-1 px-2 pb-1 pt-2.5">
         <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
           <LogoMark size={22} />
-          <span className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>ReplyKA</span>
+          <Wordmark size={15} />
         </div>
         <button
           onClick={onCollapse}
@@ -109,6 +109,7 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
       </nav>
 
       <div className="flex flex-col gap-px px-2 py-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+        <Row icon={Settings} label="Paramètres" active={active === "set"} onClick={() => onNavigate("set", 0)} />
         <a href="/guide" target="_blank" rel="noreferrer" className="block">
           <Row icon={BookOpen} label="Guide d'utilisation" />
         </a>

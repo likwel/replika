@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { authenticate } from "../../middlewares/auth.middleware.js";
+import { requirePlanFeature } from "../../middlewares/plan.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { catchAsync } from "../../utils/catchAsync.js";
 import { leadService } from "./lead.service.js";
@@ -26,6 +27,7 @@ const messageSchema = z.object({ text: z.string().trim().min(1, "Message vide").
 // Leads : clients potentiels détectés automatiquement
 const router = Router();
 router.use(authenticate);
+router.use(requirePlanFeature("leads")); // formule Pro et plus
 
 const uid = (req: Request) => req.user!.userId;
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);

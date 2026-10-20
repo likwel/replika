@@ -107,7 +107,7 @@ function Dialog({ dialog }: { dialog: SwalDialog }) {
           {dialog.title}
         </h2>
         {dialog.text && (
-          <p id={`swal-text-${dialog.id}`} className="mt-2 text-sm leading-relaxed" style={{ color: theme.textMuted }}>
+          <p id={`swal-text-${dialog.id}`} className="mt-2 whitespace-pre-line text-sm leading-relaxed" style={{ color: theme.textMuted }}>
             {dialog.text}
           </p>
         )}

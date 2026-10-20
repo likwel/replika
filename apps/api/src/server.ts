@@ -4,16 +4,18 @@ import { prisma } from "./config/prisma.js";
 import { startAutoReplyPoller } from "./modules/autoreply/autoreply.poller.js";
 import { startScheduler } from "./modules/schedules/schedule.worker.js";
 import { startLivePoller } from "./modules/lives/live.poller.js";
+import { startBillingReconciler } from "./modules/billing/billing.worker.js";
 
 const app = createApp();
 
 const server = app.listen(env.port, () => {
-  console.log(`🚀 API ReplyKA sur http://localhost:${env.port}`);
+  console.log(`🚀 API SuiteFlow sur http://localhost:${env.port}`);
 });
 
 const stopPoller = startAutoReplyPoller();
 const stopScheduler = startScheduler();
 const stopLivePoller = startLivePoller();
+const stopBilling = startBillingReconciler();
 
 // Arrêt propre
 async function shutdown() {
@@ -21,6 +23,7 @@ async function shutdown() {
   stopPoller();
   stopScheduler();
   stopLivePoller();
+  stopBilling();
   await prisma.$disconnect();
   server.close(() => process.exit(0));
 }

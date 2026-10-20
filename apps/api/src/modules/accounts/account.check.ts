@@ -2,7 +2,7 @@ import type { SocialAccount } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { graphClient, graphErrorMessage, isNetworkError } from "../facebook/graph.client.js";
 
-// Fonctions de ReplyKA et autorisations Facebook dont elles dépendent
+// Fonctions de SuiteFlow et autorisations Facebook dont elles dépendent
 const FEATURES: Record<"FACEBOOK" | "INSTAGRAM", Array<{ label: string; scopes: string[] }>> = {
   FACEBOOK: [
     { label: "Lire les commentaires", scopes: ["pages_read_user_content"] },

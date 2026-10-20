@@ -8,12 +8,12 @@ export function TermsPage() {
   return (
     <LegalLayout
       title="Conditions Générales d'Utilisation"
-      subtitle="Les règles d'utilisation de ReplyKA, à lire avant de créer votre compte et de connecter vos Pages."
+      subtitle="Les règles d'utilisation de SuiteFlow, à lire avant de créer votre compte et de connecter vos Pages."
       updatedAt="20 octobre 2026"
     >
       <Section title="1. Objet">
         <p>
-          ReplyKA (« le Service ») est une plateforme qui permet de gérer, automatiser et planifier les publications,
+          SuiteFlow (« le Service ») est une plateforme qui permet de gérer, automatiser et planifier les publications,
           commentaires et messages privés de Pages Facebook et de comptes Instagram professionnels, de suivre les
           clients potentiels (leads), les ventes réalisées pendant les lives et les annonces Marketplace. Les présentes
           Conditions Générales d'Utilisation (« CGU ») régissent l'accès et l'utilisation du Service par tout
@@ -33,7 +33,7 @@ export function TermsPage() {
           <li>
             ou via votre compte <strong>Facebook</strong> ou <strong>Google</strong>. Dans ce cas, ce fournisseur nous
             transmet uniquement votre nom, votre adresse e-mail et un identifiant de compte, jamais votre mot de passe.
-            Si un compte ReplyKA existe déjà avec la même adresse e-mail, confirmée par le fournisseur, la connexion y
+            Si un compte SuiteFlow existe déjà avec la même adresse e-mail, confirmée par le fournisseur, la connexion y
             est rattachée.
           </li>
         </ul>
@@ -48,18 +48,18 @@ export function TermsPage() {
       <Section title="3. Connexion de vos Pages Facebook et comptes Instagram">
         <p>
           Le Service se connecte à vos Pages via l'authentification officielle de Meta. Cette connexion est distincte
-          de la connexion à votre compte ReplyKA : vous seul décidez quelles Pages et quels comptes Instagram
+          de la connexion à votre compte SuiteFlow : vous seul décidez quelles Pages et quels comptes Instagram
           professionnels sont connectés, et pouvez retirer cet accès à tout moment depuis Facebook ou depuis
-          Connexions dans ReplyKA.
+          Connexions dans SuiteFlow.
         </p>
         <p>
-          Vous restez propriétaire de vos Pages et de leur contenu. ReplyKA agit en votre nom, dans les limites des
+          Vous restez propriétaire de vos Pages et de leur contenu. SuiteFlow agit en votre nom, dans les limites des
           autorisations que vous accordez (lecture des commentaires et messages, réponse, publication, modération,
           gestion du catalogue), et selon les règles et réglages que vous configurez.
         </p>
         <p>
           Vous devez respecter les conditions d'utilisation et standards de la communauté de Meta (Facebook,
-          Instagram, Marketplace et Commerce Manager). ReplyKA ne peut être tenu responsable d'une action de Meta
+          Instagram, Marketplace et Commerce Manager). SuiteFlow ne peut être tenu responsable d'une action de Meta
           contre votre Page ou votre compte (limitation, suspension, refus d'un article) résultant d'un usage non
           conforme de votre part.
         </p>
@@ -73,7 +73,7 @@ export function TermsPage() {
         </p>
         <p>
           Vous restez seul responsable des réponses envoyées en votre nom, y compris celles générées automatiquement
-          si vous avez activé l'envoi automatique. ReplyKA propose des outils de validation manuelle et de suivi ; il
+          si vous avez activé l'envoi automatique. SuiteFlow propose des outils de validation manuelle et de suivi ; il
           vous appartient de les utiliser si vous préférez garder un contrôle avant envoi.
         </p>
       </Section>
@@ -82,7 +82,7 @@ export function TermsPage() {
         <p>
           Le Service vous aide à enregistrer des commandes (commentaires « JP » pendant un live, demandes reçues sur
           Marketplace), à publier vos articles dans votre Catalogue Facebook et à repérer vos clients potentiels.
-          ReplyKA n'est ni vendeur, ni intermédiaire de paiement, ni transporteur : la vente, son prix, la livraison et
+          SuiteFlow n'est ni vendeur, ni intermédiaire de paiement, ni transporteur : la vente, son prix, la livraison et
           le service après-vente relèvent de votre seule relation avec vos clients.
         </p>
         <p>
@@ -100,16 +100,40 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="7. Abonnement et tarifs">
+      <Section title="7. Abonnement, paiement et tarifs">
         <p>
-          Le Service est proposé selon différentes formules (Starter, Pro, Agence), décrites sur la page d'accueil, avec
-          une période d'essai gratuite de 14 jours à la création du compte. Les tarifs sont indiqués en ariary (Ar) et
-          peuvent être modifiés avec un préavis raisonnable ; les modifications ne s'appliquent pas rétroactivement à
-          une période déjà payée.
+          Le Service est proposé selon différentes formules (Starter, Pro, Business, Agence), décrites sur la page
+          d'accueil. À la création du compte, vous bénéficiez d'un essai gratuit de 14 jours de la formule Pro, sans
+          moyen de paiement à fournir. Les tarifs sont indiqués en ariary (Ar), toutes taxes comprises le cas échéant,
+          et peuvent être modifiés avec un préavis raisonnable ; les modifications ne s'appliquent pas à une période
+          déjà payée.
         </p>
         <p>
-          Un abonnement se renouvelle par période, sauf résiliation de votre part avant son échéance, effectuée depuis
-          les paramètres de votre compte ou en nous contactant.
+          L'abonnement est payé d'avance, pour un mois (30 jours) ou pour un an (365 jours, avec une remise de 15 %),
+          depuis Paramètres → Facturation. Le paiement est traité par notre prestataire Papi.mg (MVola, Orange Money,
+          Airtel Money ou carte bancaire) : SuiteFlow ne reçoit ni ne conserve vos identifiants de paiement. Il n'y a
+          aucun prélèvement automatique : chaque période est payée par vous, et vous pouvez la prolonger à tout moment,
+          la nouvelle période s'ajoutant à l'échéance en cours.
+        </p>
+        <p>
+          Chaque formule inclut un nombre maximal de Pages Facebook actives (avec leurs comptes Instagram liés) et des
+          volumes mensuels de réponses générées par l'intelligence artificielle et d'heures de sessions live, remis à
+          zéro le 1er de chaque mois et non reportables. Une fois un volume atteint, la fonctionnalité concernée est
+          suspendue jusqu'au mois suivant ou jusqu'au passage à une formule supérieure ; les messages reçus restent
+          dans votre file « À traiter ». Les réponses par mots-clés ne sont pas décomptées du volume d'IA. Des packs de
+          réponses supplémentaires seront proposés prochainement.
+        </p>
+        <p>
+          En cas de changement de formule en cours de période, la valeur des jours restants de votre formule actuelle
+          est convertie en jours sur la nouvelle formule. Si la nouvelle formule permet moins de Pages, les Pages
+          connectées les plus récentes sont désactivées, sans être supprimées.
+        </p>
+        <p>
+          À l'échéance de l'essai ou de la période payée, les automatisations (réponses automatiques, assistant IA,
+          capture des lives, publications programmées) sont mises en pause. Votre compte, vos données et vos Pages
+          restent accessibles, les nouveaux messages continuent d'arriver dans votre file et vous pouvez y répondre
+          manuellement ; tout reprend dès le paiement d'une nouvelle période. Une période commencée n'est pas
+          remboursable, sauf disposition légale contraire ou erreur de notre part.
         </p>
       </Section>
 
@@ -128,16 +152,17 @@ export function TermsPage() {
       <Section title="9. Services tiers">
         <p>
           Certaines fonctionnalités reposent sur des services tiers : Meta (Facebook, Instagram, Marketplace), Google
-          (connexion au compte) et, si vous l'activez, un fournisseur d'intelligence artificielle. Leur utilisation est
+          (connexion au compte), Papi.mg (paiement des abonnements) et, si vous l'activez, un fournisseur
+          d'intelligence artificielle. Leur utilisation est
           également soumise à leurs propres conditions. Une évolution ou une indisponibilité de ces services peut
-          limiter certaines fonctionnalités, sans que la responsabilité de ReplyKA puisse être engagée.
+          limiter certaines fonctionnalités, sans que la responsabilité de SuiteFlow puisse être engagée.
         </p>
       </Section>
 
       <Section title="10. Disponibilité du Service et responsabilité">
         <p>
           Nous mettons en œuvre des moyens raisonnables pour assurer la disponibilité du Service, sans garantir une
-          disponibilité continue et sans interruption. Dans la limite permise par la loi, ReplyKA ne saurait être tenu
+          disponibilité continue et sans interruption. Dans la limite permise par la loi, SuiteFlow ne saurait être tenu
           responsable des pertes indirectes (manque à gagner, vente non conclue) liées à l'utilisation du Service.
         </p>
       </Section>
@@ -147,12 +172,13 @@ export function TermsPage() {
           Vous pouvez supprimer votre compte à tout moment depuis Paramètres → Sécurité. La suppression retire vos
           données du Service et révoque l'accès à vos Pages, selon les modalités décrites dans notre{" "}
           <Link to="/confidentialite" className="underline" style={link}>Politique de confidentialité</Link>. Si vous
-          vous connectiez via Facebook ou Google, vous pouvez aussi retirer l'accès de ReplyKA depuis les réglages de ce
+          vous connectiez via Facebook ou Google, vous pouvez aussi retirer l'accès de SuiteFlow depuis les réglages de ce
           compte.
         </p>
         <p>
-          Nous pouvons suspendre ou résilier un compte en cas de violation des présentes CGU, ou de non-paiement d'un
-          abonnement, après notification lorsque cela est raisonnablement possible.
+          Nous pouvons suspendre ou résilier un compte en cas de violation des présentes CGU, après notification
+          lorsque cela est raisonnablement possible. L'absence de paiement n'entraîne que la mise en pause des
+          automatisations décrite à la section 7.
         </p>
       </Section>
 

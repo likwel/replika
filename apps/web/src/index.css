@@ -32,6 +32,9 @@
   --color-greenSoft: #EDF3EC;
   --color-amber: #9F4A0A;
   --color-amberSoft: #FBECDD;
+  /* Mot « Flow » du logo : teintes foncées du dégradé de marque, lisibles sur fond clair */
+  --brand-text-from: var(--brand-2);
+  --brand-text-to: var(--brand-3);
 }
 
 :root[data-theme="dark"] {
@@ -56,6 +59,9 @@
   --color-greenSoft: #22352B;
   --color-amber: #E09A4F;
   --color-amberSoft: #3D2B1C;
+  /* Mot « Flow » du logo : teintes vives, lisibles sur fond sombre */
+  --brand-text-from: var(--brand-1);
+  --brand-text-to: var(--brand-2);
 }
 
 /* ---------- Accents ---------- */
@@ -68,6 +74,10 @@
   --color-goldLight: #25D366;
   --color-goldSoft: #E2F5EE;
   --color-onAccent: #FFFFFF;
+  /* Logo : dégradé de la marque, du plus clair au plus foncé (identique en mode sombre) */
+  --brand-1: #25D366;
+  --brand-2: #00A884;
+  --brand-3: #008069;
 }
 
 :root[data-theme="dark"][data-accent="whatsapp"] {
@@ -82,6 +92,9 @@
   --color-goldLight: #F2CB8E;
   --color-goldSoft: #FBF1E2;
   --color-onAccent: #2B2116;
+  --brand-1: #F2CB8E;
+  --brand-2: #E5AC5F;
+  --brand-3: #C9914A;
 }
 
 :root[data-theme="dark"][data-accent="classic"] {

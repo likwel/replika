@@ -6,6 +6,7 @@ import { useAttention } from "@/hooks/useAttention";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
+import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 
 // map id menu -> segment d'URL
 const PATHS: Record<string, string> = {
@@ -109,6 +110,7 @@ export function AppLayout() {
           onNavigate={goTo}
           onOpenSettings={(i) => goTo("set", i)}
         />
+        <SubscriptionBanner onOpenBilling={() => goTo("set", 4)} />
         <main ref={mainRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-3 sm:px-8 sm:pt-4 lg:px-12">
             <Outlet context={{ active, sub, setSub }} />

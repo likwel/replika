@@ -34,10 +34,10 @@ const steps: Step[] = [
     points: [
       "Ouvrez Connexions puis cliquez sur Facebook.",
       "Connectez-vous avec le profil Facebook qui gère vos Pages, puis cliquez sur « Modifier les paramètres » dans la fenêtre proposée par Facebook.",
-      "Cochez toutes les Pages et tous les comptes Instagram professionnels que vous voulez gérer depuis ReplyKA, ainsi que toutes les autorisations demandées (commentaires, messages, publication, statistiques).",
+      "Cochez toutes les Pages et tous les comptes Instagram professionnels que vous voulez gérer depuis SuiteFlow, ainsi que toutes les autorisations demandées (commentaires, messages, publication, statistiques).",
     ],
     tip: "Un compte Instagram doit être un compte professionnel lié à une Page Facebook pour apparaître dans la liste.",
-    warn: "Une Page non cochée à cette étape ne pourra pas être gérée par ReplyKA. En cas de doute, cochez toutes les Pages proposées.",
+    warn: "Une Page non cochée à cette étape ne pourra pas être gérée par SuiteFlow. En cas de doute, cochez toutes les Pages proposées.",
   },
   {
     icon: ShieldCheck,

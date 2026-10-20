@@ -8,6 +8,7 @@ import { toAvatarDataUrl } from "@/lib/image";
 import { profileApi, type Profile } from "@/lib/profile.api";
 import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingsCard, TextField } from "./SettingsUi";
+import { swal } from "@/lib/swal";
 
 const errorOf = (e: unknown, fallback: string) => (e instanceof ApiError || e instanceof Error ? e.message : fallback);
 
@@ -37,13 +38,11 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState<"save" | "photo" | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
 
   const set = (key: keyof typeof form, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    setOk(null);
   };
 
   const save = async (e: FormEvent) => {
@@ -55,7 +54,7 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
       onChange(updated);
       updateUser({ name: updated.name });
       setSaved(form);
-      setOk("Profil enregistré");
+      swal.toast({ title: "Profil enregistré" });
     } catch (err) {
       setError(errorOf(err, "Enregistrement impossible."));
     } finally {
@@ -66,12 +65,11 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
   const setPhoto = async (avatarUrl: string | null) => {
     setBusy("photo");
     setError(null);
-    setOk(null);
     try {
       const updated = await profileApi.update({ avatarUrl });
       onChange(updated);
       updateUser({ avatarUrl: updated.avatarUrl });
-      setOk(avatarUrl ? "Photo mise à jour" : "Photo retirée");
+      swal.toast({ title: avatarUrl ? "Photo mise à jour" : "Photo retirée" });
     } catch (err) {
       setError(errorOf(err, "Photo non enregistrée."));
     } finally {
@@ -128,7 +126,7 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
           <TextField label="Adresse" value={form.address} onChange={(e) => set("address", e.target.value)} placeholder="Lot II A, Antananarivo" maxLength={200} hint="Affichée sur vos factures imprimées (Lives)." />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Feedback ok={ok} error={error} />
+          <Feedback error={error} />
           <Button type="submit" size="sm" disabled={!dirty || busy !== null}>
             {busy === "save" && <Loader2 size={14} className="animate-spin" />}
             Enregistrer
@@ -145,7 +143,6 @@ function EmailCard({ profile, onChange }: { profile: Profile; onChange: (p: Prof
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const cancel = () => {
@@ -164,7 +161,7 @@ function EmailCard({ profile, onChange }: { profile: Profile; onChange: (p: Prof
       onChange(updated);
       updateUser({ email: updated.email });
       cancel();
-      setOk("Adresse e-mail modifiée : utilisez-la désormais pour vous connecter");
+      swal.toast({ title: "Adresse e-mail modifiée", text: "Utilisez-la désormais pour vous connecter.", duration: 6000 });
     } catch (err) {
       setError(errorOf(err, "Modification impossible."));
     } finally {
@@ -180,8 +177,7 @@ function EmailCard({ profile, onChange }: { profile: Profile; onChange: (p: Prof
             <Mail size={15} className="flex-shrink-0" style={{ color: theme.textMuted }} />
             <span className="truncate">{profile.email}</span>
           </span>
-          <Button size="sm" variant="ghost" onClick={() => { setEditing(true); setOk(null); }}>Modifier</Button>
-          {ok && <div className="w-full"><Feedback ok={ok} /></div>}
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Modifier</Button>
         </div>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">

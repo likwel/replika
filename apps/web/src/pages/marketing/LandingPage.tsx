@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { ChatDemo } from "@/components/marketing/ChatDemo";
+import { AGENCY_CONTACT_URL, AI_PACK, MOBILE_MONEY, PLAN_DEFS, annualMonthly } from "@/data/plans";
 
 // Même palette que les menus de l'application : chaque fonctionnalité garde sa couleur
 const features = [
@@ -27,7 +28,7 @@ const features = [
 const steps = [
   {
     t: "Connectez vos pages",
-    d: "Facebook et Instagram se connectent en quelques clics via l'autorisation officielle de Meta — ReplyKA n'a jamais accès à votre mot de passe.",
+    d: "Facebook et Instagram se connectent en quelques clics via l'autorisation officielle de Meta — SuiteFlow n'a jamais accès à votre mot de passe.",
     icon: Plug,
     c: "#3B82F6",
   },
@@ -38,7 +39,7 @@ const steps = [
     c: "#00A884",
   },
   {
-    t: "ReplyKA répond pour vous",
+    t: "SuiteFlow répond pour vous",
     d: "Commentaires, messages privés et lives, 24h/24. Envoi automatique ou validation manuelle avant publication, règle par règle.",
     icon: Megaphone,
     c: "#10B981",
@@ -54,37 +55,13 @@ const trust = [
 ];
 
 const faqs = [
-  { q: "Dois-je donner mon mot de passe Facebook ?", a: "Non. La connexion passe par l'autorisation officielle de Meta (OAuth) : ReplyKA n'a jamais accès à votre mot de passe et vous pouvez révoquer l'accès à tout moment depuis Facebook." },
+  { q: "Dois-je donner mon mot de passe Facebook ?", a: "Non. La connexion passe par l'autorisation officielle de Meta (OAuth) : SuiteFlow n'a jamais accès à votre mot de passe et vous pouvez révoquer l'accès à tout moment depuis Facebook." },
   { q: "L'IA peut-elle inventer un prix ou une information fausse ?", a: "Non. Elle ne répond qu'à partir des informations que vous lui fournissez. S'il manque une info, elle le dit poliment et escalade la conversation pour qu'un humain valide, au lieu d'improviser." },
   { q: "Est-ce que je garde le contrôle sur les réponses ?", a: "Oui. Chaque règle — à mots-clés ou par IA — peut être configurée en « envoi automatique » ou en « validation manuelle » avant publication." },
   { q: "Ça fonctionne aussi sur Instagram ?", a: "Oui, Facebook et Instagram sont tous les deux pris en charge, pour les commentaires comme pour les messages privés." },
   { q: "Puis-je limiter une règle à une seule publication ?", a: "Oui. Chaque règle peut s'appliquer à tout le compte, ou être ciblée sur une publication précise — utile pour une promo ou un lancement ponctuel." },
-  { q: "Que se passe-t-il pendant un live ?", a: "ReplyKA détecte automatiquement les commandes (« JP » + code produit) en direct, et répond normalement aux autres commentaires comme les questions de prix." },
+  { q: "Que se passe-t-il pendant un live ?", a: "SuiteFlow détecte automatiquement les commandes (« JP » + code produit) en direct, et répond normalement aux autres commentaires comme les questions de prix." },
 ];
-
-const PLAN_DEFS = [
-  {
-    name: "Starter",
-    base: 49000,
-    tagline: "Pour démarrer l'automatisation",
-    feats: ["1 compte Facebook ou Instagram", "Réponses automatiques par mots-clés", "Planification des publications", "Statistiques de base", "Validation manuelle avant envoi"],
-    hl: false,
-  },
-  {
-    name: "Pro",
-    base: 129000,
-    tagline: "Le plus choisi par les vendeurs actifs",
-    feats: ["Jusqu'à 5 comptes connectés", "Réponses par IA (commentaires + messages)", "Règles IA ciblées par publication", "Détection & pipeline de leads", "Modération des lives (commandes JP)", "Statistiques avancées + historique"],
-    hl: true,
-  },
-  {
-    name: "Agence",
-    base: null,
-    tagline: "Pour les équipes qui gèrent plusieurs marques",
-    feats: ["Comptes illimités", "Toutes les fonctionnalités Pro", "Mise en place accompagnée", "Support prioritaire"],
-    hl: false,
-  },
-] as const;
 
 function fmt(n: number) {
   return n.toLocaleString("fr-FR").replace(/,/g, " ");
@@ -172,7 +149,7 @@ export function LandingPage() {
               Automatisez vos réseaux sur Facebook & Instagram avec <Em>l'IA</Em>
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed sm:text-base lg:mx-0" style={{ color: theme.textMuted }}>
-              ReplyKA répond automatiquement aux commentaires et messages, détecte vos leads, modère vos lives et gère toutes vos pages depuis un seul endroit.
+              SuiteFlow répond automatiquement aux commentaires et messages, détecte vos leads, modère vos lives et gère toutes vos pages depuis un seul endroit.
             </p>
             <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5 lg:justify-start">
               <Link to="/register"><Button variant="primary" size="lg" icon={ArrowRight}>Commencer gratuitement</Button></Link>
@@ -344,7 +321,7 @@ export function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="mx-auto max-w-6xl px-5 py-4 text-[13px]" style={{ borderTop: `1px solid ${theme.bgDark}`, color: "#ffffff66" }}>© 2026 ReplyKA. Tous droits réservés.</div>
+        <div className="mx-auto max-w-6xl px-5 py-4 text-[13px]" style={{ borderTop: `1px solid ${theme.bgDark}`, color: "#ffffff66" }}>© 2026 SuiteFlow. Tous droits réservés.</div>
       </footer>
     </div>
   );
@@ -361,7 +338,9 @@ function PricingSection() {
           <h2 className="mt-2 text-2xl sm:text-3xl font-bold" style={{ color: theme.text }}>
             Des tarifs <Em>simples</Em>
           </h2>
-          <p className="mt-2 text-[13px]" style={{ color: theme.textMuted }}>Changez ou annulez votre formule à tout moment.</p>
+          <p className="mt-2 text-[13px]" style={{ color: theme.textMuted }}>
+            Sans engagement : payez au mois ou à l'année par {MOBILE_MONEY}.
+          </p>
         </div>
 
         <div className="mb-8 flex items-center justify-center gap-3">
@@ -385,9 +364,9 @@ function PricingSection() {
         </div>
       </Reveal>
 
-      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PLAN_DEFS.map((pl, i) => {
-          const monthly = pl.base ? (annual ? Math.round((pl.base * 0.85) / 1000) * 1000 : pl.base) : null;
+          const monthly = pl.base ? (annual ? annualMonthly(pl.base) : pl.base) : null;
           return (
             <Reveal key={pl.name} delay={i * 90}>
               <div
@@ -416,23 +395,55 @@ function PricingSection() {
                     <span className="text-[1.75rem] font-extrabold" style={{ color: pl.hl ? theme.goldLight : theme.text }}>Sur devis</span>
                   )}
                 </div>
-                <ul className="mb-5 flex flex-col gap-2">
-                  {pl.feats.map((ft) => (
-                    <li key={ft} className="flex items-start gap-2 text-[13px]" style={{ color: pl.hl ? "#ffffffcc" : theme.text }}>
-                      <Check size={15} className="mt-0.5 flex-shrink-0" style={{ color: pl.hl ? theme.greenLight : theme.green }} /> {ft}
+                {/* Volumes inclus : ce qui augmente d'une formule à l'autre, comparable d'un coup d'œil */}
+                <ul
+                  className="mb-4 flex flex-col gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
+                  style={{ background: pl.hl ? "rgba(255,255,255,0.08)" : theme.goldSoft, color: pl.hl ? theme.goldLight : theme.goldDark }}
+                >
+                  {([
+                    [Plug, pl.limits.pages],
+                    [Sparkles, pl.limits.ai],
+                    [Radio, pl.limits.live],
+                  ] as const).map(([Icon, label]) => (
+                    <li key={label} className="flex items-start gap-1.5">
+                      <Icon size={14} className="mt-px flex-shrink-0" /> {label}
                     </li>
                   ))}
                 </ul>
-                <Link to="/register"><Button variant={pl.hl ? "primary" : "ghost"} size="sm" className="w-full justify-center">Choisir</Button></Link>
+                <ul className="mb-5 flex flex-col gap-2">
+                  {pl.feats.map((ft) =>
+                    ft.endsWith(":") ? (
+                      <li key={ft} className="mt-1 text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: pl.hl ? "#ffffff80" : theme.textMuted }}>
+                        {ft.slice(0, -1).trim()}
+                      </li>
+                    ) : (
+                      <li key={ft} className="flex items-start gap-2 text-[13px]" style={{ color: pl.hl ? "#ffffffcc" : theme.text }}>
+                        <Check size={15} className="mt-0.5 flex-shrink-0" style={{ color: pl.hl ? theme.greenLight : theme.green }} /> {ft}
+                      </li>
+                    )
+                  )}
+                </ul>
+                {pl.base ? (
+                  <Link to="/register"><Button variant={pl.hl ? "primary" : "ghost"} size="sm" className="w-full justify-center">Essai gratuit 14 jours</Button></Link>
+                ) : (
+                  <a href={AGENCY_CONTACT_URL}><Button variant="ghost" size="sm" className="w-full justify-center">Nous contacter</Button></a>
+                )}
               </div>
             </Reveal>
           );
         })}
       </div>
-      <p className="mt-5 text-center text-[12px]" style={{ color: theme.textMuted }}>
-        <ShieldCheck size={13} className="mr-1 inline align-text-bottom" style={{ color: theme.goldDark }} />
-        Vous gardez la main : chaque règle, IA comprise, peut être réglée en validation manuelle.
-      </p>
+      <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-1.5 text-center text-[12.5px]" style={{ color: theme.textMuted }}>
+        <p>
+          <Sparkles size={13} className="mr-1 inline align-text-bottom" style={{ color: theme.goldDark }} />
+          Besoin de plus ? Pack de {fmt(AI_PACK.replies)} réponses IA supplémentaires : <strong style={{ color: theme.text }}>{fmt(AI_PACK.price)} Ar</strong>.
+          Les réponses par mots-clés sont illimitées et ne comptent pas dans le volume IA.
+        </p>
+        <p>
+          <ShieldCheck size={13} className="mr-1 inline align-text-bottom" style={{ color: theme.goldDark }} />
+          Vous gardez la main : chaque règle, IA comprise, peut être réglée en validation manuelle.
+        </p>
+      </div>
     </section>
   );
 }

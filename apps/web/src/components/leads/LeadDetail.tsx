@@ -9,6 +9,7 @@ import { ApiError } from "@/lib/api";
 import { formatDateTime, timeAgo } from "@/lib/format";
 import { leadApi, type Lead, type LeadDetail as Detail, type LeadStatus } from "@/lib/lead.api";
 import { LEAD_STATUS, LEAD_STATUSES, SOURCE_LABEL, TEMPERATURE, temperatureOf } from "./leads";
+import { swal } from "@/lib/swal";
 
 interface Props {
   leadId: string;
@@ -25,7 +26,6 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"save" | "send" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
 
   const load = () =>
     leadApi.get(leadId).then((l) => {
@@ -40,7 +40,6 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
   const run = async (kind: NonNullable<typeof busy>, fn: () => Promise<void>) => {
     setBusy(kind);
     setError(null);
-    setOk(null);
     try {
       await fn();
     } catch (e) {
@@ -68,13 +67,13 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
     run("send", async () => {
       const updated = await leadApi.message(leadId, text.trim());
       setText("");
-      setOk("Message envoyé.");
+      swal.toast({ title: "Message envoyé." });
       onChanged(updated);
       await load();
     });
 
-  const remove = () => {
-    if (!window.confirm("Retirer ce lead de la liste ? Il réapparaîtra s'il montre de nouveau un intérêt.")) return;
+  const remove = async () => {
+    if (!(await swal.confirm({ title: "Retirer ce lead de la liste ?", text: "Il réapparaîtra s'il montre de nouveau un intérêt.", confirmText: "Retirer", variant: "warning" }))) return;
     void run("delete", async () => {
       await leadApi.remove(leadId);
       onChanged(null);
@@ -107,7 +106,6 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
       footer={
         <>
           {error && <p className="mr-auto flex items-center gap-1 text-xs" style={{ color: theme.red }}><AlertTriangle size={12} /> {error}</p>}
-          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#166534" }}>{ok}</p>}
           <Button variant="ghost" size="sm" icon={Trash2} onClick={remove} disabled={busy !== null}>Retirer</Button>
           <Button size="sm" onClick={save} disabled={busy !== null}>
             {busy === "save" ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Enregistrer

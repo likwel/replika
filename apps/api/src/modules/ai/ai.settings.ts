@@ -65,6 +65,7 @@ export const aiSettingsService = {
     try {
       return await generateReply(
         {
+          userId: acc.userId,
           name: acc.name,
           platform: acc.platform,
           aiContext: input.aiContext !== undefined ? input.aiContext : acc.aiContext,
@@ -73,6 +74,7 @@ export const aiSettingsService = {
         { kind: input.kind, authorName: "Rakoto", content: input.text }
       );
     } catch (e) {
+      if (e instanceof AppError) throw e; // abonnement expiré, quota atteint
       throw new AppError(`IA indisponible : ${aiErrorMessage(e)}`, 502);
     }
   },

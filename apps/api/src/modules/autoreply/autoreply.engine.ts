@@ -5,6 +5,8 @@ import { aiErrorMessage, isAiConfigured } from "../ai/ai.client.js";
 import { generateReplyForMessage, type AiReply } from "../ai/ai.service.js";
 import { findActiveSessionForPost, handleLiveDirectMessage, ingestLiveComment } from "../lives/live.service.js";
 import { detectLeadFromMessage } from "../leads/lead.service.js";
+import { getEntitlements, type Entitlements } from "../billing/entitlements.js";
+import { AppError } from "../../utils/AppError.js";
 import {
   candidateRules,
   firstName,
@@ -22,6 +24,19 @@ export interface IncomingEvent {
   content: string;
   postId?: string;
   createdAt?: Date;
+}
+
+// Échec de génération : l'abonnement ou le quota (message clair, déjà journalisé une fois) ou le modèle
+function aiFailure(e: unknown): { error: string; log: boolean } {
+  if (e instanceof AppError) return { error: e.message, log: false };
+  return { error: `IA indisponible : ${aiErrorMessage(e)}`, log: true };
+}
+
+// Réponse IA envoyée automatiquement alors que l'IA demandait une relecture : tracée dans l'historique
+async function logNeedsReview(account: SocialAccount, msg: SocialMessage, ruleId: string | null) {
+  await prisma.activityLog.create({
+    data: { userId: account.userId, action: "AI_NEEDS_REVIEW", meta: { messageId: msg.id, ruleId, kind: msg.kind } },
+  });
 }
 
 // Un message d'accueil (« tout message ») n'est renvoyé à une même personne qu'une fois par 24 h
@@ -144,10 +159,12 @@ async function applyRuleAi(account: SocialAccount, msg: SocialMessage, rule: Aut
   try {
     ai = await generateReplyForMessage(account, msg);
   } catch (e) {
-    const error = `IA indisponible : ${aiErrorMessage(e)}`;
-    await prisma.activityLog.create({
-      data: { userId: account.userId, action: "AI_REPLY_FAILED", meta: { messageId: msg.id, ruleId: rule.id, error } },
-    });
+    const { error, log } = aiFailure(e);
+    if (log) {
+      await prisma.activityLog.create({
+        data: { userId: account.userId, action: "AI_REPLY_FAILED", meta: { messageId: msg.id, ruleId: rule.id, error } },
+      });
+    }
     return prisma.socialMessage.update({ where: { id: msg.id }, data: { ruleId: rule.id, error } });
   }
 
@@ -180,10 +197,12 @@ async function applyAi(account: SocialAccount, msg: SocialMessage) {
   try {
     ai = await generateReplyForMessage(account, msg);
   } catch (e) {
-    const error = `IA indisponible : ${aiErrorMessage(e)}`;
-    await prisma.activityLog.create({
-      data: { userId: account.userId, action: "AI_REPLY_FAILED", meta: { messageId: msg.id, error } },
-    });
+    const { error, log } = aiFailure(e);
+    if (log) {
+      await prisma.activityLog.create({
+        data: { userId: account.userId, action: "AI_REPLY_FAILED", meta: { messageId: msg.id, error } },
+      });
+    }
     return { handled: null, error };
   }
 
@@ -217,19 +236,23 @@ async function applyAi(account: SocialAccount, msg: SocialMessage) {
 // Point d'entrée unique : enregistre le message, y répond, puis cherche un signal d'achat (lead).
 // Renvoie null si l'événement est ignoré ou déjà traité.
 export async function handleIncoming(account: SocialAccount, ev: IncomingEvent) {
-  const msg = await processIncoming(account, ev);
-  // Après la réponse : l'intention détectée par l'IA renforce la note du lead
-  if (msg) await detectLeadFromMessage(account, msg).catch((e) => console.error(`❌ Lead ${msg.externalId} :`, e));
+  const ent = await getEntitlements(account.userId);
+  const msg = await processIncoming(account, ev, ent);
+  // Après la réponse : l'intention détectée par l'IA renforce la note du lead (module Leads de la formule)
+  if (msg && ent.features.leads) {
+    await detectLeadFromMessage(account, msg).catch((e) => console.error(`❌ Lead ${msg.externalId} :`, e));
+  }
   return msg;
 }
 
-// Réponse, dans cet ordre : règles à mots-clés → assistant IA du compte → réponse par défaut (« tout message »)
-async function processIncoming(account: SocialAccount, ev: IncomingEvent) {
+// Réponse, dans cet ordre : règles à mots-clés → assistant IA du compte → réponse par défaut (« tout message »).
+// Abonnement expiré : le message est enregistré (il arrive dans « À traiter ») mais rien n'est automatisé.
+async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: Entitlements) {
   if (!ev.content.trim()) return null;
 
   // Publication suivie par une session live : les JP deviennent des commandes ;
   // les autres commentaires (prix, questions…) reçoivent les réponses automatiques habituelles
-  if (ev.kind !== "DIRECT" && ev.postId) {
+  if (ent.active && ev.kind !== "DIRECT" && ev.postId) {
     const session = await findActiveSessionForPost(account.id, ev.postId);
     if (session) {
       const createdAt = ev.createdAt ?? new Date();
@@ -269,7 +292,7 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent) {
   }
 
   // Réponse d'un client à une commande JP (coordonnées) : traitée par la session live
-  if (ev.kind === "DIRECT") {
+  if (ent.active && ev.kind === "DIRECT") {
     const live = await handleLiveDirectMessage(account, msg).catch((e) => {
       console.error(`❌ Live, message ${msg.externalId} :`, e);
       return null;
@@ -288,12 +311,14 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent) {
     where: { id: account.userId },
     select: { autoReplyEnabled: true },
   });
-  if (!user?.autoReplyEnabled) return msg;
+  if (!ent.active || !user?.autoReplyEnabled) return msg;
 
   const rules = await prisma.automationRule.findMany({
     where: { userId: account.userId, isActive: true },
   });
-  const candidates = candidateRules(rules, { kind: ev.kind, accountId: account.id, postId: ev.postId ?? null });
+  // Règles IA ciblées par publication : formule Pro et plus (ignorées après un passage à Starter)
+  const allowed = ent.features.postAiRules ? rules : rules.filter((r) => !(r.postId && r.useAi));
+  const candidates = candidateRules(allowed, { kind: ev.kind, accountId: account.id, postId: ev.postId ?? null });
 
   const keywordRule = candidates.find((r) => r.matchType !== "ANY" && ruleMatchesText(r, msg.content));
   if (keywordRule) return applyRule(account, msg, keywordRule);

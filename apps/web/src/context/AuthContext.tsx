@@ -10,6 +10,8 @@ interface AuthState {
   logout: () => Promise<void>;
   // Met à jour l'utilisateur affiché (en-tête, préférences) après une modification dans les paramètres
   updateUser: (patch: Partial<User>) => void;
+  // Relit l'utilisateur depuis l'API (formule après un paiement…)
+  refreshUser: () => Promise<void>;
   // Session fermée côté serveur (compte supprimé…) : on oublie l'utilisateur localement
   clearUser: () => void;
 }
@@ -48,9 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = (patch: Partial<User>) => setUser((u) => (u ? { ...u, ...patch } : u));
   const clearUser = () => setUser(null);
+  const refreshUser = async () => {
+    const res = await authApi.me();
+    setUser(res.data.user);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, clearUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, refreshUser, clearUser }}>
       {children}
     </AuthContext.Provider>
   );

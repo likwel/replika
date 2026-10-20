@@ -63,7 +63,7 @@ function graphFailure(e: unknown, action: string): AppError {
   const raw = graphErrorMessage(e).replace(/\s+/g, " ").trim();
   if (/outside of allowed window/i.test(raw)) {
     return new AppError(
-      "Plus de 24 h depuis le dernier message de cette personne : Messenger n'autorise plus de réponse depuis ReplyKA.",
+      "Plus de 24 h depuis le dernier message de cette personne : Messenger n'autorise plus de réponse depuis SuiteFlow.",
       422
     );
   }
@@ -476,6 +476,7 @@ export const workspaceService = {
     try {
       return await suggestReply(acc, aiInput);
     } catch (e) {
+      if (e instanceof AppError) throw e; // abonnement expiré, quota atteint
       throw new AppError(`IA indisponible : ${aiErrorMessage(e)}`, 502);
     }
   },

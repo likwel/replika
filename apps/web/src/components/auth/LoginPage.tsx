@@ -45,7 +45,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthShell title="Bon retour parmi nous" subtitle="Connectez-vous à votre espace ReplyKA.">
+    <AuthShell title="Bon retour parmi nous" subtitle="Connectez-vous à votre espace SuiteFlow.">
       {error && <Alert variant="error" className="mb-5">{error}</Alert>}
       <SocialButtons />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">

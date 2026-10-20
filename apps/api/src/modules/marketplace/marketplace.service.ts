@@ -56,13 +56,13 @@ function requireCatalog(acc: PushAccount): asserts acc is PushAccount & { catalo
 function catalogRequest(l: PushListing, acc: PushAccount): { retailerId: string; request: CatalogItemRequest } | { reason: string } {
   if (l.price === null) return { reason: "prix manquant" };
   if (l.images.length === 0) return { reason: "photo manquante" };
-  // Meta télécharge la photo depuis ses serveurs. Une photo téléversée sur ReplyKA est servie à l'adresse
+  // Meta télécharge la photo depuis ses serveurs. Une photo téléversée sur SuiteFlow est servie à l'adresse
   // publique actuelle de l'API (et non celle enregistrée à l'envoi) : elle devient publiable dès que l'API l'est.
   const image = publicImageUrl(l.images[0]);
   if (!isPublicAddress(image)) {
     return {
       reason: localUploadName(l.images[0])
-        ? "photo stockée sur ReplyKA, mais le serveur n'est pas joignable depuis Internet : définissez PUBLIC_API_URL"
+        ? "photo stockée sur SuiteFlow, mais le serveur n'est pas joignable depuis Internet : définissez PUBLIC_API_URL"
         : "photo non accessible depuis Internet (Meta doit pouvoir la télécharger)",
     };
   }

@@ -80,6 +80,7 @@ export const messageService = {
     try {
       ai = await generateReplyForMessage(msg.account, msg);
     } catch (e) {
+      if (e instanceof AppError) throw e; // abonnement expiré, quota atteint
       throw new AppError(`IA indisponible : ${aiErrorMessage(e)}`, 502);
     }
 

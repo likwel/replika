@@ -11,6 +11,7 @@ import { describeDevice, formatDateTime } from "@/lib/format";
 import { profileApi, type SecurityEvent } from "@/lib/profile.api";
 import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingsCard, TextField } from "./SettingsUi";
+import { swal } from "@/lib/swal";
 
 const errorOf = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
@@ -43,7 +44,6 @@ function PasswordCard({ onDone }: { onDone: () => void }) {
   const empty = { current: "", next: "", confirm: "" };
   const [form, setForm] = useState(empty);
   const [busy, setBusy] = useState(false);
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mismatch = form.confirm.length > 0 && form.next !== form.confirm;
@@ -53,11 +53,10 @@ function PasswordCard({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    setOk(null);
     try {
       const res = await profileApi.changePassword(form.current, form.next);
       setForm(empty);
-      setOk(res.message);
+      swal.toast({ title: res.message });
       onDone();
     } catch (err) {
       setError(errorOf(err, "Modification impossible."));
@@ -95,7 +94,7 @@ function PasswordCard({ onDone }: { onDone: () => void }) {
           />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <Feedback ok={ok} error={error} />
+          <Feedback error={error} />
           <Button type="submit" size="sm" disabled={!valid || busy}>
             {busy && <Loader2 size={14} className="animate-spin" />}
             Changer le mot de passe
@@ -109,7 +108,6 @@ function PasswordCard({ onDone }: { onDone: () => void }) {
 function SessionsCard({ refreshKey, onDone }: { refreshKey: number; onDone: () => void }) {
   const [events, setEvents] = useState<SecurityEvent[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -117,11 +115,11 @@ function SessionsCard({ refreshKey, onDone }: { refreshKey: number; onDone: () =
   }, [refreshKey]);
 
   const logoutOthers = async () => {
-    if (!window.confirm("Déconnecter tous vos autres appareils ? Vous resterez connecté sur celui-ci.")) return;
+    if (!(await swal.confirm({ title: "Déconnecter vos autres appareils ?", text: "Vous resterez connecté sur celui-ci.", confirmText: "Déconnecter", variant: "warning" }))) return;
     setBusy(true);
     setError(null);
     try {
-      setOk((await profileApi.logoutOthers()).message);
+      swal.toast({ title: (await profileApi.logoutOthers()).message });
       onDone();
     } catch (err) {
       setError(errorOf(err, "Action impossible."));
@@ -141,7 +139,7 @@ function SessionsCard({ refreshKey, onDone }: { refreshKey: number; onDone: () =
           Déconnecter les autres appareils
         </Button>
       </div>
-      <Feedback ok={ok} error={error} />
+      <Feedback error={error} />
 
       {events === null ? (
         <div className="h-24 animate-pulse rounded-xl" style={{ background: theme.bg }} />
@@ -206,7 +204,7 @@ function DeleteAccountCard() {
     <SettingsCard
       danger
       title="Supprimer mon compte"
-      description="Suppression définitive de votre compte ReplyKA : Pages liées, règles, messages et historique. Vos Pages Facebook et Instagram elles-mêmes ne sont pas touchées."
+      description="Suppression définitive de votre compte SuiteFlow : Pages liées, règles, messages et historique. Vos Pages Facebook et Instagram elles-mêmes ne sont pas touchées."
     >
       {!open ? (
         <Button size="sm" variant="danger" icon={Trash2} onClick={() => setOpen(true)}>Supprimer mon compte…</Button>

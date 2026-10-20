@@ -29,7 +29,7 @@ export async function saveImage(body: unknown, contentType: string | undefined) 
   return { url: `${env.publicApiUrl}/uploads/${name}`, name };
 }
 
-// Image téléversée sur ReplyKA (et non une URL externe) : nom de fichier, sinon null.
+// Image téléversée sur SuiteFlow (et non une URL externe) : nom de fichier, sinon null.
 // L'origine est ignorée : l'adresse publique de l'API peut changer entre la programmation et l'envoi.
 export function localUploadName(url: string | null | undefined): string | null {
   const name = url?.match(/\/uploads\/([^/?#]+)$/)?.[1];

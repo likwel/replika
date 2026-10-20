@@ -14,6 +14,8 @@ import { LEAD_STATUS, LEAD_STATUSES, SOURCE_LABEL, TEMPERATURE, exportLeadsCsv, 
 import { timeAgo } from "@/lib/format";
 import { leadApi, type Lead, type LeadStats, type LeadStatus, type Temperature } from "@/lib/lead.api";
 import { workspaceApi, type WsAccount } from "@/lib/workspace.api";
+import { UpgradeCard } from "@/components/billing/UpgradeCard";
+import { usePlan } from "@/hooks/usePlan";
 
 interface Ctx { sub: number }
 
@@ -51,7 +53,25 @@ function StatusSelect({ lead, onChange }: { lead: Lead; onChange: (l: Lead) => v
   );
 }
 
+const LEADS_DESCRIPTION = "Clients potentiels repérés automatiquement : demande de prix, intention d'achat, téléphone partagé, JP en live…";
+
+// Module Leads : formule Pro et plus
 export function LeadsPage() {
+  const { can } = usePlan();
+  if (!can("leads")) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader className="mb-1" description={LEADS_DESCRIPTION} />
+        <UpgradeCard icon={Target} title="Repérez vos clients prêts à acheter">
+          SuiteFlow note chaque échange (chaud, tiède, froid) et classe vos clients potentiels dans un pipeline : demande de prix, téléphone partagé, JP en live… Disponible avec la formule Pro.
+        </UpgradeCard>
+      </div>
+    );
+  }
+  return <LeadsView />;
+}
+
+function LeadsView() {
   const { sub } = useOutletContext<Ctx>();
   const view = VIEWS[sub] ?? "all";
 
@@ -131,7 +151,7 @@ export function LeadsPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         className="mb-1"
-        description="Clients potentiels repérés automatiquement : demande de prix, intention d'achat, téléphone partagé, JP en live…"
+        description={LEADS_DESCRIPTION}
         actions={
           <>
             <Button variant="ghost" icon={scanning ? Loader2 : History} onClick={rescan} disabled={scanning} title="Analyser les 90 derniers jours de commentaires et de messages">

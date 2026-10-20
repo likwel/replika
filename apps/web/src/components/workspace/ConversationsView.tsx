@@ -58,7 +58,7 @@ export function ConversationsView({ active, accountIds, toolbar, query, focus, o
       .catch(() => {
         if (id !== request.current) return;
         setConversations((c) => c ?? []);
-        setErrors([{ accountId: "", accountName: "ReplyKA", message: "Chargement impossible, réessayez." }]);
+        setErrors([{ accountId: "", accountName: "SuiteFlow", message: "Chargement impossible, réessayez." }]);
       })
       .finally(() => {
         if (id !== request.current) return;

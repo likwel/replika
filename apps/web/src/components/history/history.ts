@@ -1,6 +1,7 @@
 import {
   UserPlus, LogIn, LogOut, KeyRound, Mail, Facebook, Bot, Sparkles, Send,
   MessageCircle, Trash2, Target, CalendarClock, CheckCircle2, XCircle, Radio, Settings2, Power, History as HistoryIcon,
+  CreditCard, Gauge, PauseCircle, ShieldAlert,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -36,7 +37,23 @@ export const ACTION_META: Record<string, ActionMeta> = {
   PROFILE_UPDATED: { label: "Profil mis à jour", icon: Settings2, color: theme.textMuted },
   AUTO_REPLY_ENABLED: { label: "Réponses automatiques activées", icon: Power, color: "#166534" },
   AUTO_REPLY_DISABLED: { label: "Réponses automatiques en pause", icon: Power, color: theme.textMuted },
+  AI_NEEDS_REVIEW: { label: "Réponse IA envoyée, à relire", icon: Sparkles, color: theme.amber },
+  // Abonnement
+  CHECKOUT_CREATED: { label: "Paiement démarré", icon: CreditCard, color: theme.textMuted },
+  SUBSCRIPTION_ACTIVATED: { label: "Formule activée", icon: CreditCard, color: "#166534" },
+  SUBSCRIPTION_SET_BY_ADMIN: { label: "Formule modifiée par l'équipe SuiteFlow", icon: CreditCard, color: theme.goldDark },
+  PAYMENT_FAILED: { label: "Paiement refusé", icon: CreditCard, color: theme.red },
+  PAYMENT_AMOUNT_MISMATCH: { label: "Paiement à vérifier", icon: ShieldAlert, color: theme.red },
+  AI_QUOTA_REACHED: { label: "Quota de réponses IA atteint", icon: Gauge, color: theme.amber },
+  LIVE_QUOTA_REACHED: { label: "Quota d'heures de live atteint", icon: Gauge, color: theme.amber },
+  LIVE_PAUSED_QUOTA: { label: "Live en pause : quota atteint", icon: PauseCircle, color: theme.amber },
+  LIVE_PAUSED_SUBSCRIPTION: { label: "Live en pause : abonnement expiré", icon: PauseCircle, color: theme.red },
+  SCHEDULE_SKIPPED_SUBSCRIPTION: { label: "Publication non envoyée : abonnement expiré", icon: XCircle, color: theme.red },
+  PAGES_DEACTIVATED_FOR_PLAN: { label: "Pages désactivées (limite de la formule)", icon: Power, color: theme.amber },
 };
+
+const PLAN_NAMES: Record<string, string> = { STARTER: "Starter", PRO: "Pro", BUSINESS: "Business", AGENCY: "Agence" };
+const fmtAr = (n: number) => `${n.toLocaleString("fr-FR").replace(/[\u202f\u00a0,]/g, " ")} Ar`;
 
 export const actionMeta = (action: string): ActionMeta => ACTION_META[action] ?? { label: action, icon: HistoryIcon, color: theme.textMuted };
 
@@ -84,6 +101,40 @@ export function detailOf(e: HistoryEntry): string | null {
       const kind = str(m, "kind");
       const kindLabel = kind === "POST" ? "Publication" : kind === "COMMENT" ? "Commentaire" : kind === "MESSAGE" ? "Message privé" : null;
       return [kindLabel, e.context ? `« ${e.context} »` : null].filter(Boolean).join(" · ");
+    }
+    case "CHECKOUT_CREATED":
+    case "SUBSCRIPTION_ACTIVATED": {
+      const plan = PLAN_NAMES[str(m, "plan") ?? ""] ?? null;
+      const period = str(m, "period") === "ANNUAL" ? "annuel" : str(m, "period") === "MONTHLY" ? "mensuel" : null;
+      const amount = num(m, "amount");
+      const end = str(m, "periodEnd");
+      const extra = num(m, "extraDays");
+      return [
+        [plan, period].filter(Boolean).join(" "),
+        amount !== null ? fmtAr(amount) : null,
+        end ? `jusqu'au ${new Date(end).toLocaleDateString("fr-FR")}` : null,
+        extra ? `+${extra} j convertis` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    case "SUBSCRIPTION_SET_BY_ADMIN": {
+      const end = str(m, "periodEnd");
+      return [PLAN_NAMES[str(m, "plan") ?? ""], end ? `jusqu'au ${new Date(end).toLocaleDateString("fr-FR")}` : "sans échéance"].filter(Boolean).join(" · ");
+    }
+    case "PAYMENT_FAILED":
+      return str(m, "message");
+    case "AI_QUOTA_REACHED": {
+      const limit = num(m, "limit");
+      return limit !== null ? `${limit.toLocaleString("fr-FR")} réponses ce mois-ci : les messages restent dans « À traiter »` : null;
+    }
+    case "LIVE_PAUSED_QUOTA":
+    case "LIVE_QUOTA_REACHED":
+    case "LIVE_PAUSED_SUBSCRIPTION":
+      return str(m, "title");
+    case "PAGES_DEACTIVATED_FOR_PLAN": {
+      const pages = m && Array.isArray(m.pages) ? (m.pages as string[]) : [];
+      return pages.join(", ") || null;
     }
     case "PROFILE_UPDATED": {
       const fields = m && Array.isArray(m.fields) ? (m.fields as string[]) : [];

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ExternalLink, MessageCircle, Package, Pause, Play, Receipt, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
+  AlertTriangle, ArrowLeft, ExternalLink, MessageCircle, Package, Pause, Play, Receipt, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -17,6 +17,8 @@ import { ProductsEditor } from "./ProductsEditor";
 import { SessionSettingsForm } from "./SessionSettingsForm";
 import { InvoicesPanel } from "./InvoicesPanel";
 import { SESSION_STATUS, fromRows, toRows, type ProductRow } from "./live";
+import { swal } from "@/lib/swal";
+import { Alert } from "@/components/ui/Alert";
 
 interface Props {
   sessionId: string;
@@ -57,7 +59,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
   const [rows, setRows] = useState<ProductRow[] | null>(null);
   const [settings, setSettings] = useState<LiveSettings | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ ok?: string; error?: string } | null>(null);
+  const [message, setMessage] = useState<{ error: string } | null>(null);
   const dirty = useRef(false);
 
   const load = () => {
@@ -85,7 +87,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
     setMessage(null);
     try {
       await fn();
-      if (ok) setMessage({ ok });
+      if (ok) swal.toast({ title: ok });
     } catch (e) {
       setMessage({ error: e instanceof ApiError ? e.message : "Action impossible." });
     } finally {
@@ -93,8 +95,8 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
     }
   };
 
-  const setStatus = (status: LiveSession["status"]) => {
-    if (status === "ENDED" && !window.confirm("Terminer la session ? Les commentaires ne seront plus capturés ; les réponses des clients restent collectées pendant 7 jours.")) return;
+  const setStatus = async (status: LiveSession["status"]) => {
+    if (status === "ENDED" && !(await swal.confirm({ title: "Terminer la session ?", text: "Les commentaires ne seront plus capturés ; les réponses des clients restent collectées pendant 7 jours.", confirmText: "Terminer", variant: "warning" }))) return;
     void act(status, async () => setSession(await liveApi.updateSession(sessionId, { status })));
   };
 
@@ -199,11 +201,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
           <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" /> Lecture des commentaires impossible : {session.syncError}
         </p>
       )}
-      {message && (
-        <p className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs" style={{ background: message.error ? "#FDECEC" : theme.goldSoft, color: message.error ? theme.red : theme.goldDark }}>
-          {message.error ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />} {message.error ?? message.ok}
-        </p>
-      )}
+      {message && <Alert variant="error">{message.error}</Alert>}
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {card("JP capturés", String(stats.jp ?? stats.orders), ShoppingBag, theme.goldDark, `${session._count.comments} commentaires`)}
@@ -282,8 +280,8 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
               size="sm"
               variant="ghost"
               icon={Trash2}
-              onClick={() => {
-                if (!window.confirm("Supprimer la session, ses commentaires et toutes ses commandes ? Exportez-les d'abord si besoin.")) return;
+              onClick={async () => {
+                if (!(await swal.confirm({ title: "Supprimer la session ?", text: "Ses commentaires et toutes ses commandes seront supprimés. Exportez-les d'abord si besoin.", confirmText: "Supprimer", variant: "danger" }))) return;
                 void act("delete", async () => {
                   await liveApi.removeSession(sessionId);
                   onDeleted();

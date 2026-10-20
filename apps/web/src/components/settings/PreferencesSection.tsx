@@ -8,6 +8,7 @@ import { notifyPermission, requestNotifyPermission, showNotification, type Notif
 import { profileApi, type AccentTheme, type DefaultPage, type Profile } from "@/lib/profile.api";
 import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingRow, SettingsCard } from "./SettingsUi";
+import { swal } from "@/lib/swal";
 
 // Connexions n'en fait pas partie : le serveur ne l'accepte pas comme page d'ouverture
 const PAGES: Array<{ value: DefaultPage; label: string; icon: LucideIcon }> = [
@@ -32,7 +33,6 @@ export function PreferencesSection() {
   const { updateUser } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState<keyof Profile | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [permission, setPermission] = useState<NotifyPermission>(notifyPermission());
 
@@ -47,7 +47,6 @@ export function PreferencesSection() {
     const key = Object.keys(patch)[0] as keyof Profile;
     setSaving(key);
     setError(null);
-    setOk(null);
     try {
       const updated = await profileApi.updatePreferences(patch);
       setProfile(updated);
@@ -57,7 +56,7 @@ export function PreferencesSection() {
         darkMode: updated.darkMode,
         accentTheme: updated.accentTheme,
       });
-      setOk(message);
+      swal.toast({ title: message });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Enregistrement impossible.");
     } finally {
@@ -95,7 +94,7 @@ export function PreferencesSection() {
         </SettingRow>
       </SettingsCard>
 
-      <SettingsCard title="Apparence" description="Couleur d'accent et mode d'affichage de ReplyKA.">
+      <SettingsCard title="Apparence" description="Couleur d'accent et mode d'affichage de SuiteFlow.">
         <div className="flex flex-col gap-3">
           <SettingRow label="Mode sombre" description="Bascule l'interface vers un fond sombre, plus confortable en faible luminosité.">
             <Toggle
@@ -140,7 +139,7 @@ export function PreferencesSection() {
           description={
             <>
               Une notification apparaît quand de nouveaux messages attendent votre validation (suggestions, escalades),
-              tant que ReplyKA est ouvert dans un onglet. Le compteur de la cloche, lui, est toujours affiché.
+              tant que SuiteFlow est ouvert dans un onglet. Le compteur de la cloche, lui, est toujours affiché.
               {PERMISSION_HINT[permission] && (
                 <span className="mt-1 block" style={{ color: theme.red }}>{PERMISSION_HINT[permission]}</span>
               )}
@@ -182,7 +181,7 @@ export function PreferencesSection() {
         </div>
       </SettingsCard>
 
-      <Feedback ok={ok} error={error} />
+      <Feedback error={error} />
     </>
   );
 }

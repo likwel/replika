@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { scheduleApi, type Schedule } from "@/lib/schedule.api";
 import { KIND_META, STATUS_META, TAG_OPTIONS, formatSlot, isEditable } from "./planner";
+import { swal } from "@/lib/swal";
 
 interface Props {
   schedule: Schedule;
@@ -25,7 +26,7 @@ export function ScheduleDetails({ schedule: s, onClose, onEdit, onDuplicate, onC
   const failed = s.targets.some((t) => t.status === "FAILED");
 
   const run = async (action: "publish" | "delete") => {
-    if (action === "delete" && !window.confirm("Supprimer cette programmation ? Ce qui est déjà publié reste en ligne.")) return;
+    if (action === "delete" && !(await swal.confirm({ title: "Supprimer cette programmation ?", text: "Ce qui est déjà publié reste en ligne.", confirmText: "Supprimer", variant: "danger" }))) return;
     setBusy(action);
     setError(null);
     try {

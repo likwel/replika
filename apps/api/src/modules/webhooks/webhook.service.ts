@@ -101,7 +101,7 @@ export async function processWebhook(payload: WebhookPayload) {
   if (!platform) return;
 
   for (const entry of payload.entry ?? []) {
-    // Une même Page peut être liée par plusieurs utilisateurs de ReplyKA
+    // Une même Page peut être liée par plusieurs utilisateurs de SuiteFlow
     const accounts = await prisma.socialAccount.findMany({
       where: { platform, externalId: entry.id, isActive: true },
     });

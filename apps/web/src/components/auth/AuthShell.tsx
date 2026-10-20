@@ -5,6 +5,10 @@ import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Logo } from "@/components/ui/Logo";
 
+// Panneau de marque : couleurs du logo (--brand-*), dans leurs teintes vives pour le fond sombre
+const BRAND_ON_DARK = "linear-gradient(90deg, var(--brand-1), var(--brand-2))";
+const BRAND_LIGHT = "var(--brand-1)";
+
 interface Props {
   title: string;
   subtitle?: ReactNode;
@@ -22,8 +26,8 @@ export function AuthShell({ title, subtitle, children }: Props) {
     <div className="flex min-h-screen" style={{ background: theme.canvas }}>
       {/* Panneau de marque (grand écran) */}
       <aside className="relative hidden w-[44%] max-w-[580px] flex-col justify-between overflow-hidden p-12 lg:flex" style={{ background: theme.bgDark }}>
-        <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full opacity-25 blur-3xl" style={{ background: theme.gold }} />
-        <div className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-72 rounded-full opacity-15 blur-3xl" style={{ background: theme.goldLight }} />
+        <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full opacity-30 blur-3xl" style={{ background: "var(--brand-2)" }} />
+        <div className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-72 rounded-full opacity-25 blur-3xl" style={{ background: "var(--brand-1)" }} />
 
         <Link to="/" className="relative w-fit"><Logo dark /></Link>
 
@@ -31,16 +35,16 @@ export function AuthShell({ title, subtitle, children }: Props) {
           <h2 className="font-bold text-white" style={{ fontSize: "clamp(1.9rem, 2.6vw, 2.5rem)", lineHeight: 1.12, letterSpacing: "-0.025em" }}>
             Répondez plus vite,
             <br />
-            <span style={{ color: theme.goldLight }}>vendez plus.</span>
+            <span style={{ backgroundImage: BRAND_ON_DARK, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>vendez plus.</span>
           </h2>
           <p className="mt-4 max-w-md text-[15px] leading-relaxed" style={{ color: "#ffffffcc" }}>
-            ReplyKA automatise vos commentaires et messages Facebook & Instagram avec l'intelligence artificielle.
+            SuiteFlow automatise vos commentaires et messages Facebook & Instagram avec l'intelligence artificielle.
           </p>
           <ul className="mt-10 flex flex-col gap-5">
             {BENEFITS.map((b) => (
               <li key={b.title} className="flex items-start gap-3.5">
                 <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(255,255,255,0.08)" }}>
-                  <b.icon size={18} style={{ color: theme.goldLight }} />
+                  <b.icon size={18} style={{ color: BRAND_LIGHT }} />
                 </span>
                 <span>
                   <span className="block text-[15px] font-semibold text-white">{b.title}</span>
@@ -52,7 +56,7 @@ export function AuthShell({ title, subtitle, children }: Props) {
         </div>
 
         <p className="relative flex items-center gap-2 text-sm" style={{ color: "#ffffffb3" }}>
-          <Check size={15} style={{ color: theme.goldLight }} /> Connexion officielle Meta · aucun mot de passe Facebook demandé
+          <Check size={15} style={{ color: BRAND_LIGHT }} /> Connexion officielle Meta · aucun mot de passe Facebook demandé
         </p>
       </aside>
 
@@ -74,7 +78,7 @@ export function AuthShell({ title, subtitle, children }: Props) {
         </div>
 
         <p className="px-5 pb-6 text-center text-xs" style={{ color: theme.textMuted }}>
-          © 2026 ReplyKA ·{" "}
+          © 2026 SuiteFlow ·{" "}
           <Link to="/cgu" className="underline-offset-2 hover:underline">Conditions d'utilisation</Link> ·{" "}
           <Link to="/confidentialite" className="underline-offset-2 hover:underline">Confidentialité</Link>
         </p>

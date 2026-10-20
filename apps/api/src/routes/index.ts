@@ -15,6 +15,7 @@ import liveRoutes from "../modules/lives/live.routes.js";
 import leadRoutes from "../modules/leads/lead.routes.js";
 import statsRoutes from "../modules/stats/stats.routes.js";
 import marketplaceRoutes from "../modules/marketplace/marketplace.routes.js";
+import billingRoutes from "../modules/billing/billing.routes.js";
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use("/lives", liveRoutes);
 router.use("/leads", leadRoutes);
 router.use("/stats", statsRoutes);
 router.use("/marketplace", marketplaceRoutes);
+router.use("/billing", billingRoutes);
 
 export default router;

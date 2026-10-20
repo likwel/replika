@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ApiError } from "@/lib/api";
 import { marketplaceApi, MARKETPLACE_ORDER_STATUS, type MarketplaceListing, type MarketplaceOrder, type MarketplaceOrderStatus } from "@/lib/marketplace.api";
+import { swal } from "@/lib/swal";
 
 interface Props {
   order?: MarketplaceOrder | null; // absent : nouvelle commande
@@ -62,7 +63,8 @@ export function MarketplaceOrderEditor({ order, listings, defaultListingId, onCl
   };
 
   const remove = async () => {
-    if (!order || !window.confirm("Supprimer cette commande ?")) return;
+    if (!order) return;
+    if (!(await swal.confirm({ title: "Supprimer cette commande ?", text: "Cette action est définitive.", confirmText: "Supprimer", variant: "danger" }))) return;
     setBusy("delete");
     try {
       await marketplaceApi.removeOrder(order.id);

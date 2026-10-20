@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Facebook, Instagram, Film, MoreHorizontal, Plus,
   CheckCircle2, AlertCircle, Trash2, Power, RefreshCw, ShieldCheck, Loader2, XCircle, Link2,
@@ -17,6 +17,9 @@ import { Alert } from "@/components/ui/Alert";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { usePagination } from "@/hooks/usePagination";
+import { swal } from "@/lib/swal";
+import { ApiError } from "@/lib/api";
+import { usePlan } from "@/hooks/usePlan";
 
 const PLATFORM_META = {
   FACEBOOK: { icon: Facebook, color: "#1877F2", label: "Facebook" },
@@ -45,6 +48,9 @@ export function ConnectionsPage() {
   const [params, setParams] = useSearchParams();
   const fbStatus = params.get("fb");
   const absent = params.get("absent")?.split("|").filter(Boolean) ?? [];
+  const limited = params.get("limited")?.split("|").filter(Boolean) ?? []; // Pages au-delà de la formule
+  const { limits, planName } = usePlan();
+  const nav = useNavigate();
 
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,13 +74,25 @@ export function ConnectionsPage() {
 
   const handleToggle = async (acc: SocialAccount) => {
     setMenuId(null);
-    await accountApi.toggle(acc.id, !acc.isActive);
-    setAccounts((prev) => prev.map((a) => (a.id === acc.id ? { ...a, isActive: !a.isActive } : a)));
+    try {
+      await accountApi.toggle(acc.id, !acc.isActive);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "PAGE_LIMIT") {
+        const go = await swal.confirm({ variant: "warning", title: "Limite de Pages atteinte", text: e.message, confirmText: "Voir les formules" });
+        if (go) nav("/app/facturation");
+      } else {
+        await swal.alert({ variant: "error", title: "Action impossible", text: (e as Error).message });
+      }
+      return;
+    }
+    // Une Page entraîne son compte Instagram lié : liste relue
+    if (acc.platform === "FACEBOOK") load();
+    else setAccounts((prev) => prev.map((a) => (a.id === acc.id ? { ...a, isActive: !a.isActive } : a)));
   };
 
   const handleRemove = async (acc: SocialAccount) => {
     setMenuId(null);
-    if (!window.confirm(`Délier ${acc.name} ? Ses règles, sessions live et programmations seront supprimées.`)) return;
+    if (!(await swal.confirm({ title: `Délier ${acc.name} ?`, text: "Ses règles, sessions live et programmations seront supprimées.", confirmText: "Délier", variant: "danger" }))) return;
     await accountApi.remove(acc.id);
     setAccounts((prev) => prev.filter((a) => a.id !== acc.id));
   };
@@ -97,7 +115,7 @@ export function ConnectionsPage() {
   return (
     <div>
       <PageHeader
-        description="Reliez vos Pages Facebook et comptes Instagram : ReplyKA lit leurs commentaires et messages pour y répondre à votre place."
+        description="Reliez vos Pages Facebook et comptes Instagram : SuiteFlow lit leurs commentaires et messages pour y répondre à votre place."
       />
 
       {/* Retour de Facebook */}
@@ -114,7 +132,21 @@ export function ConnectionsPage() {
           action={<Button size="sm" variant="dark" icon={Facebook} onClick={() => setReconnect({ name: absent[0] })}>Reconnecter</Button>}
         >
           <p className="font-semibold">Non cochées lors de cette connexion : {absent.join(", ")}</p>
-          <p className="mt-0.5 text-xs">ReplyKA ne peut plus les gérer. Reconnectez-vous et cochez-les dans « Modifier les paramètres ».</p>
+          <p className="mt-0.5 text-xs">SuiteFlow ne peut plus les gérer. Reconnectez-vous et cochez-les dans « Modifier les paramètres ».</p>
+        </Alert>
+      )}
+      {fbStatus === "success" && limited.length > 0 && (
+        <Alert
+          variant="warning"
+          className="mb-4"
+          action={<Button size="sm" onClick={() => nav("/app/facturation")}>Voir les formules</Button>}
+        >
+          <p className="font-semibold">
+            Limite de votre formule {planName} atteinte{limits?.pages ? ` (${limits.pages} Page${limits.pages > 1 ? "s" : ""} active${limits.pages > 1 ? "s" : ""})` : ""}
+          </p>
+          <p className="mt-0.5 text-xs">
+            Connectées mais laissées inactives : {limited.join(", ")}. Désactivez une autre Page pour les activer, ou passez à une formule supérieure.
+          </p>
         </Alert>
       )}
       {fbStatus === "success" && params.get("missing") && (

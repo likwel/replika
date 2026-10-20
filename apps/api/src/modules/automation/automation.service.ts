@@ -10,6 +10,7 @@ import {
 import { pollAccounts } from "../autoreply/autoreply.poller.js";
 import { aiProviderName, isAiConfigured } from "../ai/ai.client.js";
 import type { RuleInput, RuleUpdateInput, TestInput } from "./automation.schema.js";
+import { assertFeature } from "../billing/entitlements.js";
 
 // Une règle à mots-clés sans mot-clé ne déclencherait jamais
 function assertKeywords(matchType: string | undefined, trigger: string | undefined) {
@@ -49,6 +50,7 @@ export const automationService = {
     assertKeywords(data.matchType, data.trigger);
     assertResponse(data.useAi, data.response);
     await assertAccountOwned(userId, data.accountId);
+    if (data.postId && data.useAi) await assertFeature(userId, "postAiRules");
     return prisma.automationRule.create({ data: { ...data, trigger: data.trigger ?? "", userId } });
   },
 
@@ -58,6 +60,8 @@ export const automationService = {
     assertKeywords(data.matchType ?? rule.matchType, data.trigger ?? rule.trigger);
     assertResponse(data.useAi ?? rule.useAi, data.response ?? rule.response);
     await assertAccountOwned(userId, data.accountId);
+    const postId = data.postId !== undefined ? data.postId : rule.postId;
+    if (postId && (data.useAi ?? rule.useAi)) await assertFeature(userId, "postAiRules");
     return prisma.automationRule.update({ where: { id }, data });
   },
 

@@ -68,6 +68,17 @@ export const env = {
     // intervalle du polling de secours (secondes) ; 0 = désactivé, webhooks uniquement
     pollSeconds: Number(process.env.AUTOREPLY_POLL_SECONDS ?? 30),
   },
+  // Paiement des abonnements : Papi.mg (MVola, Orange Money, Airtel Money, carte)
+  papi: {
+    baseUrl: (process.env.PAPI_BASE_URL ?? "https://app.papi.mg/engine/api").replace(/\/+$/, ""),
+    apiKey: process.env.PAPI_API_KEY ?? "",
+    secretKey: process.env.PAPI_SECRET_KEY ?? "", // pwhsec_… : signe les notifications de paiement
+    // Paiements de test (numéros sandbox) : par défaut hors production
+    testMode: process.env.PAPI_TEST_MODE ? process.env.PAPI_TEST_MODE === "true" : process.env.NODE_ENV !== "production",
+    linkHours: Number(process.env.PAPI_LINK_HOURS ?? 24), // validité d'un lien de paiement (1 à 596 h)
+  },
+  // Vérification des paiements en attente auprès de Papi (secondes) ; 0 = désactivé
+  billingReconcileSeconds: Number(process.env.BILLING_RECONCILE_SECONDS ?? 120),
   isProd: process.env.NODE_ENV === "production",
 } as const;
 

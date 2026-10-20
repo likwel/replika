@@ -6,7 +6,7 @@ export function PrivacyPage() {
   return (
     <LegalLayout
       title="Politique de Confidentialité"
-      subtitle="Quelles données ReplyKA traite, pourquoi, et comment les contrôler."
+      subtitle="Quelles données SuiteFlow traite, pourquoi, et comment les contrôler."
       updatedAt="20 octobre 2026"
     >
       <Section title="1. Données que nous collectons">
@@ -28,6 +28,12 @@ export function PrivacyPage() {
           réponses envoyées, leads détectés (nom, téléphone ou e-mail partagés par vos clients dans leurs messages),
           publications programmées, sessions Live et commandes associées, annonces et commandes Marketplace (nom,
           téléphone et adresse de livraison communiqués par vos acheteurs).
+        </p>
+        <p>
+          <strong style={{ color: theme.text }}>Données d'abonnement</strong> : formule choisie, dates de validité, consommation
+          mensuelle (réponses IA, heures de live) et historique de vos paiements (montant, date, moyen de paiement, numéro de
+          téléphone payeur transmis par notre prestataire). Vos identifiants de paiement (code Mobile Money, numéro de carte) sont
+          saisis chez Papi.mg et ne nous sont jamais communiqués.
         </p>
         <p><strong style={{ color: theme.text }}>Données techniques</strong> : adresse IP, type de navigateur et d'appareil, enregistrés lors de la connexion à votre compte, à des fins de sécurité.</p>
       </Section>
@@ -59,6 +65,7 @@ export function PrivacyPage() {
           <li><strong style={{ color: theme.text }}>Meta (Facebook/Instagram)</strong> : pour lire et publier en votre nom sur les Pages que vous connectez, via leur API officielle ;</li>
           <li><strong style={{ color: theme.text }}>Google</strong> : uniquement pour vous authentifier, si vous choisissez « Continuer avec Google » ;</li>
           <li><strong style={{ color: theme.text }}>Fournisseur d'IA</strong> : uniquement si vous activez l'assistant IA, comme décrit ci-dessus ;</li>
+          <li><strong style={{ color: theme.text }}>Papi.mg</strong> : pour le paiement de votre abonnement, nous transmettons le montant, la formule, votre nom (ou celui de votre entreprise) et votre adresse e-mail ;</li>
           <li><strong style={{ color: theme.text }}>Hébergeur</strong> : nos données sont hébergées chez un prestataire technique chargé de l'infrastructure du Service, lié par une obligation de confidentialité ;</li>
           <li>si la loi nous y oblige, ou pour protéger nos droits et ceux de nos utilisateurs.</li>
         </ul>

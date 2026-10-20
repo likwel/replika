@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { deleteUpload, isPublicAddress, localUploadName, publicImageUrl, readUpload } from "../uploads/upload.service.js";
 import { runDueSchedules } from "./schedule.worker.js";
+import { assertActive } from "../billing/entitlements.js";
 import { TEXT_LIMITS, type ListQuery, type ScheduleInput } from "./schedule.schema.js";
 
 const include = {
@@ -121,6 +122,7 @@ export const scheduleService = {
   async create(userId: string, input: ScheduleInput) {
     const warnings = await checkTargets(userId, input);
     const timing = resolveTiming(input);
+    if (timing.status === "SCHEDULED") await assertActive(userId); // brouillons toujours permis
     const schedule = await prisma.schedule.create({
       data: { userId, ...content(input), ...timing, targets: { create: targetRows(input) } },
       include,
@@ -139,6 +141,7 @@ export const scheduleService = {
     }
     const warnings = await checkTargets(userId, input);
     const timing = resolveTiming(input);
+    if (timing.status === "SCHEDULED") await assertActive(userId);
     // Réservation : le robot ne doit pas la publier pendant la modification
     const claimed = await prisma.schedule.updateMany({
       where: { id, status: { in: ["DRAFT", "SCHEDULED", "FAILED"] } },
@@ -171,6 +174,7 @@ export const scheduleService = {
     const existing = await findOwned(userId, id);
     if (existing.status === "PUBLISHING") throw new AppError("Publication déjà en cours", 409);
     if (existing.status === "DONE") throw new AppError("Déjà publiée : dupliquez-la pour la republier", 409);
+    await assertActive(userId);
     await prisma.scheduleTarget.updateMany({ where: { scheduleId: id, status: "FAILED" }, data: { status: "PENDING", error: null } });
     await prisma.schedule.update({ where: { id }, data: { status: "SCHEDULED", scheduledAt: new Date(), error: null } });
     void runDueSchedules();

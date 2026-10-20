@@ -1,4 +1,4 @@
-// Libellés lisibles des permissions Facebook demandées par ReplyKA
+// Libellés lisibles des permissions Facebook demandées par SuiteFlow
 const PERMISSION_LABELS: Record<string, string> = {
   pages_read_user_content: "lire les commentaires",
   pages_manage_engagement: "répondre aux commentaires",
