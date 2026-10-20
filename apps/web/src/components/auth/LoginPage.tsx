@@ -1,60 +1,93 @@
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Mail, Lock } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { SocialButtons } from "@/components/auth/SocialButtons";
-import { Divider } from "@/components/auth/Divider";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 
 export function LoginPage() {
   const nav = useNavigate();
   const loc = useLocation();
+  const [params, setParams] = useSearchParams();
   const { login } = useAuth();
   // Page demandée avant la redirection vers la connexion (session expirée)
   const from = (loc.state as { from?: string } | null)?.from;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [remember, setRemember] = useState(true);
+  // Retour de Facebook / Google avec un message (connexion annulée, e-mail non partagé…)
+  const [error, setError] = useState(params.get("oauth_error") ?? "");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async () => {
+  // Le message est affiché une fois : il ne réapparaît pas en rechargeant la page
+  useEffect(() => {
+    if (params.has("oauth_error")) setParams({}, { replace: true });
+  }, []);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.trim(), password, remember);
       // Sinon /app → page d'ouverture choisie dans les préférences. replace : « précédent » ne revient pas au formulaire.
       nav(from?.startsWith("/app") ? from : "/app", { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Connexion impossible");
+      setError(err instanceof ApiError ? err.message : "Connexion impossible, réessayez.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Connexion" subtitle="Heureux de vous revoir sur ReplyKA.">
+    <AuthShell title="Bon retour parmi nous" subtitle="Connectez-vous à votre espace ReplyKA.">
+      {error && <Alert variant="error" className="mb-5">{error}</Alert>}
       <SocialButtons />
-      <Divider />
-      <div className="flex flex-col gap-3">
-        <Field icon={Mail} type="email" placeholder="Adresse e-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Field icon={Lock} type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} toggle />
-        <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2" style={{ color: theme.textMuted }}>
-            <input type="checkbox" className="rounded" /> Se souvenir de moi
-          </label>
-          <Link to="/forgot-password" className="font-medium" style={{ color: theme.goldDark }}>Mot de passe oublié ?</Link>
-        </div>
-        {error && <p className="text-sm" style={{ color: theme.red }}>{error}</p>}
-        <Button variant="primary" size="lg" className="w-full mt-1 justify-center" icon={ArrowRight} onClick={handleSubmit} disabled={loading}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field
+          icon={Mail}
+          label="Adresse e-mail"
+          type="email"
+          name="email"
+          autoComplete="email"
+          placeholder="vous@exemple.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Field
+          icon={Lock}
+          label="Mot de passe"
+          type="password"
+          name="password"
+          autoComplete="current-password"
+          placeholder="Votre mot de passe"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          toggle
+          required
+          trailingLabel={
+            <Link to="/forgot-password" className="text-[13px] font-medium" style={{ color: theme.goldDark }}>
+              Mot de passe oublié ?
+            </Link>
+          }
+        />
+        <label className="flex w-fit cursor-pointer items-center gap-2 text-sm" style={{ color: theme.text }}>
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
+          Rester connecté
+        </label>
+        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading}>
           {loading ? "Connexion…" : "Se connecter"}
         </Button>
-      </div>
+      </form>
       <p className="mt-6 text-center text-sm" style={{ color: theme.textMuted }}>
-        Pas encore de compte ? <Link to="/register" className="font-semibold" style={{ color: theme.goldDark }}>Créer un compte</Link>
+        Pas encore de compte ?{" "}
+        <Link to="/register" className="font-semibold" style={{ color: theme.goldDark }}>Créer un compte</Link>
       </p>
     </AuthShell>
   );

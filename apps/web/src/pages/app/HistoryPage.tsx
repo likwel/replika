@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { ChevronDown, History, Loader2 } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
@@ -14,7 +14,6 @@ interface Ctx { sub: number }
 
 // Sous-menus de « Historique » (même ordre que dans data/menus.ts)
 const CATEGORY_OF_SUB: Array<HistoryCategory | undefined> = [undefined, "message", "connexion"];
-const TITLE_OF_SUB = ["Toutes les Actions", "Historique des Messages", "Connexions et Sécurité"];
 const EMPTY_OF_SUB = [
   "Les actions effectuées sur votre compte (réponses, programmations, connexions…) apparaîtront ici.",
   "Les réponses automatiques, commentaires et leads contactés apparaîtront ici.",
@@ -62,12 +61,10 @@ export function HistoryPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4">
-      <div>
-        <Title className="text-lg">{TITLE_OF_SUB[sub] ?? TITLE_OF_SUB[0]}</Title>
-        <p className="text-xs" style={{ color: theme.textMuted }}>
-          {sub === 0 ? "Tout ce qui s'est passé sur votre compte, le plus récent en premier." : "Filtré depuis l'historique complet de votre compte."}
-        </p>
-      </div>
+      <PageHeader
+        className="mb-1"
+        description={sub === 0 ? "Tout ce qui s'est passé sur votre compte, le plus récent en premier." : "Filtré depuis l'historique complet de votre compte."}
+      />
 
       {items === null ? (
         <ListSkeleton height={64} count={6} />

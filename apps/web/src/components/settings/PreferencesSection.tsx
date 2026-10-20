@@ -5,7 +5,7 @@ import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
 import { ApiError } from "@/lib/api";
 import { notifyPermission, requestNotifyPermission, showNotification, type NotifyPermission } from "@/lib/notify";
-import { profileApi, type DefaultPage, type Profile } from "@/lib/profile.api";
+import { profileApi, type AccentTheme, type DefaultPage, type Profile } from "@/lib/profile.api";
 import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingRow, SettingsCard } from "./SettingsUi";
 
@@ -14,6 +14,11 @@ const PAGES: Array<{ value: DefaultPage; label: string; icon: LucideIcon }> = [
   { value: "gestion", label: "Gestion", icon: LayoutDashboard },
   { value: "automatisation", label: "Automatisation", icon: Bot },
   { value: "statistiques", label: "Statistiques", icon: BarChart3 },
+];
+
+const ACCENTS: Array<{ value: AccentTheme; label: string; swatch: string }> = [
+  { value: "whatsapp", label: "Vert WhatsApp", swatch: "#008069" },
+  { value: "classic", label: "Doré classique", swatch: "#E5AC5F" },
 ];
 
 const PERMISSION_HINT: Record<NotifyPermission, string | null> = {
@@ -35,7 +40,10 @@ export function PreferencesSection() {
     profileApi.get().then(setProfile).catch(() => setError("Impossible de charger vos préférences."));
   }, []);
 
-  const save = async (patch: Partial<Pick<Profile, "autoReplyEnabled" | "defaultPage" | "desktopNotifications">>, message: string) => {
+  const save = async (
+    patch: Partial<Pick<Profile, "autoReplyEnabled" | "defaultPage" | "desktopNotifications" | "darkMode" | "accentTheme">>,
+    message: string,
+  ) => {
     const key = Object.keys(patch)[0] as keyof Profile;
     setSaving(key);
     setError(null);
@@ -43,7 +51,12 @@ export function PreferencesSection() {
     try {
       const updated = await profileApi.updatePreferences(patch);
       setProfile(updated);
-      updateUser({ defaultPage: updated.defaultPage, desktopNotifications: updated.desktopNotifications });
+      updateUser({
+        defaultPage: updated.defaultPage,
+        desktopNotifications: updated.desktopNotifications,
+        darkMode: updated.darkMode,
+        accentTheme: updated.accentTheme,
+      });
       setOk(message);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Enregistrement impossible.");
@@ -63,7 +76,7 @@ export function PreferencesSection() {
   };
 
   if (!profile) {
-    return error ? <Feedback error={error} /> : <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />;
+    return error ? <Feedback error={error} /> : <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
   }
 
   return (
@@ -80,6 +93,45 @@ export function PreferencesSection() {
             label="Réponses automatiques"
           />
         </SettingRow>
+      </SettingsCard>
+
+      <SettingsCard title="Apparence" description="Couleur d'accent et mode d'affichage de ReplyKA.">
+        <div className="flex flex-col gap-3">
+          <SettingRow label="Mode sombre" description="Bascule l'interface vers un fond sombre, plus confortable en faible luminosité.">
+            <Toggle
+              checked={profile.darkMode}
+              disabled={saving !== null}
+              onChange={(v) => save({ darkMode: v }, v ? "Mode sombre activé" : "Mode sombre désactivé")}
+              label="Mode sombre"
+            />
+          </SettingRow>
+          <div>
+            <p className="mb-2 text-[13px] font-semibold" style={{ color: theme.text }}>Couleur d'accent</p>
+            <div className="grid grid-cols-2 gap-2">
+              {ACCENTS.map((a) => {
+                const active = profile.accentTheme === a.value;
+                return (
+                  <button
+                    key={a.value}
+                    type="button"
+                    disabled={saving !== null}
+                    onClick={() => !active && save({ accentTheme: a.value }, `Accent « ${a.label} » appliqué`)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-3 text-sm font-medium transition-all"
+                    style={{
+                      background: active ? theme.goldSoft : theme.bg,
+                      border: `1px solid ${active ? theme.gold : theme.border}`,
+                      color: active ? theme.goldDark : theme.text,
+                    }}
+                    aria-pressed={active}
+                  >
+                    <span className="h-5 w-5 flex-shrink-0 rounded-full" style={{ background: a.swatch }} />
+                    {a.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </SettingsCard>
 
       <SettingsCard title="Alertes et Notifications">

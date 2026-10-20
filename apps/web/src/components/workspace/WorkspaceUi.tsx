@@ -36,7 +36,7 @@ export function FilterChips<T extends string>({
           >
             {f.label}
             {f.count ? (
-              <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: "#1A1410" }}>
+              <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: theme.onAccent }}>
                 {f.count}
               </span>
             ) : null}
@@ -95,7 +95,7 @@ export function ListSkeleton({ height = 88, count = 4 }: { height?: number; coun
   return (
     <div className="flex flex-col gap-2">
       {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="animate-pulse rounded-2xl" style={{ height, background: theme.bgCard }} />
+        <div key={i} className="animate-pulse rounded-2xl" style={{ height, background: theme.bg }} />
       ))}
     </div>
   );

@@ -3,23 +3,32 @@ import { catchAsync } from "../../utils/catchAsync.js";
 import { facebookService } from "./facebook.service.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
+import { consumeOAuthState, issueOAuthState } from "../../utils/oauthState.js";
 
 export const facebookController = {
   // GET /api/facebook/connect → renvoie l'URL de consentement
   connect: catchAsync(async (req: Request, res: Response) => {
-    const url = facebookService.buildAuthUrl(req.user!.userId);
+    const url = facebookService.buildAuthUrl(issueOAuthState(res, `pages:${req.user!.userId}`));
     res.json({ status: "success", data: { url } });
   }),
 
   // GET /api/facebook/callback → Meta redirige ici
   callback: catchAsync(async (req: Request, res: Response) => {
     const { code, state, error } = req.query as Record<string, string>;
+    // Le compte à relier vient du state émis par /connect pour CE navigateur : un lien Facebook fabriqué par
+    // un tiers (avec son propre identifiant) ne peut plus rattacher les Pages d'une victime à son compte.
+    const purpose = consumeOAuthState(req, res, state);
     if (error) return res.redirect(`${env.clientUrl}/app/connexions?fb=denied`);
+    if (!purpose?.startsWith("pages:") || !code) {
+      const reason = "La demande de connexion à Facebook a expiré : relancez-la depuis Connexions.";
+      return res.redirect(`${env.clientUrl}/app/connexions?${new URLSearchParams({ fb: "error", reason })}`);
+    }
+    const userId = purpose.slice("pages:".length);
 
     // Retour dans l'application dans tous les cas (le navigateur arrive ici depuis Facebook)
     let result: Awaited<ReturnType<typeof facebookService.handleCallback>>;
     try {
-      result = await facebookService.handleCallback(code, state);
+      result = await facebookService.handleCallback(code, userId);
     } catch (e) {
       const reason = e instanceof AppError ? e.message : "Connexion à Facebook impossible, réessayez.";
       if (!(e instanceof AppError)) console.error("❌ Connexion Facebook :", e);

@@ -111,7 +111,7 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
       footer={
         <>
           {error && <p className="mr-auto flex items-center gap-1 text-xs" style={{ color: theme.red }}><AlertTriangle size={12} /> {error}</p>}
-          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#15803d" }}>{ok}</p>}
+          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#166534" }}>{ok}</p>}
           {order && (
             <Button variant="ghost" size="sm" icon={Trash2} onClick={remove} disabled={busy !== null}>Supprimer</Button>
           )}

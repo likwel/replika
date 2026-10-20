@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Package, ShoppingBag, Store, Wallet } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Link2, Package, ShoppingBag, Store, Wallet } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { StatCard } from "@/components/ui/StatCard";
 import { ApiError } from "@/lib/api";
 import { accountApi, type SocialAccount } from "@/lib/account.api";
 import {
   marketplaceApi,
   formatAriaryMk,
+  NO_CATALOG,
   type ListingStatus,
   type MarketplaceListing,
   type MarketplaceOrder,
@@ -20,33 +23,27 @@ import { MarketplaceOrdersTable } from "@/components/marketplace/MarketplaceOrde
 import { MarketplaceOrderEditor } from "@/components/marketplace/MarketplaceOrderEditor";
 import { CatalogPanel } from "@/components/marketplace/CatalogPanel";
 
-interface Ctx { sub: number }
+interface Ctx { sub: number; setSub: (i: number) => void }
+
+const CATALOG_SUB = 2; // Gescom → Catalogue
+
+// noCatalog : la Page n'a pas de catalogue Facebook — ce n'est pas une erreur, on propose d'en connecter un
+type Notice = { ok?: string; error?: string; noCatalog?: string };
 
 function StatsRow({ stats }: { stats: MarketplaceStats | null }) {
-  const card = (label: string, value: string, Icon: LucideIcon, color: string) => (
-    <div className="rounded-2xl p-3" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-center gap-2">
-        <span className="rounded-lg p-1.5" style={{ background: `${color}1A`, border: `1px solid ${color}2E` }}>
-          <Icon size={14} style={{ color }} />
-        </span>
-        <span className="truncate text-[11px]" style={{ color: theme.textMuted }}>{label}</span>
-      </div>
-      <p className="mt-1.5 text-lg font-bold" style={{ color: theme.text }}>{value}</p>
-    </div>
-  );
   if (!stats) return null;
   return (
     <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-      {card("Annonces en ligne", String(stats.activeListings), Store, theme.green)}
-      {card("Annonces", String(stats.listings), Package, "#3B82F6")}
-      {card("Commandes", String(stats.orders), ShoppingBag, theme.amber)}
-      {card("Chiffre d'affaires", formatAriaryMk(stats.revenue), Wallet, theme.goldDark)}
+      <StatCard icon={Store} label="Annonces en ligne" value={String(stats.activeListings)} color={theme.green} />
+      <StatCard icon={Package} label="Annonces" value={String(stats.listings)} color="#3B82F6" />
+      <StatCard icon={ShoppingBag} label="Commandes" value={String(stats.orders)} color={theme.amber} />
+      <StatCard icon={Wallet} label="Chiffre d'affaires" value={formatAriaryMk(stats.revenue)} color={theme.goldDark} />
     </div>
   );
 }
 
 export function MarketplacePage() {
-  const { sub } = useOutletContext<Ctx>();
+  const { sub, setSub } = useOutletContext<Ctx>();
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [listings, setListings] = useState<MarketplaceListing[] | null>(null);
   const [orders, setOrders] = useState<MarketplaceOrder[] | null>(null);
@@ -56,7 +53,7 @@ export function MarketplacePage() {
   const [editing, setEditing] = useState<MarketplaceListing | "new" | null>(null);
   const [editingOrder, setEditingOrder] = useState<MarketplaceOrder | "new" | null>(null);
   const [pushing, setPushing] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ ok?: string; error?: string } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const loadListings = () => marketplaceApi.listings().then(setListings).catch(() => setListings([]));
   const loadOrders = () => marketplaceApi.orders().then(setOrders).catch(() => setOrders([]));
@@ -74,7 +71,13 @@ export function MarketplacePage() {
     setEditing(null);
     loadStats();
     // L'API tente la publication vers Facebook à l'enregistrement : on dit toujours ce qu'il en est
-    if (l.push) setNotice(l.push.ok ? { ok: l.push.message } : { error: l.push.message });
+    if (!l.push) return;
+    if (l.push.ok) setNotice({ ok: l.push.message });
+    else if (l.push.code === NO_CATALOG) {
+      setNotice({
+        noCatalog: `« ${l.title} » est enregistrée dans Gescom, mais pas encore sur Facebook : la Page « ${l.account.name} » n'a pas de catalogue connecté.`,
+      });
+    } else setNotice({ error: l.push.message });
   };
 
   // Publication à la demande d'une annonce précise
@@ -86,7 +89,11 @@ export function MarketplacePage() {
       setNotice({ ok: `« ${l.title} » publiée dans votre Catalogue Facebook.` });
       loadListings();
     } catch (e) {
-      setNotice({ error: e instanceof ApiError ? e.message : "Publication impossible." });
+      if (e instanceof ApiError && e.code === NO_CATALOG) {
+        setNotice({ noCatalog: `Pour publier « ${l.title} » sur Facebook, connectez d'abord un catalogue à la Page « ${l.account.name} ».` });
+      } else {
+        setNotice({ error: e instanceof ApiError ? e.message : "Publication impossible." });
+      }
     } finally {
       setPushing(null);
     }
@@ -110,27 +117,48 @@ export function MarketplacePage() {
     loadListings();
   };
 
+  const bulkStatus = async (ids: string[], status: ListingStatus) => {
+    await marketplaceApi.bulkUpdateStatus(ids, status);
+    loadListings();
+    loadStats();
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Title className="text-[17px]">Gescom · Gestion commerciale</Title>
-        <p className="mt-0.5 text-xs" style={{ color: theme.textMuted }}>
-          Vos produits publiés sur Facebook Marketplace, importés depuis votre Catalogue Facebook, et le suivi des commandes
-          des acheteurs qui vous contactent.
-        </p>
-      </div>
+      <PageHeader
+        className="mb-1"
+        title="Gescom"
+        description="Vos produits publiés sur Facebook Marketplace, importés depuis votre Catalogue Facebook, et le suivi des commandes des acheteurs qui vous contactent."
+      />
 
       <StatsRow stats={stats} />
 
-      {notice && (
-        <p
-          className="flex items-start gap-2 rounded-xl px-4 py-2.5 text-xs"
-          style={{ background: notice.error ? "#FDECEC" : theme.greenSoft, color: notice.error ? theme.red : theme.green }}
+      {notice?.noCatalog ? (
+        <Alert
+          variant="info"
+          icon={Link2}
+          onClose={() => setNotice(null)}
+          action={
+            <Button
+              size="sm"
+              icon={Link2}
+              onClick={() => {
+                setNotice(null);
+                setSub(CATALOG_SUB);
+              }}
+            >
+              Connecter un catalogue
+            </Button>
+          }
         >
-          {notice.error ? <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" /> : <CheckCircle2 size={13} className="mt-0.5 flex-shrink-0" />}
-          <span className="min-w-0 flex-1">{notice.error ?? notice.ok}</span>
-          <button onClick={() => setNotice(null)} aria-label="Fermer" className="flex-shrink-0 font-bold">×</button>
-        </p>
+          {notice.noCatalog}
+        </Alert>
+      ) : (
+        notice && (
+          <Alert variant={notice.error ? "error" : "success"} onClose={() => setNotice(null)}>
+            {notice.error ?? notice.ok}
+          </Alert>
+        )
       )}
 
       {sub === 2 ? (
@@ -153,6 +181,7 @@ export function MarketplacePage() {
           onEdit={setEditing}
           onDelete={removeListing}
           onPush={pushListing}
+          onBulkStatus={bulkStatus}
           pushing={pushing}
         />
       )}

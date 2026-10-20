@@ -20,10 +20,10 @@ interface Props {
 
 const STEPS = ["Source", "Articles", "Messages"] as const;
 const LIVE_LABEL: Record<string, { label: string; color: string }> = {
-  LIVE: { label: "EN DIRECT", color: "#dc2626" },
-  VOD: { label: "Rediffusion", color: "#6b7280" },
-  LIVE_STOPPED: { label: "Terminé", color: "#6b7280" },
-  SCHEDULED_UNPUBLISHED: { label: "Programmé", color: "#2563eb" },
+  LIVE: { label: "EN DIRECT", color: "#B91C1C" },
+  VOD: { label: "Rediffusion", color: "#4B5563" },
+  LIVE_STOPPED: { label: "Terminé", color: "#4B5563" },
+  SCHEDULED_UNPUBLISHED: { label: "Programmé", color: "#1D4ED8" },
 };
 
 export function NewSessionWizard({ onClose, onCreated }: Props) {
@@ -105,7 +105,7 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
 
   const sourceItem = (s: LiveSource) => {
     const on = source?.objectId === s.objectId;
-    const badge = s.type === "live" ? (LIVE_LABEL[s.status] ?? { label: s.status, color: "#6b7280" }) : null;
+    const badge = s.type === "live" ? (LIVE_LABEL[s.status] ?? { label: s.status, color: "#4B5563" }) : null;
     return (
       <li key={`${s.type}:${s.objectId}`}>
         <button
@@ -144,7 +144,7 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
         <span className="flex items-center gap-2">
           {STEPS.map((s, i) => (
             <span key={s} className="flex items-center gap-1" style={{ color: i === step ? theme.goldDark : theme.textMuted, fontWeight: i === step ? 600 : 400 }}>
-              <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ background: i <= step ? theme.gold : theme.border, color: "#1A1410" }}>
+              <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ background: i <= step ? theme.gold : theme.border, color: theme.onAccent }}>
                 {i < step ? <Check size={9} /> : i + 1}
               </span>
               {s}

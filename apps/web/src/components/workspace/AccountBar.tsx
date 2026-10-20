@@ -123,7 +123,7 @@ export function AccountBar({ accounts, selected, onChange }: Props) {
               <span className="max-w-[140px] truncate">{a.accountName}</span>
               {a.syncError && <AlertTriangle size={13} style={{ color: active ? "#F5A097" : theme.red }} />}
               {a.pending > 0 && (
-                <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: "#1A1410" }}>
+                <span className="rounded-full px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: theme.onAccent }}>
                   {a.pending}
                 </span>
               )}

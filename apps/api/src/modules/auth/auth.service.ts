@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from "../../utils/password.js";
 import { sessionToken } from "../../utils/session.js";
 import { AppError } from "../../utils/AppError.js";
 import type { RegisterInput, LoginInput } from "./auth.schema.js";
+import { PROVIDER_LABEL, type SocialProfile } from "./social.service.js";
 
 type ClientInfo = { ip: string | null; ua: string | null };
 
@@ -18,6 +19,8 @@ export function publicUser(u: User) {
     avatarUrl: u.avatarUrl,
     defaultPage: u.defaultPage,
     desktopNotifications: u.desktopNotifications,
+    darkMode: u.darkMode,
+    accentTheme: u.accentTheme,
   };
 }
 
@@ -40,6 +43,46 @@ export const authService = {
       throw new AppError("E-mail ou mot de passe incorrect", 401);
     }
     await prisma.activityLog.create({ data: { userId: user.id, action: "LOGIN", meta: client } });
+    return { user: publicUser(user), token: sessionToken(user) };
+  },
+
+  // Connexion / inscription via Facebook ou Google
+  async socialLogin(profile: SocialProfile, client: ClientInfo) {
+    const label = PROVIDER_LABEL[profile.provider];
+    const link = profile.provider === "facebook" ? { facebookId: profile.providerId } : { googleId: profile.providerId };
+
+    let user = await prisma.user.findUnique({ where: link });
+    let created = false;
+
+    if (!user) {
+      if (!profile.email) {
+        throw new AppError(`${label} n'a pas partagé votre adresse e-mail : créez votre compte avec votre e-mail et un mot de passe.`, 422);
+      }
+      const existing = await prisma.user.findFirst({ where: { email: { equals: profile.email, mode: "insensitive" } } });
+      if (existing) {
+        // Rattacher une identité à un compte existant exige une adresse garantie par le fournisseur,
+        // sinon n'importe qui pourrait prendre la main sur un compte en déclarant son e-mail.
+        if (!profile.emailVerified) {
+          throw new AppError("Un compte ReplyKA existe déjà avec cette adresse : connectez-vous avec votre mot de passe.", 409);
+        }
+        user = await prisma.user.update({ where: { id: existing.id }, data: link });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            name: profile.name.trim().slice(0, 80) || profile.email,
+            email: profile.email,
+            // Mot de passe aléatoire inconnu de tous : la personne se connecte via le fournisseur
+            password: await hashPassword(crypto.randomBytes(32).toString("hex")),
+            ...link,
+          },
+        });
+        created = true;
+      }
+    }
+
+    await prisma.activityLog.create({
+      data: { userId: user.id, action: created ? "REGISTER" : "LOGIN", meta: { ...client, provider: profile.provider } },
+    });
     return { user: publicUser(user), token: sessionToken(user) };
   },
 

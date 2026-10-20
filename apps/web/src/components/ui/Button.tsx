@@ -11,28 +11,29 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: LucideIcon;
 }
 
-const sizes: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2.5 text-sm",
-  lg: "px-6 py-3 text-base",
+const sizes: Record<Size, { cls: string; icon: number }> = {
+  sm: { cls: "h-7 px-2.5 text-[13px] gap-1.5", icon: 14 },
+  md: { cls: "h-8 px-3 text-sm gap-1.5", icon: 15 },
+  lg: { cls: "h-10 px-4 text-[15px] gap-2", icon: 16 },
 };
 
 const variants: Record<Variant, React.CSSProperties> = {
-  primary: { background: theme.gold, color: "#1A1410" },
+  primary: { background: theme.gold, color: theme.onAccent },
   danger: { background: theme.red, color: "#fff" },
-  ghost: { background: "transparent", color: theme.text, border: `1px solid ${theme.border}` },
+  ghost: { background: theme.bgCard, color: theme.text, boxShadow: `inset 0 0 0 1px ${theme.border}` },
   dark: { background: theme.bgDark, color: "#fff" },
   soft: { background: theme.goldSoft, color: theme.goldDark },
 };
 
 export function Button({ children, variant = "primary", icon: Icon, size = "md", className = "", ...props }: Props) {
+  const s = sizes[size];
   return (
     <button
-      className={`inline-flex items-center gap-2 rounded-xl font-medium transition-all hover:brightness-95 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${sizes[size]} ${className}`}
+      className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-md font-medium transition-[filter,background-color] hover:brightness-[0.96] active:brightness-[0.92] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40 disabled:cursor-not-allowed disabled:opacity-50 ${s.cls} ${className}`}
       style={variants[variant]}
       {...props}
     >
-      {Icon && <Icon size={16} />}
+      {Icon && <Icon size={s.icon} />}
       {children}
     </button>
   );

@@ -61,7 +61,10 @@ export interface MarketplaceListing {
 export interface PushState {
   ok: boolean;
   message: string;
+  code?: string; // NO_CATALOG : la Page n'a pas encore de catalogue Facebook
 }
+
+export const NO_CATALOG = "NO_CATALOG";
 
 export interface MarketplaceListingDetail extends MarketplaceListing {
   orders: MarketplaceOrder[];
@@ -112,6 +115,8 @@ export const marketplaceApi = {
   createListing: (body: ListingInput) => d(api.post<Res<MarketplaceListing>>("/marketplace/listings", body)),
   updateListing: (id: string, body: Partial<ListingInput>) => d(api.patch<Res<MarketplaceListing>>(`/marketplace/listings/${id}`, body)),
   removeListing: (id: string) => api.delete<void>(`/marketplace/listings/${id}`),
+  bulkUpdateStatus: (ids: string[], status: ListingStatus) =>
+    d(api.patch<Res<{ updated: number }>>("/marketplace/listings/bulk-status", { ids, status })),
 
   orders: (filters: { listingId?: string; status?: MarketplaceOrderStatus[] } = {}) => {
     const q = new URLSearchParams();
@@ -138,7 +143,7 @@ export const marketplaceApi = {
 export const LISTING_STATUS: Record<ListingStatus, { label: string; color: string; bg: string }> = {
   ACTIVE: { label: "En ligne", color: theme.green, bg: theme.greenSoft },
   SOLD_OUT: { label: "Épuisé", color: theme.amber, bg: theme.amberSoft },
-  ARCHIVED: { label: "Archivé", color: "#6b7280", bg: "#F3F4F6" },
+  ARCHIVED: { label: "Archivé", color: "#4B5563", bg: "#F3F4F6" },
 };
 
 export const formatAriaryMk = (n: number | null | undefined) =>
@@ -146,7 +151,7 @@ export const formatAriaryMk = (n: number | null | undefined) =>
 
 export const MARKETPLACE_ORDER_STATUS: Record<MarketplaceOrderStatus, { label: string; color: string; bg: string }> = {
   NEW: { label: "Nouveau", color: theme.textMuted, bg: theme.bg },
-  CONTACTED: { label: "Contacté", color: "#2563eb", bg: "#E8F0FE" },
+  CONTACTED: { label: "Contacté", color: "#1D4ED8", bg: "#E8F0FE" },
   CONFIRMED: { label: "Confirmé", color: theme.green, bg: theme.greenSoft },
   DELIVERED: { label: "Livré", color: theme.goldDark, bg: theme.goldSoft },
   CANCELED: { label: "Annulé", color: theme.red, bg: "#FDECEC" },

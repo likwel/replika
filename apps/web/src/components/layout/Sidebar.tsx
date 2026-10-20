@@ -1,124 +1,220 @@
-import { LogOut } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { LogoMark } from "@/components/ui/Logo";
+import { StatusDot } from "@/components/ui/StatusDot";
 import { MENUS } from "@/data/menus";
 import { getRenderedSub } from "@/lib/menu";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/hooks/useOnline";
-import { StatusDot } from "@/components/ui/StatusDot";
+import type { Menu } from "@/types";
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+
+const SECTIONS: Array<{ label: string; ids: string[] }> = [
+  { label: "Espace de travail", ids: ["hub", "conn"] },
+  { label: "Ventes", ids: ["live", "market", "leads"] },
+  { label: "Automatisation", ids: ["plan", "auto"] },
+  { label: "Analyse", ids: ["stat"] },
+];
 
 interface Props {
   active: string;
-  setActive: (id: string) => void;
   sub: number;
-  setSub: (i: number) => void;
+  attention: number;
+  onNavigate: (menuId: string, sub: number) => void;
+  onOpenSearch: () => void;
+  onCollapse: () => void;
 }
 
-export function Sidebar({ active, setActive, sub, setSub }: Props) {
-  const current = MENUS.find((m) => m.id === active) || MENUS[0];
-  const rendered = getRenderedSub(current);
-  const { logout } = useAuth();
-  const nav = useNavigate();
+export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCollapse }: Props) {
   const online = useOnline();
-  const handleLogout = async () => {
-    await logout();
-    nav("/login");
-  };
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([active]));
+
+  // Le menu ouvert est toujours déplié
+  useEffect(() => {
+    setExpanded((s) => (s.has(active) ? s : new Set(s).add(active)));
+  }, [active]);
+
+  const toggle = (id: string) =>
+    setExpanded((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const byId = (id: string) => MENUS.find((m) => m.id === id && !m.hidden);
+  const listed = new Set(SECTIONS.flatMap((s) => s.ids));
+  const others = MENUS.filter((m) => !m.hidden && !listed.has(m.id));
+  const sections = [
+    ...SECTIONS.map((s) => ({ label: s.label, menus: s.ids.map(byId).filter((m): m is Menu => Boolean(m)) })),
+    ...(others.length ? [{ label: "Autres", menus: others }] : []),
+  ];
 
   return (
-    <div className="hidden md:flex h-full">
-      <div className="flex w-[68px] flex-col items-center py-3" style={{ background: theme.bgDark }}>
-        <LogoMark size={36} className="mb-3" />
-        <nav className="no-scrollbar flex flex-1 flex-col gap-0.5 overflow-y-auto">
-          {MENUS.filter((m) => !m.hidden).map((m) => {
-            const isActive = active === m.id || MENUS.find((x) => x.id === active)?.iconRailAlias === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => { setActive(m.id); setSub(0); }}
-                className="group relative flex w-[60px] flex-col items-center gap-1 rounded-xl py-1.5 transition-colors"
-                style={{ background: isActive ? "rgba(255,255,255,0.06)" : "transparent" }}
-                title={m.label}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full" style={{ background: m.color }} />
-                )}
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-[10px] transition-all group-hover:scale-105"
-                  style={{
-                    background: isActive ? `${m.color}2E` : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${isActive ? `${m.color}66` : "transparent"}`,
-                  }}
-                >
-                  <m.icon size={17} style={{ color: m.color, opacity: isActive ? 1 : 0.8 }} />
-                </span>
-                <span
-                  className="max-w-[58px] truncate px-0.5 text-[8.5px] font-semibold leading-tight"
-                  style={{ color: isActive ? "#FFFFFF" : "#FFFFFF66" }}
-                >
-                  {m.short ?? m.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+    <aside className="group flex h-full w-[248px] flex-col" style={{ background: theme.sidebar, borderRight: `1px solid ${theme.border}` }}>
+      {/* Espace de travail */}
+      <div className="flex items-center gap-1 px-2 pb-1 pt-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
+          <LogoMark size={22} />
+          <span className="truncate text-[14px] font-semibold" style={{ color: theme.text }}>ReplyKA</span>
+        </div>
         <button
-          onClick={handleLogout}
-          className="mt-2 rounded-xl p-2 transition-colors hover:bg-white/5"
-          title="Se déconnecter"
-          aria-label="Se déconnecter"
+          onClick={onCollapse}
+          className="rounded-md p-1 transition-opacity hover:bg-black/5 md:opacity-0 md:group-hover:opacity-100"
+          title="Masquer la barre latérale"
+          aria-label="Masquer la barre latérale"
         >
-          <LogOut size={18} color="#8A817899" />
+          <ChevronsLeft size={17} style={{ color: theme.textMuted }} />
         </button>
       </div>
 
-      <div className="flex w-[198px] flex-col py-3.5" style={{ background: theme.bgDark2 }}>
-        <div className="mb-2.5 flex items-center gap-2 px-4">
-          <span className="flex h-6 w-6 items-center justify-center rounded-lg" style={{ background: `${current.color}26` }}>
-            <current.icon size={13} style={{ color: current.color }} />
-          </span>
-          <p className="truncate text-[11px] font-bold uppercase tracking-wider" style={{ color: "#FFFFFFDD" }}>
-            {current.label}
-          </p>
-        </div>
+      {/* Accès rapides */}
+      <div className="flex flex-col gap-px px-2">
+        <Row icon={Search} label="Rechercher" onClick={onOpenSearch} trailing={<Kbd>{IS_MAC ? "⌘K" : "Ctrl K"}</Kbd>} />
+        <Row
+          icon={Inbox}
+          label="À traiter"
+          active={active === "hub" && sub === 2}
+          onClick={() => onNavigate("hub", 2)}
+          trailing={
+            attention > 0 && (
+              <span className="rounded px-1.5 text-[11px] font-semibold leading-[18px]" style={{ background: theme.red, color: "#fff" }}>
+                {attention > 99 ? "99+" : attention}
+              </span>
+            )
+          }
+        />
+        <Row icon={History} label="Historique" active={active === "hist"} onClick={() => onNavigate("hist", 0)} />
+      </div>
 
-        <nav className="no-scrollbar flex flex-1 flex-col gap-px overflow-y-auto px-2.5">
-          {rendered.map((item) => {
-            const isActive = item.menuId === active && item.index === sub;
+      {/* Arborescence */}
+      <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-3">
+        {sections.map((section) => (
+          <div key={section.label} className="mt-3">
+            <p className="mb-0.5 px-2 text-[12px] font-medium" style={{ color: theme.textMuted }}>{section.label}</p>
+            {section.menus.map((m) => (
+              <TreeItem
+                key={m.id}
+                menu={m}
+                active={active}
+                sub={sub}
+                expanded={expanded.has(m.id)}
+                onToggle={() => toggle(m.id)}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      <div className="flex flex-col gap-px px-2 py-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+        <a href="/guide" target="_blank" rel="noreferrer" className="block">
+          <Row icon={BookOpen} label="Guide d'utilisation" />
+        </a>
+        <p className="flex items-center gap-2 px-2.5 py-1 text-[12px]" style={{ color: online ? theme.green : theme.textMuted }}>
+          <StatusDot color={online ? theme.greenLight : theme.textMuted} size={7} pulse={online} />
+          {online ? "En ligne" : "Hors ligne"}
+        </p>
+      </div>
+    </aside>
+  );
+}
+
+// Raccourci clavier : inutile sur écran tactile (tiroir mobile), masqué en petit écran
+function Kbd({ children }: { children: ReactNode }) {
+  return (
+    <span className="hidden rounded px-1 text-[10.5px] font-medium md:inline" style={{ color: theme.textMuted, boxShadow: `inset 0 0 0 1px ${theme.border}` }}>
+      {children}
+    </span>
+  );
+}
+
+interface RowProps {
+  icon: LucideIcon;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+  trailing?: ReactNode;
+}
+
+function Row({ icon: Icon, label, active, onClick, trailing }: RowProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex h-[30px] w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[14px] transition-colors hover:bg-black/5"
+      style={{ background: active ? theme.active : undefined, color: active ? theme.text : theme.textMuted, fontWeight: active ? 500 : 400 }}
+    >
+      <Icon size={17} className="flex-shrink-0" />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {trailing}
+    </button>
+  );
+}
+
+interface TreeItemProps {
+  menu: Menu;
+  active: string;
+  sub: number;
+  expanded: boolean;
+  onToggle: () => void;
+  onNavigate: (menuId: string, sub: number) => void;
+}
+
+function TreeItem({ menu, active, sub, expanded, onToggle, onNavigate }: TreeItemProps) {
+  const isActive = active === menu.id;
+  const items = getRenderedSub(menu);
+  const leaf = items.length <= 1; // une seule vue : pas de sous-pages à déplier
+  const open = expanded && !leaf;
+  // Ouvert et déplié : la sous-page courante porte la surbrillance, pas le parent
+  const highlight = isActive && !open;
+
+  return (
+    <div>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onNavigate(menu.id, 0)}
+        onKeyDown={(e) => e.key === "Enter" && onNavigate(menu.id, 0)}
+        className="flex h-[30px] cursor-pointer items-center gap-1 rounded-md pl-1 pr-2 text-[14px] transition-colors hover:bg-black/5"
+        style={{ background: highlight ? theme.active : undefined, color: isActive ? theme.text : theme.textMuted, fontWeight: isActive ? 500 : 400 }}
+      >
+        {leaf ? (
+          <span className="h-5 w-5 flex-shrink-0" />
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded hover:bg-black/5"
+            aria-label={open ? `Replier ${menu.label}` : `Déplier ${menu.label}`}
+            aria-expanded={open}
+          >
+            <ChevronRight size={13} className="transition-transform duration-150" style={{ transform: open ? "rotate(90deg)" : undefined }} />
+          </button>
+        )}
+        <menu.icon size={17} className="flex-shrink-0" style={{ color: isActive ? menu.color : undefined }} />
+        <span className="ml-1 min-w-0 flex-1 truncate">{menu.label}</span>
+      </div>
+
+      {open && (
+        <div className="flex flex-col gap-px pb-1">
+          {items.map((item) => {
+            const subActive = item.menuId === active && item.index === sub;
             return (
-              <div key={`${item.menuId}-${item.index}`}>
-                {item.dividerLabel && (
-                  <p className="mb-1 mt-3 px-2.5 text-[9.5px] font-bold uppercase tracking-wider first:mt-0" style={{ color: "#FFFFFF4D" }}>
-                    {item.dividerLabel}
-                  </p>
-                )}
-                <button
-                  onClick={() => { setActive(item.menuId); setSub(item.index); }}
-                  className="relative flex w-full items-center rounded-lg py-[7px] pl-3 pr-2.5 text-left text-[13px] transition-colors hover:bg-white/5"
-                  style={{
-                    color: isActive ? "#FFFFFF" : "#FFFFFF8C",
-                    background: isActive ? `${current.color}24` : "transparent",
-                    fontWeight: isActive ? 600 : 400,
-                  }}
-                >
-                  {isActive && (
-                    <span className="absolute left-0.5 top-1.5 bottom-1.5 w-[2px] rounded-full" style={{ background: current.color }} />
-                  )}
-                  <span className="truncate">{item.label}</span>
-                </button>
-              </div>
+              <button
+                key={`${item.menuId}-${item.index}`}
+                onClick={() => onNavigate(item.menuId, item.index)}
+                className="flex h-[28px] w-full items-center rounded-md pl-[38px] pr-2 text-left text-[13.5px] transition-colors hover:bg-black/5"
+                style={{ background: subActive ? theme.active : undefined, color: subActive ? theme.text : theme.textMuted, fontWeight: subActive ? 500 : 400 }}
+              >
+                <span className="truncate">{item.label}</span>
+              </button>
             );
           })}
-        </nav>
-
-        <div className="mt-2 px-4 pt-2.5" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <span className="flex items-center gap-2 text-[10.5px] font-medium" style={{ color: online ? theme.greenLight : "#FFFFFF66" }}>
-            <StatusDot color={online ? theme.greenLight : "#FFFFFF66"} size={7} pulse={online} />
-            {online ? "En ligne" : "Hors ligne"}
-          </span>
         </div>
-      </div>
+      )}
     </div>
   );
 }

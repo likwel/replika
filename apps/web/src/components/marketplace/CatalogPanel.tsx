@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Download, Facebook, Info, Link2, Loader2, RefreshCw, Unlink, Upload } from "lucide-react";
+import { Download, Facebook, Info, Link2, Loader2, RefreshCw, Unlink, Upload } from "lucide-react";
 import { facebookApi } from "@/lib/facebook.api";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { ApiError } from "@/lib/api";
@@ -100,21 +101,16 @@ export function CatalogPanel({ onSynced }: Props) {
 
       {/* Prérequis bloquant, affiché sans attendre un clic : c'est la cause n°1 d'une publication qui « ne fait rien » */}
       {accounts && accounts.length > 0 && !accounts[0].facebookLinked && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl px-4 py-3 text-xs" style={{ background: "#FDECEC", color: theme.red }}>
-          <AlertTriangle size={15} className="flex-shrink-0" />
-          <span className="min-w-0 flex-1">
-            <strong>Facebook n'est pas encore relié à votre catalogue.</strong> Reconnectez-vous une fois en laissant toutes les autorisations
-            cochées : tant que ce lien manque, vos annonces restent dans Gescom et ne partent pas sur Facebook.
-          </span>
-          <Button size="sm" variant="danger" icon={Facebook} onClick={() => facebookApi.connect()}>Reconnecter Facebook</Button>
-        </div>
+        <Alert
+          variant="error"
+          action={<Button size="sm" variant="danger" icon={Facebook} onClick={() => facebookApi.connect()}>Reconnecter Facebook</Button>}
+        >
+          <strong>Facebook n'est pas encore relié à votre catalogue.</strong> Reconnectez-vous une fois en laissant toutes les autorisations
+          cochées : tant que ce lien manque, vos annonces restent dans Gescom et ne partent pas sur Facebook.
+        </Alert>
       )}
 
-      {message && (
-        <p className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs" style={{ background: message.error ? "#FDECEC" : theme.goldSoft, color: message.error ? theme.red : theme.goldDark }}>
-          {message.error ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />} {message.error ?? message.ok}
-        </p>
-      )}
+      {message && <Alert variant={message.error ? "error" : "success"}>{message.error ?? message.ok}</Alert>}
 
       <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

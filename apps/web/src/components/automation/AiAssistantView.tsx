@@ -54,7 +54,7 @@ export function AiAssistantView() {
   const onSaved = (updated: AiAccount) =>
     setOverview((o) => o && { ...o, accounts: o.accounts.map((a) => (a.id === updated.id ? updated : a)) });
 
-  if (loading) return <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />;
+  if (loading) return <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
   if (!overview) {
     return (
       <div className="rounded-2xl p-8 text-center text-sm" style={{ ...card, color: theme.textMuted }}>

@@ -3,6 +3,7 @@ import { AlertTriangle, Loader2, Mail, MessageCircle, MessagesSquare, Phone, Rad
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ApiError } from "@/lib/api";
 import { formatDateTime, timeAgo } from "@/lib/format";
@@ -84,7 +85,7 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
   if (!lead) {
     return (
       <Modal title="Fiche du Lead" onClose={onClose} size="lg">
-        {error ? <p className="text-sm" style={{ color: theme.red }}>{error}</p> : <div className="h-40 animate-pulse rounded-xl" style={{ background: theme.bg }} />}
+        {error ? <Alert variant="error">{error}</Alert> : <div className="h-40 animate-pulse rounded-xl" style={{ background: theme.bg }} />}
       </Modal>
     );
   }
@@ -106,7 +107,7 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
       footer={
         <>
           {error && <p className="mr-auto flex items-center gap-1 text-xs" style={{ color: theme.red }}><AlertTriangle size={12} /> {error}</p>}
-          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#15803d" }}>{ok}</p>}
+          {ok && !error && <p className="mr-auto text-xs" style={{ color: "#166534" }}>{ok}</p>}
           <Button variant="ghost" size="sm" icon={Trash2} onClick={remove} disabled={busy !== null}>Retirer</Button>
           <Button size="sm" onClick={save} disabled={busy !== null}>
             {busy === "save" ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />} Enregistrer
@@ -194,7 +195,7 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
                 {m.kind === "DIRECT" ? (
                   <MessagesSquare size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#0d9488" }} />
                 ) : (
-                  <MessageCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#7c3aed" }} />
+                  <MessageCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#6D28D9" }} />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="whitespace-pre-line break-words text-sm" style={{ color: theme.text }}>{m.content}</p>

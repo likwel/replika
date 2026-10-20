@@ -2,18 +2,18 @@ import { theme } from "@/theme";
 import type { Lead, LeadStatus, Temperature } from "@/lib/lead.api";
 
 export const LEAD_STATUS: Record<LeadStatus, { label: string; color: string; bg: string }> = {
-  NEW: { label: "À contacter", color: "#2563eb", bg: "#E8F0FE" },
-  CONTACTED: { label: "Contacté", color: "#b45309", bg: "#FEF3C7" },
-  QUALIFIED: { label: "Qualifié", color: "#7c3aed", bg: "#F1ECFE" },
-  WON: { label: "Gagné", color: "#15803d", bg: "#E7F6EC" },
+  NEW: { label: "À contacter", color: "#1D4ED8", bg: "#E8F0FE" },
+  CONTACTED: { label: "Contacté", color: "#92400E", bg: "#FEF3C7" },
+  QUALIFIED: { label: "Qualifié", color: "#6D28D9", bg: "#F1ECFE" },
+  WON: { label: "Gagné", color: "#166534", bg: "#E7F6EC" },
   LOST: { label: "Perdu", color: theme.textMuted, bg: theme.bg },
 };
 export const LEAD_STATUSES = Object.keys(LEAD_STATUS) as LeadStatus[];
 
 export const TEMPERATURE: Record<Temperature, { label: string; emoji: string; color: string; bg: string }> = {
-  hot: { label: "Chaud", emoji: "🔥", color: "#dc2626", bg: "#FDECEC" },
-  warm: { label: "Tiède", emoji: "🌤️", color: "#d97706", bg: "#FEF3C7" },
-  cold: { label: "Froid", emoji: "❄️", color: "#2563eb", bg: "#E8F0FE" },
+  hot: { label: "Chaud", emoji: "🔥", color: "#B91C1C", bg: theme.dangerBg },
+  warm: { label: "Tiède", emoji: "🌤️", color: "#92400E", bg: "#FEF3C7" },
+  cold: { label: "Froid", emoji: "❄️", color: "#1D4ED8", bg: "#E8F0FE" },
 };
 export const temperatureOf = (score: number): Temperature => (score >= 70 ? "hot" : score >= 45 ? "warm" : "cold");
 

@@ -1,7 +1,7 @@
 import { prisma } from "../../config/prisma.js";
-import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { graphClient, graphErrorMessage, type CatalogItemRequest } from "../facebook/graph.client.js";
+import { isPublicAddress, localUploadName, publicImageUrl } from "../uploads/upload.service.js";
 import type { ListingInput, ListingUpdateInput, OrderInput, OrderUpdateInput } from "./marketplace.schema.js";
 
 const SOLD = ["CONFIRMED", "DELIVERED"] as const;
@@ -38,12 +38,6 @@ function parseCatalogPrice(price: string | undefined): number | null {
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
-// Meta télécharge l'image depuis ses serveurs : une URL relative est absolutisée, une URL locale est refusée
-function publicImageUrl(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const url = /^https?:\/\//i.test(raw) ? raw : `${env.publicApiUrl}${raw.startsWith("/") ? "" : "/"}${raw}`;
-  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)/i.test(url) ? null : url;
-}
 
 type PushAccount = { id: string; name: string; externalId: string; catalogId: string | null };
 type PushListing = { id: string; title: string; description: string | null; price: number | null; stock: number | null; status: string; images: string[]; retailerId: string | null };
@@ -52,7 +46,8 @@ function requireCatalog(acc: PushAccount): asserts acc is PushAccount & { catalo
   if (!acc.catalogId) {
     throw new AppError(
       `Aucun catalogue Facebook connecté à « ${acc.name} ». Ouvrez Gescom → Catalogue pour en connecter un : sans catalogue, l'annonce reste dans Gescom.`,
-      422
+      422,
+      "NO_CATALOG"
     );
   }
 }
@@ -60,10 +55,15 @@ function requireCatalog(acc: PushAccount): asserts acc is PushAccount & { catalo
 // Une annonce publiable → sa requête items_batch ; sinon le motif exact du refus, dit avant d'appeler Meta
 function catalogRequest(l: PushListing, acc: PushAccount): { retailerId: string; request: CatalogItemRequest } | { reason: string } {
   if (l.price === null) return { reason: "prix manquant" };
+  if (l.images.length === 0) return { reason: "photo manquante" };
+  // Meta télécharge la photo depuis ses serveurs. Une photo téléversée sur ReplyKA est servie à l'adresse
+  // publique actuelle de l'API (et non celle enregistrée à l'envoi) : elle devient publiable dès que l'API l'est.
   const image = publicImageUrl(l.images[0]);
-  if (!image) {
+  if (!isPublicAddress(image)) {
     return {
-      reason: l.images.length === 0 ? "photo manquante" : "photo non accessible depuis Internet (Meta doit pouvoir la télécharger)",
+      reason: localUploadName(l.images[0])
+        ? "photo stockée sur ReplyKA, mais le serveur n'est pas joignable depuis Internet : définissez PUBLIC_API_URL"
+        : "photo non accessible depuis Internet (Meta doit pouvoir la télécharger)",
     };
   }
   const retailerId = l.retailerId ?? l.id;
@@ -135,6 +135,7 @@ async function pushListings(userId: string, acc: PushAccount & { catalogId: stri
 export interface PushState {
   ok: boolean;
   message: string;
+  code?: string; // ex. NO_CATALOG : la Page n'a pas de catalogue, l'écran propose d'en connecter un
 }
 
 async function autoPush(userId: string, listingId: string): Promise<PushState> {
@@ -149,7 +150,8 @@ async function autoPush(userId: string, listingId: string): Promise<PushState> {
     if (r.errors.length) return { ok: false, message: `Facebook a refusé l'annonce — ${r.errors.join(" · ")}` };
     return { ok: true, message: "Publiée dans votre Catalogue Facebook." };
   } catch (e) {
-    return { ok: false, message: e instanceof AppError ? e.message : "Publication vers Facebook impossible." };
+    if (e instanceof AppError) return { ok: false, message: e.message, ...(e.code ? { code: e.code } : {}) };
+    return { ok: false, message: "Publication vers Facebook impossible." };
   }
 }
 
@@ -223,6 +225,12 @@ export const marketplaceService = {
   async removeListing(userId: string, id: string) {
     await findListing(userId, id);
     await prisma.marketplaceListing.delete({ where: { id } });
+  },
+
+  // Action groupée : change le statut de plusieurs annonces à la fois (archiver, épuiser, remettre en ligne)
+  async updateManyStatus(userId: string, ids: string[], status: "ACTIVE" | "SOLD_OUT" | "ARCHIVED") {
+    const { count } = await prisma.marketplaceListing.updateMany({ where: { id: { in: ids }, userId }, data: { status } });
+    return { updated: count };
   },
 
   async listOrders(userId: string, filters: { listingId?: string; status?: string[] }) {

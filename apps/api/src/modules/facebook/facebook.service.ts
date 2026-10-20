@@ -1,4 +1,3 @@
-import crypto from "node:crypto";
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
@@ -110,8 +109,8 @@ export function extractImage(post: {
 // ============================================================
 
 export const facebookService = {
-  buildAuthUrl(userId: string): string {
-    const state = `${userId}.${crypto.randomBytes(16).toString("hex")}`;
+  // state : jeton anti-CSRF émis par issueOAuthState, lié au navigateur de la personne connectée
+  buildAuthUrl(state: string): string {
     const params = new URLSearchParams({
       client_id: env.fb.appId,
       redirect_uri: env.fb.redirectUri,
@@ -123,10 +122,8 @@ export const facebookService = {
     return `https://www.facebook.com/${env.fb.apiVersion}/dialog/oauth?${params}`;
   },
 
-  async handleCallback(code: string, state: string) {
-    const userId = state.split(".")[0];
-    if (!userId) throw new AppError("State invalide", 400);
-
+  // userId : relu dans le state une fois celui-ci vérifié contre le cookie (voir facebookController.callback)
+  async handleCallback(code: string, userId: string) {
     const shortToken = await graphClient.exchangeCodeForToken(code);
     const longToken = await graphClient.getLongLivedToken(shortToken);
     const pages = await graphClient.getUserPages(longToken);

@@ -13,4 +13,9 @@ router.post("/forgot-password", validate(forgotSchema), authController.forgotPas
 router.post("/reset-password", validate(resetSchema), authController.resetPassword);
 router.get("/me", authenticate, authController.me);
 
+// Connexion / inscription via Facebook ou Google
+router.get("/providers", authController.providers);
+router.get("/:provider(facebook|google)", authController.socialStart);
+router.get("/:provider(facebook|google)/callback", authController.socialCallback);
+
 export default router;

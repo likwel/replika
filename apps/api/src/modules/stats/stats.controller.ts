@@ -6,7 +6,10 @@ import { daysQuerySchema } from "./stats.schema.js";
 
 export const statsController = {
   overview: catchAsync(async (req: Request, res: Response) => {
-    res.json({ status: "success", data: await statsService.overview(req.user!.userId) });
+    const query = daysQuerySchema.safeParse(req.query);
+    if (!query.success) throw new AppError("Période invalide", 422);
+    const data = await statsService.overview(req.user!.userId, query.data.days);
+    res.json({ status: "success", data });
   }),
 
   engagement: catchAsync(async (req: Request, res: Response) => {
@@ -18,6 +21,10 @@ export const statsController = {
 
   accounts: catchAsync(async (req: Request, res: Response) => {
     res.json({ status: "success", data: await statsService.accounts(req.user!.userId) });
+  }),
+
+  revenue: catchAsync(async (req: Request, res: Response) => {
+    res.json({ status: "success", data: await statsService.revenue(req.user!.userId) });
   }),
 
   rules: catchAsync(async (req: Request, res: Response) => {

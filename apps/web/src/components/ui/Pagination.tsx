@@ -47,7 +47,7 @@ export function Pagination({ page, pageCount, onChange, total, pageSize }: Props
             <button
               key={n}
               className={btn}
-              style={{ background: n === page ? theme.gold : "transparent", color: n === page ? "#1A1410" : theme.text }}
+              style={{ background: n === page ? theme.gold : "transparent", color: n === page ? theme.onAccent : theme.text }}
               onClick={() => onChange(n)}
               aria-current={n === page ? "page" : undefined}
             >

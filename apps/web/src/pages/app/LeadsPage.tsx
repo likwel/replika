@@ -3,8 +3,8 @@ import { useOutletContext } from "react-router-dom";
 import { Download, Flame, History, Loader2, Phone, Search, Target, Trophy, UserPlus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { EmptyState, FilterChips, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { Pagination } from "@/components/ui/Pagination";
@@ -19,7 +19,6 @@ interface Ctx { sub: number }
 
 // Sous-menus : tous les leads, à contacter, pipeline
 const VIEWS = ["all", "todo", "pipeline"] as const;
-const TITLES = { all: "Leads Détectés", todo: "Leads à Contacter", pipeline: "Pipeline des Ventes" } as const;
 const TEMPS: Array<{ id: "" | Temperature; label: string }> = [
   { id: "", label: "Toutes températures" },
   { id: "hot", label: "🔥 Chauds" },
@@ -130,20 +129,18 @@ export function LeadsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1">
-          <Title className="text-lg">{TITLES[view]}</Title>
-          <p className="text-xs" style={{ color: theme.textMuted }}>
-            Clients potentiels repérés automatiquement : demande de prix, intention d'achat, téléphone partagé, JP en live…
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" icon={scanning ? Loader2 : History} onClick={rescan} disabled={scanning} title="Analyser les 90 derniers jours de commentaires et de messages">
-            {scanning ? "Analyse…" : "Analyser l'historique"}
-          </Button>
-          <Button size="sm" variant="ghost" icon={Download} onClick={() => leads && exportLeadsCsv(leads)} disabled={!leads?.length}>Exporter</Button>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-1"
+        description="Clients potentiels repérés automatiquement : demande de prix, intention d'achat, téléphone partagé, JP en live…"
+        actions={
+          <>
+            <Button variant="ghost" icon={scanning ? Loader2 : History} onClick={rescan} disabled={scanning} title="Analyser les 90 derniers jours de commentaires et de messages">
+              {scanning ? "Analyse…" : "Analyser l'historique"}
+            </Button>
+            <Button variant="ghost" icon={Download} onClick={() => leads && exportLeadsCsv(leads)} disabled={!leads?.length}>Exporter</Button>
+          </>
+        }
+      />
 
       {notice && (
         <p className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm" style={{ background: theme.goldSoft, color: theme.goldDark }}>
@@ -155,9 +152,9 @@ export function LeadsPage() {
       {stats && (
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {card("Leads", String(stats.total), Target, theme.goldDark, `${stats.newThisWeek} cette semaine`)}
-          {card("Chauds à traiter", String(stats.hot), Flame, "#dc2626")}
-          {card("À contacter", String(stats.toContact), UserPlus, "#2563eb")}
-          {card("Gagnés", String(stats.byStatus.WON), Trophy, "#15803d", `${stats.conversion === null ? "—" : `${stats.conversion} %`} de conversion · ${stats.wonValue.toLocaleString("fr-FR")} Ar`)}
+          {card("Chauds à traiter", String(stats.hot), Flame, "#B91C1C")}
+          {card("À contacter", String(stats.toContact), UserPlus, "#1D4ED8")}
+          {card("Gagnés", String(stats.byStatus.WON), Trophy, "#166534", `${stats.conversion === null ? "—" : `${stats.conversion} %`} de conversion · ${stats.wonValue.toLocaleString("fr-FR")} Ar`)}
         </div>
       )}
 

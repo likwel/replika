@@ -28,12 +28,12 @@ export function LogoMark({ size = 31, className = "" }: MarkProps) {
         height: size,
         borderRadius: Math.round(size * 0.3),
         background: `linear-gradient(140deg, ${theme.goldLight} 0%, ${theme.gold} 45%, ${theme.goldDark} 100%)`,
-        boxShadow: `0 ${Math.max(1, size * 0.05)}px ${size * 0.22}px rgba(201,145,74,0.38)`,
+        boxShadow: `0 ${Math.max(1, size * 0.05)}px ${size * 0.22}px rgba(0,128,105,0.38)`,
       }}
       aria-hidden
     >
       <svg width={Math.round(size * 0.62)} height={Math.round(size * 0.62)} viewBox="0 0 24 24">
-        <path d={BUBBLE_AND_BOLT} fill="#1A1410" fillRule="evenodd" />
+        <path d={BUBBLE_AND_BOLT} fill="#fff" fillRule="evenodd" />
       </svg>
     </span>
   );

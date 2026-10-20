@@ -9,6 +9,7 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email("E-mail invalide"),
   password: z.string().min(1, "Mot de passe requis"),
+  remember: z.boolean().optional(), // défaut : session conservée 7 jours
 });
 
 export const forgotSchema = z.object({

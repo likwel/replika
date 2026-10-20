@@ -7,10 +7,15 @@ export function PrivacyPage() {
     <LegalLayout
       title="Politique de Confidentialité"
       subtitle="Quelles données ReplyKA traite, pourquoi, et comment les contrôler."
-      updatedAt="26 septembre 2026"
+      updatedAt="20 octobre 2026"
     >
       <Section title="1. Données que nous collectons">
         <p><strong style={{ color: theme.text }}>Données de compte</strong> : nom, adresse e-mail, mot de passe (jamais stocké en clair, uniquement sous forme hachée), photo de profil si vous en ajoutez une.</p>
+        <p>
+          <strong style={{ color: theme.text }}>Connexion avec Facebook ou Google</strong> : si vous choisissez cette option, nous recevons de
+          Facebook ou de Google votre nom, votre adresse e-mail et un identifiant de compte. Nous ne recevons jamais votre mot de
+          passe Facebook ou Google, et n'accédons à aucune autre donnée de ces comptes (contacts, publications, e-mails…).
+        </p>
         <p>
           <strong style={{ color: theme.text }}>Données de vos Pages et comptes</strong> : lorsque vous connectez une Page Facebook ou un
           compte Instagram professionnel, nous recevons de Meta l'identifiant et le nom de la Page, son jeton
@@ -21,7 +26,8 @@ export function PrivacyPage() {
         <p>
           <strong style={{ color: theme.text }}>Données générées par l'usage</strong> : règles de réponse automatique, historique des
           réponses envoyées, leads détectés (nom, téléphone ou e-mail partagés par vos clients dans leurs messages),
-          publications programmées, sessions Live et commandes associées.
+          publications programmées, sessions Live et commandes associées, annonces et commandes Marketplace (nom,
+          téléphone et adresse de livraison communiqués par vos acheteurs).
         </p>
         <p><strong style={{ color: theme.text }}>Données techniques</strong> : adresse IP, type de navigateur et d'appareil, enregistrés lors de la connexion à votre compte, à des fins de sécurité.</p>
       </Section>
@@ -51,6 +57,7 @@ export function PrivacyPage() {
         <p>Nous partageons des données uniquement dans les cas suivants :</p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li><strong style={{ color: theme.text }}>Meta (Facebook/Instagram)</strong> : pour lire et publier en votre nom sur les Pages que vous connectez, via leur API officielle ;</li>
+          <li><strong style={{ color: theme.text }}>Google</strong> : uniquement pour vous authentifier, si vous choisissez « Continuer avec Google » ;</li>
           <li><strong style={{ color: theme.text }}>Fournisseur d'IA</strong> : uniquement si vous activez l'assistant IA, comme décrit ci-dessus ;</li>
           <li><strong style={{ color: theme.text }}>Hébergeur</strong> : nos données sont hébergées chez un prestataire technique chargé de l'infrastructure du Service, lié par une obligation de confidentialité ;</li>
           <li>si la loi nous y oblige, ou pour protéger nos droits et ceux de nos utilisateurs.</li>
@@ -76,8 +83,9 @@ export function PrivacyPage() {
 
       <Section title="7. Cookies">
         <p>
-          Le Service utilise un cookie de session strictement nécessaire à la connexion à votre compte. Nous
-          n'utilisons pas de cookies publicitaires ou de traceurs tiers sur l'application.
+          Le Service utilise un cookie de session strictement nécessaire à la connexion à votre compte et, le temps
+          d'une connexion via Facebook ou Google, un cookie temporaire (10 minutes) qui protège cette étape contre les
+          détournements. Nous n'utilisons pas de cookies publicitaires ou de traceurs tiers sur l'application.
         </p>
       </Section>
 

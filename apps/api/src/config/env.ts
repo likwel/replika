@@ -1,6 +1,18 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+// Adresse de l'API vue par le navigateur : base des adresses de retour OAuth (connexion Facebook / Google).
+// Distincte de PUBLIC_API_URL, qui peut être un tunnel réservé au téléchargement des images par Meta.
+function apiUrl(): string {
+  if (process.env.API_URL) return process.env.API_URL.replace(/\/+$/, "");
+  try {
+    if (process.env.FB_REDIRECT_URI) return new URL(process.env.FB_REDIRECT_URI).origin;
+  } catch {
+    // adresse invalide : valeur par défaut
+  }
+  return `http://localhost:${process.env.PORT ?? 4000}`;
+}
+
 // Adresse publique de l'API : Instagram télécharge les images à publier depuis cette adresse
 function publicApiUrl(): string {
   if (process.env.PUBLIC_API_URL) return process.env.PUBLIC_API_URL.replace(/\/+$/, "");
@@ -41,6 +53,12 @@ export const env = {
     model: process.env.AI_MODEL ?? "llama-3.3-70b-versatile",
   },
   publicApiUrl: publicApiUrl(),
+  apiUrl: apiUrl(),
+  // Connexion avec Google (console.cloud.google.com → Identifiants → ID client OAuth « Application Web »)
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  },
   uploadsDir: process.env.UPLOADS_DIR ?? "uploads", // images des publications programmées
   // Robot de publication : intervalle de vérification (secondes) ; 0 = désactivé
   schedulerSeconds: Number(process.env.SCHEDULER_SECONDS ?? 30),

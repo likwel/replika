@@ -1,7 +1,7 @@
 import { prisma } from "../../config/prisma.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const WINDOW_DAYS = 7; // fenêtre fixe de la Vue globale et des Rapports (l'Engagement a son propre sélecteur)
+const WINDOW_DAYS = 7; // fenêtre fixe des Rapports et du chiffre d'affaires
 
 const startOfDay = (d: Date) => {
   const x = new Date(d);
@@ -17,10 +17,10 @@ function trend(current: number, previous: number): number | null {
 }
 
 export const statsService = {
-  // Vue globale : totaux des 7 derniers jours, variation vs les 7 jours précédents, taux de réponse
-  async overview(userId: string) {
-    const since = daysAgo(WINDOW_DAYS);
-    const prevSince = daysAgo(WINDOW_DAYS * 2);
+  // Vue globale : totaux de la période choisie, variation vs la période équivalente précédente, taux de réponse
+  async overview(userId: string, days: number) {
+    const since = daysAgo(days);
+    const prevSince = daysAgo(days * 2);
     const scope = { account: { userId } } as const;
     const commentKinds = ["COMMENT", "LIVE_COMMENT"] as const;
 
@@ -45,7 +45,7 @@ export const statsService = {
     ]);
 
     return {
-      windowDays: WINDOW_DAYS,
+      windowDays: days,
       totals: { comments, messages, leads, aiReplies },
       trends: {
         comments: trend(comments, commentsPrev),
@@ -104,6 +104,30 @@ export const statsService = {
       const messages = rows.find((r) => r.kind === "DIRECT")?._count ?? 0;
       return { ...a, comments, messages, leads: leadByAccount.get(a.id) ?? 0 };
     });
+  },
+
+  // Revenu : commandes confirmées/livrées de Gescom et des Lives, sur la fenêtre fixe
+  async revenue(userId: string) {
+    const since = daysAgo(WINDOW_DAYS);
+    const SOLD = ["CONFIRMED", "DELIVERED"] as const;
+    const [mpOrders, liveOrders] = await Promise.all([
+      prisma.marketplaceOrder.findMany({
+        where: { listing: { userId }, createdAt: { gte: since }, status: { in: [...SOLD] } },
+        select: { quantity: true, unitPrice: true },
+      }),
+      prisma.liveOrder.findMany({
+        where: { session: { userId }, createdAt: { gte: since }, status: { in: [...SOLD] } },
+        select: { quantity: true, unitPrice: true },
+      }),
+    ]);
+    const all = [...mpOrders, ...liveOrders];
+    const revenue = all.reduce((n, o) => n + (o.unitPrice ?? 0) * o.quantity, 0);
+    return {
+      windowDays: WINDOW_DAYS,
+      orders: all.length,
+      revenue,
+      averageOrderValue: all.length ? Math.round(revenue / all.length) : 0,
+    };
   },
 
   // Rapports : règles les plus déclenchées (total depuis leur création, pas seulement la fenêtre récente)

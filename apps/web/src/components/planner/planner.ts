@@ -4,17 +4,17 @@ import { theme } from "@/theme";
 import type { MessageTag, Schedule, ScheduleKind, ScheduleStatus } from "@/lib/schedule.api";
 
 export const KIND_META: Record<ScheduleKind, { label: string; short: string; icon: LucideIcon; color: string }> = {
-  POST: { label: "Publication", short: "Publication", icon: Newspaper, color: "#2563eb" },
-  COMMENT: { label: "Commentaire", short: "Commentaire", icon: MessageCircle, color: "#7c3aed" },
+  POST: { label: "Publication", short: "Publication", icon: Newspaper, color: "#1D4ED8" },
+  COMMENT: { label: "Commentaire", short: "Commentaire", icon: MessageCircle, color: "#6D28D9" },
   MESSAGE: { label: "Message privé", short: "Message", icon: MessagesSquare, color: "#0d9488" },
 };
 
 export const STATUS_META: Record<ScheduleStatus, { label: string; color: string; bg: string }> = {
   DRAFT: { label: "Brouillon", color: theme.textMuted, bg: theme.bg },
   SCHEDULED: { label: "Programmé", color: theme.goldDark, bg: theme.goldSoft },
-  PUBLISHING: { label: "Envoi en cours", color: "#2563eb", bg: "#E8F0FE" },
-  DONE: { label: "Publié", color: "#15803d", bg: "#E7F6EC" },
-  PARTIAL: { label: "Partiel", color: "#b45309", bg: "#FEF3C7" },
+  PUBLISHING: { label: "Envoi en cours", color: "#1D4ED8", bg: "#E8F0FE" },
+  DONE: { label: "Publié", color: "#166534", bg: "#E7F6EC" },
+  PARTIAL: { label: "Partiel", color: "#92400E", bg: "#FEF3C7" },
   FAILED: { label: "Échec", color: theme.red, bg: "#FDECEC" },
 };
 

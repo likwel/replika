@@ -14,7 +14,7 @@ import { ChatDemo } from "@/components/marketing/ChatDemo";
 
 // Même palette que les menus de l'application : chaque fonctionnalité garde sa couleur
 const features = [
-  { icon: Bot, c: "#E5AC5F", t: "Réponses IA automatiques", d: "L'IA répond aux commentaires et messages selon l'intention détectée, sans jamais inventer un prix ou un stock absent de vos infos." },
+  { icon: Bot, c: "#00A884", t: "Réponses IA automatiques", d: "L'IA répond aux commentaires et messages selon l'intention détectée, sans jamais inventer un prix ou un stock absent de vos infos." },
   { icon: Target, c: "#F59E0B", t: "Règles ciblées par publication", d: "Créez une règle valable pour tout le compte, ou uniquement sur une publication précise — mot-clé fixe ou réponse générée par l'IA." },
   { icon: MessageCircle, c: "#8B5CF6", t: "Détection de leads", d: "Score automatiquement chaque échange (chaud / tiède / froid) et classe vos clients potentiels dans un pipeline." },
   { icon: Radio, c: "#EF4444", t: "Modération des Lives", d: "Détecte les commandes « JP » en direct et répond normalement aux autres commentaires (prix, questions…)." },
@@ -35,7 +35,7 @@ const steps = [
     t: "Configurez vos règles et l'IA",
     d: "Mots-clés avec réponses fixes, ou réponses générées par l'IA à partir de votre contexte produit — pour tout le compte ou une seule publication.",
     icon: Bot,
-    c: "#E5AC5F",
+    c: "#00A884",
   },
   {
     t: "ReplyKA répond pour vous",
@@ -133,7 +133,7 @@ export function LandingPage() {
             <Link to="/guide" className="transition-opacity hover:opacity-60">Guide</Link>
           </nav>
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/login"><Button variant="ghost" size="sm">Connexion</Button></Link>
+            <Link to="/connexion"><Button variant="ghost" size="sm">Connexion</Button></Link>
             <Link to="/register"><Button variant="primary" size="sm">Essai gratuit</Button></Link>
           </div>
           <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">{menuOpen ? <X /> : <Menu />}</button>
@@ -145,7 +145,7 @@ export function LandingPage() {
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="py-2 text-sm font-medium" style={{ color: theme.text }}>Tarifs</a>
             <a href="#faq" onClick={() => setMenuOpen(false)} className="py-2 text-sm font-medium" style={{ color: theme.text }}>FAQ</a>
             <Link to="/guide" className="py-2 text-sm font-medium" style={{ color: theme.text }}>Guide</Link>
-            <Link to="/login"><Button variant="ghost" size="sm" className="w-full justify-center">Connexion</Button></Link>
+            <Link to="/connexion"><Button variant="ghost" size="sm" className="w-full justify-center">Connexion</Button></Link>
             <Link to="/register"><Button variant="primary" size="sm" className="w-full justify-center">Essai gratuit</Button></Link>
           </div>
         )}
@@ -176,7 +176,7 @@ export function LandingPage() {
             </p>
             <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5 lg:justify-start">
               <Link to="/register"><Button variant="primary" size="lg" icon={ArrowRight}>Commencer gratuitement</Button></Link>
-              <Link to="/login"><Button variant="ghost" size="lg">J'ai déjà un compte</Button></Link>
+              <Link to="/connexion"><Button variant="ghost" size="lg">J'ai déjà un compte</Button></Link>
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 lg:justify-start">
               {[
@@ -399,7 +399,7 @@ function PricingSection() {
                 }}
               >
                 {pl.hl && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-[10.5px] font-extrabold tracking-wide" style={{ background: theme.gold, color: "#1A1410" }}>
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-[10.5px] font-extrabold tracking-wide" style={{ background: theme.gold, color: theme.onAccent }}>
                     POPULAIRE
                   </span>
                 )}

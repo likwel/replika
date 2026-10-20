@@ -15,6 +15,9 @@ model User {
   role                 Role             @default(USER)
   resetToken           String?
   resetExpires         DateTime?
+  // Connexion via Facebook / Google : identifiant du compte chez le fournisseur
+  facebookId           String?          @unique
+  googleId             String?          @unique
   autoReplyEnabled     Boolean          @default(true) // interrupteur global des réponses automatiques
   // Profil
   avatarUrl            String? // photo de profil (data URL compressée côté navigateur)
@@ -24,6 +27,8 @@ model User {
   // Préférences
   defaultPage          String           @default("gestion") // page ouverte après connexion
   desktopNotifications Boolean          @default(false) // notification du navigateur pour les messages à traiter
+  darkMode             Boolean          @default(false) // mode sombre
+  accentTheme          String           @default("whatsapp") // "whatsapp" | "classic"
   // Incrémenté pour invalider toutes les sessions (changement de mot de passe, « déconnecter partout »)
   tokenVersion         Int              @default(0)
   // Jeton Facebook utilisateur (longue durée) : requis pour Gescom (Business Manager / Catalogue),

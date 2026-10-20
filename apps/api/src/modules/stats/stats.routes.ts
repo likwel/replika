@@ -10,5 +10,6 @@ router.get("/overview", statsController.overview);
 router.get("/engagement", statsController.engagement);
 router.get("/accounts", statsController.accounts);
 router.get("/rules", statsController.rules);
+router.get("/revenue", statsController.revenue);
 
 export default router;

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { MessageCircle, Mail, Users, Bot, Zap, UserCheck, Lock, BarChart3, Megaphone } from "lucide-react";
+import { MessageCircle, Mail, Users, Bot, Zap, UserCheck, Lock, BarChart3, Megaphone, ShoppingBag, Wallet, Receipt, Download } from "lucide-react";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
+import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { Segmented } from "@/components/ui/Segmented";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
@@ -10,7 +12,18 @@ import { EmptyState } from "@/components/workspace/WorkspaceUi";
 import { Pagination } from "@/components/ui/Pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { plural, timeAgo } from "@/lib/format";
-import { statsApi, DAY_RANGES, type AccountStats, type DayRange, type EngagementDay, type RuleStats, type StatsOverview } from "@/lib/stats.api";
+import { formatAriaryMk } from "@/lib/marketplace.api";
+import { exportReportCsv } from "./stats";
+import {
+  statsApi,
+  DAY_RANGES,
+  type AccountStats,
+  type DayRange,
+  type EngagementDay,
+  type RevenueStats,
+  type RuleStats,
+  type StatsOverview,
+} from "@/lib/stats.api";
 
 interface Ctx { sub: number }
 
@@ -23,11 +36,17 @@ function formatTrend(value: number | null, current: number): string | undefined 
   return `${value > 0 ? "+" : ""}${value}%`;
 }
 
+const DESCRIPTIONS = [
+  "Activité de vos comptes et ventes sur la période choisie, comparée à la période précédente.",
+  "Volume quotidien de commentaires et de messages reçus, par plateforme.",
+  "Performance de chaque compte et règles de réponse les plus utilisées.",
+];
+
 export function StatsPage() {
   const { sub } = useOutletContext<Ctx>();
   return (
     <div className="flex flex-col gap-4">
-      <Title className="text-lg">{["Vue Globale", "Engagement Hebdomadaire", "Rapports"][sub] ?? "Statistiques"}</Title>
+      <PageHeader className="mb-1" description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]} />
       {sub === 1 ? <EngagementView /> : sub === 2 ? <ReportsView /> : <OverviewView />}
     </div>
   );
@@ -38,15 +57,23 @@ export function StatsPage() {
 // ============================================================
 
 function OverviewView() {
+  const [days, setDays] = useState<DayRange>(7);
   const [data, setData] = useState<StatsOverview | null>(null);
+  const [revenue, setRevenue] = useState<RevenueStats | null>(null);
+
   useEffect(() => {
-    statsApi.overview().then(setData).catch(() => setData(null));
+    setData(null);
+    statsApi.overview(days).then(setData).catch(() => setData(null));
+  }, [days]);
+
+  useEffect(() => {
+    statsApi.revenue().then(setRevenue).catch(() => setRevenue(null));
   }, []);
 
   if (!data) {
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => <div key={i} className="h-[118px] animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />)}
+        {[0, 1, 2, 3].map((i) => <div key={i} className="h-[118px] animate-pulse rounded-2xl" style={{ background: theme.bg }} />)}
       </div>
     );
   }
@@ -60,6 +87,10 @@ function OverviewView() {
 
   return (
     <>
+      <div className="w-full sm:w-56">
+        <Segmented options={DAY_RANGES.map((d) => ({ value: String(d), label: `${d} j` }))} value={String(days)} onChange={(v) => setDays(Number(v) as DayRange)} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard icon={MessageCircle} label="Commentaires" value={String(totals.comments)} trend={formatTrend(trends.comments, totals.comments)} color={theme.gold} />
         <StatCard icon={Mail} label="Messages" value={String(totals.messages)} trend={formatTrend(trends.messages, totals.messages)} color={theme.redLight} />
@@ -67,6 +98,18 @@ function OverviewView() {
         <StatCard icon={Bot} label="Réponses IA" value={String(totals.aiReplies)} trend={formatTrend(trends.aiReplies, totals.aiReplies)} color={theme.redLight} />
       </div>
       <p className="text-xs" style={{ color: theme.textMuted }}>Sur les {data.windowDays} derniers jours, comparé aux {data.windowDays} jours précédents.</p>
+
+      {revenue && (
+        <>
+          <Title className="text-base mt-1">Ventes (Gescom & Lives)</Title>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <StatCard icon={ShoppingBag} label="Commandes vendues" value={String(revenue.orders)} color={theme.amber} />
+            <StatCard icon={Wallet} label="Chiffre d'affaires" value={formatAriaryMk(revenue.revenue)} color={theme.goldDark} />
+            <StatCard icon={Receipt} label="Panier moyen" value={formatAriaryMk(revenue.averageOrderValue)} color={theme.green} />
+          </div>
+          <p className="text-xs" style={{ color: theme.textMuted }}>Commandes confirmées ou livrées, sur les {revenue.windowDays} derniers jours.</p>
+        </>
+      )}
 
       <div className="mx-auto w-full max-w-7xl rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
         <Title className="text-base mb-1">Taux de Réponse</Title>
@@ -173,8 +216,19 @@ function ReportsView() {
   const rulesPage = usePagination(rules ?? [], 10);
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-start">
-      <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <div className="flex flex-col gap-3">
+      <Button
+        size="sm"
+        variant="ghost"
+        icon={Download}
+        className="self-end"
+        disabled={!accounts || !rules}
+        onClick={() => exportReportCsv(accounts ?? [], rules ?? [])}
+      >
+        Exporter
+      </Button>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 items-start">
+        <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
         <Title className="text-base mb-1">Performance par Compte</Title>
         <p className="mb-4 text-xs" style={{ color: theme.textMuted }}>7 derniers jours.</p>
         {sortedAccounts === null ? (
@@ -226,6 +280,7 @@ function ReportsView() {
             <Pagination page={rulesPage.page} pageCount={rulesPage.pageCount} onChange={rulesPage.setPage} total={rulesPage.total} pageSize={10} />
           </>
         )}
+      </div>
       </div>
     </div>
   );

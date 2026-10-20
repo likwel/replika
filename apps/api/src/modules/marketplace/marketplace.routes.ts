@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { catchAsync } from "../../utils/catchAsync.js";
-import { connectCatalogSchema, listingSchema, listingUpdateSchema, orderSchema, orderUpdateSchema } from "./marketplace.schema.js";
+import { bulkStatusSchema, connectCatalogSchema, listingSchema, listingUpdateSchema, orderSchema, orderUpdateSchema } from "./marketplace.schema.js";
 import { marketplaceService } from "./marketplace.service.js";
 
 // Marketplace : catalogue d'annonces + suivi manuel des commandes (pas de publication automatique)
@@ -47,6 +47,12 @@ router.get(
   catchAsync(async (req, res) => ok(res, await marketplaceService.listListings(uid(req), { accountId: str(req.query.accountId), status: str(req.query.status) })))
 );
 router.post("/listings", validate(listingSchema), catchAsync(async (req, res) => ok(res, await marketplaceService.createListing(uid(req), req.body), 201)));
+// Avant /listings/:id : sinon Express lirait "bulk-status" comme un id
+router.patch(
+  "/listings/bulk-status",
+  validate(bulkStatusSchema),
+  catchAsync(async (req, res) => ok(res, await marketplaceService.updateManyStatus(uid(req), req.body.ids, req.body.status)))
+);
 router.get("/listings/:id", catchAsync(async (req, res) => ok(res, await marketplaceService.getListing(uid(req), req.params.id))));
 router.patch("/listings/:id", validate(listingUpdateSchema), catchAsync(async (req, res) => ok(res, await marketplaceService.updateListing(uid(req), req.params.id, req.body))));
 router.delete(

@@ -68,7 +68,7 @@ export function TextField({ label, hint, type = "text", ...props }: FieldProps) 
 // Retour d'action : succès doré ou erreur rouge
 export function Feedback({ ok, error }: { ok?: string | null; error?: string | null }) {
   if (error) {
-    return <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "#FDECEC", color: theme.red }}>{error}</p>;
+    return <p className="rounded-xl px-3 py-2 text-sm" style={{ background: theme.dangerBg, color: theme.red }}>{error}</p>;
   }
   if (ok) {
     return (

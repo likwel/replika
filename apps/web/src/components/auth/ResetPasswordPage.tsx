@@ -42,7 +42,7 @@ export function ResetPasswordPage() {
             <CheckCircle2 size={28} style={{ color: theme.goldDark }} />
           </div>
           <p className="text-sm" style={{ color: theme.textMuted }}>Votre mot de passe a été réinitialisé avec succès.</p>
-          <Button variant="primary" className="mt-6 w-full justify-center" icon={ArrowRight} onClick={() => nav("/login")}>Se connecter</Button>
+          <Button variant="primary" className="mt-6 w-full justify-center" icon={ArrowRight} onClick={() => nav("/connexion")}>Se connecter</Button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

@@ -2,8 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
-body { margin: 0; }
+/* Thème : neutres façon Notion (par mode light / dark) × couleur d'accent (whatsapp / classic).
+   theme.ts référence ces variables ; changer data-theme / data-accent sur <html>
+   change tout l'affichage en direct, y compris les maps construites au chargement
+   du module (planner.ts, history.ts, leads.ts, live.ts, marketplace.api.ts). */
+
+/* ---------- Neutres ---------- */
+:root,
+:root[data-theme="light"] {
+  --color-canvas: #FFFFFF;
+  --color-bg: #F7F7F5;
+  --color-bgCard: #FFFFFF;
+  --color-sidebar: #F7F7F5;
+  --color-hover: rgba(55, 53, 47, 0.06);
+  --color-active: rgba(55, 53, 47, 0.09);
+  --color-scroll: #D3D1CB;
+  --color-bgDark: #2F2E2A;
+  --color-bgDark2: #252420;
+  /* Contrastes vérifiés (WCAG) : texte 15,5:1, secondaire 7:1, couleurs d'état ≥ 4,5:1 sur leur fond */
+  --color-text: #252420;
+  --color-textMuted: #5A5954;
+  --color-placeholder: #6E6D68;
+  --color-border: #E0DFDB;
+  --color-red: #C4342D;
+  --color-redLight: #DC4A41;
+  --color-dangerBg: #FDEBEC;
+  --color-green: #2F7A4F;
+  --color-greenLight: #22C55E;
+  --color-greenSoft: #EDF3EC;
+  --color-amber: #9F4A0A;
+  --color-amberSoft: #FBECDD;
+}
+
+:root[data-theme="dark"] {
+  --color-canvas: #191919;
+  --color-bg: #252525;
+  --color-bgCard: #191919;
+  --color-sidebar: #202020;
+  --color-hover: rgba(255, 255, 255, 0.055);
+  --color-active: rgba(255, 255, 255, 0.09);
+  --color-scroll: #474747;
+  --color-bgDark: #2F2F2F;
+  --color-bgDark2: #373737;
+  --color-text: #D4D4D4;
+  --color-textMuted: #9B9B9B;
+  --color-placeholder: #8A8A8A;
+  --color-border: #2F2F2F;
+  --color-red: #E5675F;
+  --color-redLight: #F08A80;
+  --color-dangerBg: #3B2422;
+  --color-green: #52A57F;
+  --color-greenLight: #4ADE80;
+  --color-greenSoft: #22352B;
+  --color-amber: #E09A4F;
+  --color-amberSoft: #3D2B1C;
+}
+
+/* ---------- Accents ---------- */
+/* Vert WhatsApp foncé (#008069) : texte blanc lisible sur les boutons (4,9:1, contre 3:1 avec #00A884) */
+:root,
+:root[data-accent="whatsapp"] {
+  --color-gold: #008069;
+  --color-gold-rgb: 0 128 105;
+  --color-goldDark: #006D59;
+  --color-goldLight: #25D366;
+  --color-goldSoft: #E2F5EE;
+  --color-onAccent: #FFFFFF;
+}
+
+:root[data-theme="dark"][data-accent="whatsapp"] {
+  --color-goldDark: #2EC4A0;
+  --color-goldSoft: #13332A;
+}
+
+:root[data-accent="classic"] {
+  --color-gold: #E5AC5F;
+  --color-gold-rgb: 229 172 95;
+  --color-goldDark: #85591F;
+  --color-goldLight: #F2CB8E;
+  --color-goldSoft: #FBF1E2;
+  --color-onAccent: #2B2116;
+}
+
+:root[data-theme="dark"][data-accent="classic"] {
+  --color-goldDark: #F2CB8E;
+  --color-goldLight: #E5AC5F;
+  --color-goldSoft: #3A2E1A;
+  --color-onAccent: #1F1912;
+}
+
+/* ---------- Base ---------- */
+:root {
+  font-family: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--color-text);
+}
+body { margin: 0; background: var(--color-canvas); color: var(--color-text); transition: background-color 0.15s ease; }
+::selection { background: rgb(var(--color-gold-rgb) / 0.22); }
+::placeholder { color: var(--color-placeholder); opacity: 1; }
+
+/* Barres de défilement fines, discrètes */
+* { scrollbar-width: thin; scrollbar-color: var(--color-scroll) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-scroll); border: 3px solid transparent; border-radius: 10px; background-clip: content-box; }
+
+/* Les survols « hover:bg-black/5 » sont pensés pour un fond clair : en sombre, on éclaircit */
+:root[data-theme="dark"] .hover\:bg-black\/5:hover { background-color: var(--color-hover); }
+
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -23,6 +131,18 @@ body { margin: 0; }
   from { opacity: 0; transform: scale(0.92) translateY(6px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(0.98) translateY(-4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
 /* Halo qui s'étend autour d'une pastille de statut (« en ligne ») */
 @keyframes pulseRing {
   0% { transform: scale(0.85); opacity: 0.5; }
@@ -33,3 +153,33 @@ body { margin: 0; }
 .reveal-visible { opacity: 1; transform: translateY(0); }
 .animate-float { animation: floatY 4.5s ease-in-out infinite; }
 .animate-pop-in { animation: popIn 0.35s ease both; }
+.animate-panel-in { animation: panelIn 0.14s ease-out both; }
+.animate-fade-in { animation: fadeIn 0.15s ease-out both; }
+.animate-slide-in { animation: slideInLeft 0.2s ease-out both; }
+
+/* Boîtes de dialogue (swal) et notifications */
+@keyframes swalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes swalIcon {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes swalRing {
+  from { opacity: 0.8; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.7); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-swal-in { animation: swalIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+.animate-swal-icon { animation: swalIcon 0.45s 0.05s ease-out both; }
+.animate-swal-ring { animation: swalRing 0.8s 0.2s ease-out both; }
+.animate-toast-in { animation: toastIn 0.2s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-swal-in, .animate-swal-icon, .animate-toast-in { animation: none; }
+  .animate-swal-ring { display: none; }
+}

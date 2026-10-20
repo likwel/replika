@@ -15,5 +15,5 @@ export function ProtectedRoute() {
   }
 
   // La page demandée est mémorisée : après connexion, on y revient au lieu de la page d'ouverture
-  return user ? <Outlet /> : <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
+  return user ? <Outlet /> : <Navigate to="/connexion" replace state={{ from: loc.pathname + loc.search }} />;
 }

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { GuestRoute } from "@/components/auth/GuestRoute";
 
 import { LandingPage } from "@/pages/marketing/LandingPage";
 import { TermsPage } from "@/pages/marketing/TermsPage";
@@ -27,11 +28,16 @@ import { HubRedirect } from "@/components/layout/HubRedirect";
 import { InvoicePrintPage } from "@/pages/print/InvoicePrintPage";
 
 export const router = createBrowserRouter([
-  { path: "/", element: <LandingPage /> },
+  {
+    element: <GuestRoute />,
+    children: [
+      { path: "/", element: <LandingPage /> },
+      { path: "/connexion", element: <LoginPage /> },
+    ],
+  },
   { path: "/cgu", element: <TermsPage /> },
   { path: "/confidentialite", element: <PrivacyPage /> },
   { path: "/guide", element: <GuidePage /> },
-  { path: "/login", element: <LoginPage /> },
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },

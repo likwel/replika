@@ -51,7 +51,7 @@ export function PostGrid({ posts, selectedId, onSelect }: Props) {
               >
                 <MessageCircle size={10} /> {p.comments}
                 {p.pending > 0 && (
-                  <span className="ml-auto rounded-full px-1.5" style={{ background: theme.gold, color: "#1A1410" }}>
+                  <span className="ml-auto rounded-full px-1.5" style={{ background: theme.gold, color: theme.onAccent }}>
                     {p.pending}
                   </span>
                 )}

@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { authApi, type User } from "@/lib/auth.api";
+import { useThemeAttrs } from "@/hooks/useThemeAttrs";
 
 interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   // Met à jour l'utilisateur affiché (en-tête, préférences) après une modification dans les paramètres
@@ -19,6 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useThemeAttrs(user);
+
   // Au montage : tente de récupérer la session via le cookie
   useEffect(() => {
     authApi
@@ -28,8 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const res = await authApi.login({ email, password });
+  const login = async (email: string, password: string, remember = true) => {
+    const res = await authApi.login({ email, password, remember });
     setUser(res.data.user);
   };
 

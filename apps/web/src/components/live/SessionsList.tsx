@@ -68,7 +68,7 @@ function Thumb({ s, size }: { s: LiveSession; size: number }) {
         <span className="flex h-full w-full items-center justify-center"><Radio size={size * 0.45} style={{ color: theme.textMuted }} /></span>
       )}
       {s.liveStatus === "LIVE" && s.status !== "ENDED" && (
-        <span className="absolute bottom-0.5 left-0.5 rounded px-1 text-[7px] font-bold text-white" style={{ background: "#dc2626" }}>LIVE</span>
+        <span className="absolute bottom-0.5 left-0.5 rounded px-1 text-[7px] font-bold text-white" style={{ background: "#B91C1C" }}>LIVE</span>
       )}
     </span>
   );

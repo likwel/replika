@@ -7,6 +7,9 @@ export type DefaultPage = (typeof DEFAULT_PAGES)[number];
 export const resolveDefaultPage = (page: string | null | undefined): DefaultPage =>
   DEFAULT_PAGES.includes(page as DefaultPage) ? (page as DefaultPage) : "gestion";
 
+export const ACCENT_THEMES = ["whatsapp", "classic"] as const;
+export type AccentTheme = (typeof ACCENT_THEMES)[number];
+
 export interface Profile {
   id: string;
   name: string;
@@ -20,6 +23,8 @@ export interface Profile {
   autoReplyEnabled: boolean;
   defaultPage: DefaultPage;
   desktopNotifications: boolean;
+  darkMode: boolean;
+  accentTheme: AccentTheme;
 }
 
 export interface SecurityEvent {
@@ -47,8 +52,9 @@ export const profileApi = {
 
   logoutOthers: () => api.post<Msg>("/profile/logout-others"),
 
-  updatePreferences: (body: Partial<Pick<Profile, "autoReplyEnabled" | "defaultPage" | "desktopNotifications">>) =>
-    api.patch<Res<Profile>>("/profile/preferences", body).then((r) => r.data),
+  updatePreferences: (
+    body: Partial<Pick<Profile, "autoReplyEnabled" | "defaultPage" | "desktopNotifications" | "darkMode" | "accentTheme">>,
+  ) => api.patch<Res<Profile>>("/profile/preferences", body).then((r) => r.data),
 
   activity: () => api.get<Res<SecurityEvent[]>>("/profile/activity").then((r) => r.data),
 

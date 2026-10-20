@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Plus, Radio } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { NewSessionWizard } from "@/components/live/NewSessionWizard";
 import { SessionView } from "@/components/live/SessionView";
@@ -44,21 +44,15 @@ export function LivePage() {
     return <SessionView sessionId={openId} onBack={() => setOpenId(null)} onDeleted={() => setOpenId(null)} />;
   }
 
-  const header = (title: string, text: string) => (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="flex-1">
-        <Title className="text-lg">{title}</Title>
-        <p className="text-xs" style={{ color: theme.textMuted }}>{text}</p>
-      </div>
-      <Button icon={Plus} onClick={() => setWizard(true)}>Nouvelle session</Button>
-    </div>
+  const header = (text: string) => (
+    <PageHeader className="mb-1" description={text} actions={<Button icon={Plus} onClick={() => setWizard(true)}>Nouvelle session</Button>} />
   );
 
   return (
     <div className="flex flex-col gap-4">
       {sub === 0 ? (
         <>
-          {header("Sessions de Vente Live", "Les « jp » de vos lives sont capturés, le client reçoit un message privé et ses coordonnées sont rangées dans un tableau.")}
+          {header("Les « jp » de vos lives sont capturés, le client reçoit un message privé et ses coordonnées sont rangées dans un tableau.")}
           {sessions === null ? (
             <ListSkeleton height={170} count={2} />
           ) : sessions.length === 0 ? (
@@ -88,7 +82,7 @@ export function LivePage() {
         </>
       ) : (
         <>
-          {header("Commandes JP", "Toutes les commandes capturées pendant vos lives, par session.")}
+          {header("Toutes les commandes capturées pendant vos lives, par session.")}
           <select
             value={sessionFilter}
             onChange={(e) => setSessionFilter(e.target.value)}

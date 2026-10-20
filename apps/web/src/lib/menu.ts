@@ -35,13 +35,16 @@ export interface MenuSearchHit {
   color: string;
 }
 
+// Insensible à la casse et aux accents : « pref » trouve « Préférences »
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
 export function searchMenus(query: string): MenuSearchHit[] {
-  const q = query.trim().toLowerCase();
+  const q = fold(query.trim());
   if (!q) return [];
   const hits: MenuSearchHit[] = [];
   for (const m of MENUS) {
     m.sub.forEach((label, index) => {
-      if (label.toLowerCase().includes(q) || m.label.toLowerCase().includes(q)) {
+      if (fold(label).includes(q) || fold(m.label).includes(q)) {
         hits.push({ menuLabel: m.label, label, menuId: m.id, index, icon: m.icon, color: m.color });
       }
     });

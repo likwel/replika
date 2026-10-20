@@ -111,17 +111,24 @@ export interface ConversationSummary {
 }
 
 export const graphClient = {
-  // Échange le code OAuth contre un token utilisateur courte durée
-  async exchangeCodeForToken(code: string): Promise<string> {
+  // Échange le code OAuth contre un token utilisateur courte durée.
+  // redirectUri doit être celle de la demande d'autorisation (connexion des Pages ou connexion au compte).
+  async exchangeCodeForToken(code: string, redirectUri = env.fb.redirectUri): Promise<string> {
     const { data } = await axios.get(`${GRAPH}/oauth/access_token`, {
       params: {
         client_id: env.fb.appId,
         client_secret: env.fb.appSecret,
-        redirect_uri: env.fb.redirectUri,
+        redirect_uri: redirectUri,
         code,
       },
     });
     return data.access_token as string;
+  },
+
+  // Profil de la personne connectée. Facebook ne renvoie l'e-mail que s'il est confirmé, et s'il est partagé.
+  async getProfile(userToken: string): Promise<{ id: string; name: string; email?: string }> {
+    const { data } = await axios.get(`${GRAPH}/me`, { params: { fields: "id,name,email", access_token: userToken } });
+    return data;
   },
 
   // Convertit en token longue durée (~60 jours)

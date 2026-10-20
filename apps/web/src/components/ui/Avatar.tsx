@@ -22,7 +22,7 @@ export function Avatar({ name, src, size = 36 }: Props) {
   return (
     <span
       className="flex flex-shrink-0 items-center justify-center rounded-full font-semibold"
-      style={{ width: size, height: size, background: theme.gold, color: "#1A1410", fontSize: size * 0.38 }}
+      style={{ width: size, height: size, background: theme.gold, color: theme.onAccent, fontSize: size * 0.38 }}
     >
       {initials(name)}
     </span>

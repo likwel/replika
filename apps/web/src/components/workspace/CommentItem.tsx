@@ -84,7 +84,7 @@ export function CommentItem({
             <p className="flex flex-wrap items-center gap-1.5 text-xs font-semibold" style={{ color: theme.text }}>
               {c.author}
               {c.isOwn && (
-                <span className="rounded-full px-1.5 text-[10px] font-semibold" style={{ background: theme.gold, color: "#1A1410" }}>
+                <span className="rounded-full px-1.5 text-[10px] font-semibold" style={{ background: theme.gold, color: theme.onAccent }}>
                   Vous
                 </span>
               )}

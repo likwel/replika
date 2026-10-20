@@ -94,7 +94,7 @@ export function ConversationView({ conversation: c, onBack, onSent }: Props) {
                   className="whitespace-pre-line break-words rounded-2xl px-3.5 py-2 text-sm"
                   style={{
                     background: m.isOwn ? theme.gold : theme.bgCard,
-                    color: m.isOwn ? "#1A1410" : theme.text,
+                    color: m.isOwn ? "#fff" : theme.text,
                     border: m.isOwn ? "none" : `1px solid ${theme.border}`,
                     borderBottomRightRadius: m.isOwn ? 6 : undefined,
                     borderBottomLeftRadius: m.isOwn ? undefined : 6,

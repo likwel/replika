@@ -30,11 +30,11 @@ export const ACTION_META: Record<string, ActionMeta> = {
   COMMENT_DELETED: { label: "Commentaire supprimé", icon: Trash2, color: theme.textMuted },
   LEAD_CONTACTED: { label: "Lead contacté", icon: Target, color: theme.goldDark },
   SCHEDULE_CREATED: { label: "Programmation créée", icon: CalendarClock, color: theme.textMuted },
-  SCHEDULE_PUBLISHED: { label: "Programmation publiée", icon: CheckCircle2, color: "#15803d" },
+  SCHEDULE_PUBLISHED: { label: "Programmation publiée", icon: CheckCircle2, color: "#166534" },
   SCHEDULE_FAILED: { label: "Programmation en échec", icon: XCircle, color: theme.red },
-  LIVE_SESSION_STARTED: { label: "Session live démarrée", icon: Radio, color: "#dc2626" },
+  LIVE_SESSION_STARTED: { label: "Session live démarrée", icon: Radio, color: "#B91C1C" },
   PROFILE_UPDATED: { label: "Profil mis à jour", icon: Settings2, color: theme.textMuted },
-  AUTO_REPLY_ENABLED: { label: "Réponses automatiques activées", icon: Power, color: "#15803d" },
+  AUTO_REPLY_ENABLED: { label: "Réponses automatiques activées", icon: Power, color: "#166534" },
   AUTO_REPLY_DISABLED: { label: "Réponses automatiques en pause", icon: Power, color: theme.textMuted },
 };
 

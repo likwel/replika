@@ -301,16 +301,16 @@ export function ScheduleComposer({ initial, duplicate, defaultDate, defaultKind 
                               className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded"
                               style={{ border: `1.5px solid ${on ? theme.gold : theme.border}`, background: on ? theme.gold : "transparent" }}
                             >
-                              {on && <Check size={11} color="#1A1410" />}
+                              {on && <Check size={11} color="#fff" />}
                             </span>
                             {post?.image && <img src={post.image} alt="" className="h-9 w-9 flex-shrink-0 rounded-lg object-cover" />}
                             <span className="min-w-0 flex-1">
                               <span className="block truncate text-sm" style={{ color: theme.text }}>{label}</span>
-                              <span className="block truncate text-[11px]" style={{ color: stale ? "#b45309" : theme.textMuted }}>
+                              <span className="block truncate text-[11px]" style={{ color: stale ? "#92400E" : theme.textMuted }}>
                                 {post ? `${timeAgo(post.time)} · ${post.comments} commentaires` : `${timeAgo(conv!.updatedAt)} · ${conv!.snippet}`}
                               </span>
                             </span>
-                            {stale && <Clock size={13} style={{ color: "#b45309" }} aria-label="Plus de 24 h" />}
+                            {stale && <Clock size={13} style={{ color: "#92400E" }} aria-label="Plus de 24 h" />}
                           </button>
                         </li>
                       );
@@ -473,7 +473,7 @@ export function ScheduleComposer({ initial, duplicate, defaultDate, defaultKind 
                   )}
                   <div
                     className={`max-w-[90%] whitespace-pre-line break-words rounded-2xl px-3 py-2 text-xs ${kind === "MESSAGE" ? "ml-auto" : ""}`}
-                    style={{ background: kind === "MESSAGE" ? theme.gold : theme.bgCard, color: kind === "MESSAGE" ? "#1A1410" : theme.text }}
+                    style={{ background: kind === "MESSAGE" ? theme.gold : theme.bgCard, color: kind === "MESSAGE" ? theme.onAccent : theme.text }}
                   >
                     {text || "Votre texte apparaîtra ici."}
                   </div>

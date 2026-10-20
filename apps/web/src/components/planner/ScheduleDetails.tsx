@@ -106,7 +106,7 @@ export function ScheduleDetails({ schedule: s, onClose, onEdit, onDuplicate, onC
                 </div>
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
                   {t.status === "DONE" ? (
-                    <span className="flex items-center gap-1 text-xs font-medium" style={{ color: "#15803d" }}><CheckCircle2 size={13} /> Envoyé</span>
+                    <span className="flex items-center gap-1 text-xs font-medium" style={{ color: "#166534" }}><CheckCircle2 size={13} /> Envoyé</span>
                   ) : t.status === "FAILED" ? (
                     <span className="flex items-center gap-1 text-xs font-medium" style={{ color: theme.red }}><XCircle size={13} /> Échec</span>
                   ) : (

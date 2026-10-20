@@ -1,4 +1,6 @@
-import { api } from "./api";
+import { api, BASE_URL } from "./api";
+
+export type SocialProvider = "facebook" | "google";
 
 export interface User {
   id: string;
@@ -8,6 +10,8 @@ export interface User {
   avatarUrl: string | null;
   defaultPage: string; // page ouverte après connexion
   desktopNotifications: boolean;
+  darkMode: boolean;
+  accentTheme: string; // "whatsapp" | "classic"
 }
 
 interface AuthResponse {
@@ -24,8 +28,14 @@ export const authApi = {
   register: (body: { name: string; email: string; password: string }) =>
     api.post<AuthResponse>("/auth/register", body),
 
-  login: (body: { email: string; password: string }) =>
+  login: (body: { email: string; password: string; remember?: boolean }) =>
     api.post<AuthResponse>("/auth/login", body),
+
+  // Fournisseurs configurés côté serveur (seuls ceux-là sont proposés)
+  providers: () => api.get<{ status: string; data: Record<SocialProvider, boolean> }>("/auth/providers").then((r) => r.data),
+
+  // Navigation complète (pas d'appel AJAX) : la fenêtre du fournisseur doit s'ouvrir dans le navigateur
+  socialLoginUrl: (provider: SocialProvider) => `${BASE_URL}/auth/${provider}`,
 
   logout: () => api.post<{ status: string }>("/auth/logout"),
 

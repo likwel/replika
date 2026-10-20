@@ -162,7 +162,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
       <FilterChips items={FILTERS.map((f) => ({ id: f.id, label: f.label, count: f.id === "all" ? undefined : counts[f.id] }))} value={filter} onChange={setFilter} />
 
       {orders === null ? (
-        <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />
+        <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bg }} />
       ) : visible.length === 0 ? (
         <EmptyState icon={ShoppingBag} title={all.length ? "Aucune commande pour ces filtres" : "Aucun JP pour l'instant"}>
           {all.length ? "Modifiez la recherche ou les filtres." : "Les commentaires « jp » capturés pendant le live apparaîtront ici automatiquement."}
@@ -373,7 +373,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
                   <td className="px-3 py-2.5 text-right" style={{ color: a.stock !== null && a.reserved >= a.stock ? theme.red : theme.textMuted }}>
                     {a.stock === null ? "∞" : `${Math.max(0, a.stock - a.reserved)} / ${a.stock}`}
                   </td>
-                  <td className="px-3 py-2.5 text-right" style={{ color: a.waitlist ? "#7c3aed" : theme.textMuted }}>{a.waitlist}</td>
+                  <td className="px-3 py-2.5 text-right" style={{ color: a.waitlist ? "#6D28D9" : theme.textMuted }}>{a.waitlist}</td>
                   <td className="px-3 py-2.5 text-right font-medium" style={{ color: theme.text }}>{a.revenue ? formatAriary(a.revenue) : `${a.sold}`}</td>
                 </tr>
               ))}

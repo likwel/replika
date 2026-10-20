@@ -86,7 +86,7 @@ export function CommentsFeed({ sessionId, active, onOrder }: Props) {
     <div className="flex flex-wrap items-center gap-2">
       <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Code (facultatif)" className="w-32 rounded-lg px-2 py-1 text-xs outline-none" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }} />
       <input value={qty} onChange={(e) => setQty(e.target.value)} inputMode="numeric" className="w-14 rounded-lg px-2 py-1 text-xs outline-none" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }} aria-label="Quantité" />
-      <button onClick={() => mark(c)} disabled={busy} className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold" style={{ background: theme.gold, color: "#1A1410" }}>
+      <button onClick={() => mark(c)} disabled={busy} className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold" style={{ background: theme.gold, color: theme.onAccent }}>
         {busy && <Loader2 size={11} className="animate-spin" />} Créer la commande
       </button>
       <button onClick={() => setMarking(null)} className="text-xs" style={{ color: theme.textMuted }}>Annuler</button>
@@ -121,7 +121,7 @@ export function CommentsFeed({ sessionId, active, onOrder }: Props) {
           </span>
         )}
         {c.isJp && (
-          <span className="flex items-center gap-0.5 rounded px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: "#1A1410" }}>
+          <span className="flex items-center gap-0.5 rounded px-1.5 text-[10px] font-bold" style={{ background: theme.gold, color: theme.onAccent }}>
             <ShoppingBag size={9} /> JP{c.order?.code ? ` ${c.order.code}` : ""}
           </span>
         )}
@@ -144,7 +144,7 @@ export function CommentsFeed({ sessionId, active, onOrder }: Props) {
         />
         {active && (
           <span className="ml-auto flex items-center gap-1.5 text-[11px]" style={{ color: theme.textMuted }}>
-            <StatusDot color="#dc2626" size={7} pulse /> En direct
+            <StatusDot color="#B91C1C" size={7} pulse /> En direct
           </span>
         )}
       </div>
@@ -157,7 +157,7 @@ export function CommentsFeed({ sessionId, active, onOrder }: Props) {
       )}
 
       {comments === null ? (
-        <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />
+        <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bg }} />
       ) : list.length === 0 ? (
         <EmptyState icon={MessageCircle} title="Aucun commentaire">
           {active ? "Les commentaires du live s'afficheront ici en temps réel." : "Aucun commentaire capturé pour cette session."}

@@ -63,7 +63,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
   };
 
   if (!diag) {
-    return <div className="h-28 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />;
+    return <div className="h-28 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
   }
 
   const accounts = [...diag.accounts].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
@@ -99,7 +99,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
         <span className="rounded-full px-2 py-0.5" style={{ background: theme.bg, color: theme.textMuted }}>
           {diag.sync.mode === "webhook" ? "Réception instantanée (webhooks)" : `Relève toutes les ${diag.sync.pollSeconds} s`}
         </span>
-        <span className="rounded-full px-2 py-0.5" style={{ background: theme.bg, color: diag.ai.configured ? theme.textMuted : "#b45309" }}>
+        <span className="rounded-full px-2 py-0.5" style={{ background: theme.bg, color: diag.ai.configured ? theme.textMuted : "#92400E" }}>
           {diag.ai.configured ? `IA : ${diag.ai.provider}` : "IA non configurée (clé gratuite : AI_API_KEY)"}
         </span>
         <span className="rounded-full px-2 py-0.5" style={{ background: theme.bg, color: theme.textMuted }}>

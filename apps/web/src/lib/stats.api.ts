@@ -39,11 +39,19 @@ export interface RuleStats {
   account: { name: string } | null;
 }
 
+export interface RevenueStats {
+  windowDays: number;
+  orders: number;
+  revenue: number;
+  averageOrderValue: number;
+}
+
 type Res<T> = { status: string; data: T };
 
 export const statsApi = {
-  overview: () => api.get<Res<StatsOverview>>("/stats/overview").then((r) => r.data),
+  overview: (days: DayRange = 7) => api.get<Res<StatsOverview>>(`/stats/overview?days=${days}`).then((r) => r.data),
   engagement: (days: DayRange) => api.get<Res<EngagementDay[]>>(`/stats/engagement?days=${days}`).then((r) => r.data),
   accounts: () => api.get<Res<AccountStats[]>>("/stats/accounts").then((r) => r.data),
   rules: () => api.get<Res<RuleStats[]>>("/stats/rules").then((r) => r.data),
+  revenue: () => api.get<Res<RevenueStats>>("/stats/revenue").then((r) => r.data),
 };

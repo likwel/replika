@@ -21,6 +21,12 @@ export const listingSchema = z.object({
 
 export const listingUpdateSchema = listingSchema.partial();
 
+export const bulkStatusSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, "Sélectionnez au moins une annonce").max(500),
+  status: z.enum(["ACTIVE", "SOLD_OUT", "ARCHIVED"]),
+});
+export type BulkStatusInput = z.infer<typeof bulkStatusSchema>;
+
 const orderFields = {
   customerName: z.string().trim().min(1, "Nom du client requis").max(120),
   quantity: z.number().int().min(1).max(999),

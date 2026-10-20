@@ -4,6 +4,7 @@ import { Plus, Sparkles, Info } from "lucide-react";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { AssistantCard } from "@/components/automation/AssistantCard";
 import { RuleEditor } from "@/components/automation/RuleEditor";
 import { RuleRow } from "@/components/automation/RuleRow";
@@ -11,6 +12,7 @@ import { RuleTester } from "@/components/automation/RuleTester";
 import { RULE_PRESETS } from "@/components/automation/rules";
 import { AiAssistantView } from "@/components/automation/AiAssistantView";
 import { AutomationHealth } from "@/components/automation/AutomationHealth";
+import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { Pagination } from "@/components/ui/Pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { accountApi, type SocialAccount } from "@/lib/account.api";
@@ -26,7 +28,12 @@ type EditorState = { rule: AutomationRule | null; preset?: Partial<RuleInput> } 
 
 export function AutomationPage() {
   const { sub, setSub } = useOutletContext<Ctx>();
-  return sub === AI_SUB ? <AiAssistantView /> : <RulesView channel={SUB_CHANNEL[sub] ?? null} onOpenAi={() => setSub(AI_SUB)} />;
+  return (
+    <>
+      <PageHeader description="Règles de réponse et assistant IA qui répondent à vos clients, en commentaire comme en message privé, 24h/24." />
+      {sub === AI_SUB ? <AiAssistantView /> : <RulesView channel={SUB_CHANNEL[sub] ?? null} onOpenAi={() => setSub(AI_SUB)} />}
+    </>
+  );
 }
 
 function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL"> | null; onOpenAi: () => void }) {
@@ -104,20 +111,13 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
           </div>
 
           {loading ? (
-            <div className="flex flex-col gap-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-24 animate-pulse rounded-xl" style={{ background: theme.bg }} />
-              ))}
-            </div>
+            <ListSkeleton height={96} count={3} />
           ) : visible.length === 0 ? (
-            <div className="rounded-xl px-4 py-8 text-center" style={{ background: theme.bg }}>
-              <Sparkles size={22} className="mx-auto mb-2" style={{ color: theme.gold }} />
-              <p className="text-sm font-medium" style={{ color: theme.text }}>
-                {rules.length === 0 ? "Aucune règle pour l'instant" : "Aucune règle pour ce canal"}
-              </p>
-              <p className="mt-1 text-xs" style={{ color: theme.textMuted }}>
-                Partez d'un modèle, ajustez le texte, puis activez l'envoi automatique quand il vous convient.
-              </p>
+            <EmptyState
+              icon={Sparkles}
+              title={rules.length === 0 ? "Aucune règle pour l'instant" : "Aucune règle pour ce canal"}
+            >
+              Partez d'un modèle, ajustez le texte, puis activez l'envoi automatique quand il vous convient.
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {RULE_PRESETS.map((p) => (
                   <Button key={p.label} size="sm" variant="soft" onClick={() => setEditor({ rule: null, preset: p.rule })}>
@@ -125,7 +125,7 @@ function RulesView({ channel, onOpenAi }: { channel: Exclude<RuleChannel, "ALL">
                   </Button>
                 ))}
               </div>
-            </div>
+            </EmptyState>
           ) : (
             <div className="flex flex-col gap-3">
               {rulesPage.pageItems.map((r) => (

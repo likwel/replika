@@ -1,63 +1,84 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Facebook, Instagram } from "lucide-react";
+import { ArrowLeft, Bot, Check, Store, Target } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Logo } from "@/components/ui/Logo";
 
 interface Props {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   children: ReactNode;
 }
 
+const BENEFITS: Array<{ icon: LucideIcon; title: string; text: string }> = [
+  { icon: Bot, title: "Réponses IA 24h/24", text: "Commentaires et messages Facebook & Instagram traités, même la nuit." },
+  { icon: Target, title: "Leads détectés automatiquement", text: "Chaque intention d'achat est repérée et rangée dans votre pipeline." },
+  { icon: Store, title: "Lives et Marketplace", text: "Commandes « JP » capturées en direct, catalogue synchronisé avec Facebook." },
+];
+
 export function AuthShell({ title, subtitle, children }: Props) {
   return (
-    <div className="min-h-screen flex" style={{ background: theme.bg }}>
-      <div className="hidden lg:flex w-1/2 flex-col justify-between p-12" style={{ background: theme.bgDark }}>
-        <Link to="/"><Logo dark /></Link>
-        <div>
-          {/* Le serif italique a une hauteur d'x plus faible que le sans : il est agrandi optiquement. */}
-          <h2
-            className="font-extrabold text-white"
-            style={{ fontSize: "clamp(1.75rem, 2.5vw, 2.35rem)", lineHeight: 1.14, letterSpacing: "-0.025em" }}
-          >
-            Répondez plus vite,<br />
-            <em
-              style={{
-                color: theme.goldLight,
-                fontFamily: "'Playfair Display', serif",
-                fontStyle: "italic",
-                fontWeight: 700,
-                fontSize: "1.12em",
-                letterSpacing: "-0.005em",
-              }}
-            >
-              vendez plus
-            </em>
-            <span style={{ color: theme.gold }}>.</span>
+    <div className="flex min-h-screen" style={{ background: theme.canvas }}>
+      {/* Panneau de marque (grand écran) */}
+      <aside className="relative hidden w-[44%] max-w-[580px] flex-col justify-between overflow-hidden p-12 lg:flex" style={{ background: theme.bgDark }}>
+        <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full opacity-25 blur-3xl" style={{ background: theme.gold }} />
+        <div className="pointer-events-none absolute -bottom-32 -left-20 h-72 w-72 rounded-full opacity-15 blur-3xl" style={{ background: theme.goldLight }} />
+
+        <Link to="/" className="relative w-fit"><Logo dark /></Link>
+
+        <div className="relative">
+          <h2 className="font-bold text-white" style={{ fontSize: "clamp(1.9rem, 2.6vw, 2.5rem)", lineHeight: 1.12, letterSpacing: "-0.025em" }}>
+            Répondez plus vite,
+            <br />
+            <span style={{ color: theme.goldLight }}>vendez plus.</span>
           </h2>
-          <p className="mt-4 max-w-sm" style={{ color: "#ffffff99" }}>
-            Automatisez vos commentaires et messages Facebook & Instagram avec l'intelligence artificielle.
+          <p className="mt-4 max-w-md text-[15px] leading-relaxed" style={{ color: "#ffffffcc" }}>
+            ReplyKA automatise vos commentaires et messages Facebook & Instagram avec l'intelligence artificielle.
           </p>
-          <div className="mt-8 flex items-center gap-3">
-            {[Facebook, Instagram].map((I, i) => (
-              <div key={i} className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <I size={20} color="#fff" />
-              </div>
+          <ul className="mt-10 flex flex-col gap-5">
+            {BENEFITS.map((b) => (
+              <li key={b.title} className="flex items-start gap-3.5">
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <b.icon size={18} style={{ color: theme.goldLight }} />
+                </span>
+                <span>
+                  <span className="block text-[15px] font-semibold text-white">{b.title}</span>
+                  <span className="block text-sm" style={{ color: "#ffffffb3" }}>{b.text}</span>
+                </span>
+              </li>
             ))}
+          </ul>
+        </div>
+
+        <p className="relative flex items-center gap-2 text-sm" style={{ color: "#ffffffb3" }}>
+          <Check size={15} style={{ color: theme.goldLight }} /> Connexion officielle Meta · aucun mot de passe Facebook demandé
+        </p>
+      </aside>
+
+      {/* Formulaire */}
+      <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center justify-between px-5 py-4 sm:px-8">
+          <Link to="/" className="lg:hidden"><Logo /></Link>
+          <Link to="/" className="ml-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-sm hover:bg-black/5" style={{ color: theme.textMuted }}>
+            <ArrowLeft size={15} /> Accueil
+          </Link>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center px-5 pb-10 sm:px-8">
+          <div className="w-full max-w-[400px]">
+            <h1 className="text-[26px] font-bold tracking-[-0.02em]" style={{ color: theme.text }}>{title}</h1>
+            {subtitle && <p className="mt-1.5 text-sm" style={{ color: theme.textMuted }}>{subtitle}</p>}
+            <div className="mt-7">{children}</div>
           </div>
         </div>
-        <p className="text-sm" style={{ color: "#ffffff66" }}>© 2026 ReplyKA</p>
-      </div>
 
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden mb-8 text-center"><Link to="/"><Logo /></Link></div>
-          <h1 className="text-2xl font-bold" style={{ color: theme.text }}>{title}</h1>
-          {subtitle && <p className="mt-2 text-sm" style={{ color: theme.textMuted }}>{subtitle}</p>}
-          <div className="mt-7">{children}</div>
-        </div>
-      </div>
+        <p className="px-5 pb-6 text-center text-xs" style={{ color: theme.textMuted }}>
+          © 2026 ReplyKA ·{" "}
+          <Link to="/cgu" className="underline-offset-2 hover:underline">Conditions d'utilisation</Link> ·{" "}
+          <Link to="/confidentialite" className="underline-offset-2 hover:underline">Confidentialité</Link>
+        </p>
+      </main>
     </div>
   );
 }

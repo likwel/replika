@@ -13,9 +13,11 @@ export const cookieOpts = {
 export const sessionToken = (user: { id: string; role: string; tokenVersion: number }) =>
   signToken({ userId: user.id, role: user.role, tv: user.tokenVersion });
 
-// Pose (ou remplace) le cookie de session
-export function setSessionCookie(res: Response, token: string) {
-  res.cookie("token", token, cookieOpts);
+// Pose (ou remplace) le cookie de session. persistent = false (« Se souvenir de moi » décoché) :
+// cookie de session, effacé à la fermeture du navigateur.
+export function setSessionCookie(res: Response, token: string, persistent = true) {
+  if (persistent) res.cookie("token", token, cookieOpts);
+  else res.cookie("token", token, { ...cookieOpts, maxAge: undefined });
 }
 
 // Contexte d'une connexion, affiché dans l'historique de sécurité

@@ -14,19 +14,17 @@ export function StatCard({ icon: Icon, label, value, trend, color }: Props) {
   const down = trend?.trimStart().startsWith("-");
   const TrendIcon = down ? TrendingDown : TrendingUp;
   return (
-    <div className="rounded-2xl p-4 transition-all hover:shadow-md" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-start justify-between">
-        <div className="rounded-xl p-2" style={{ background: `${color}1A`, border: `1px solid ${color}2E` }}>
-          <Icon size={18} style={{ color }} />
-        </div>
+    <div className="rounded-xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+      <div className="flex items-center gap-2">
+        <Icon size={15} className="flex-shrink-0" style={{ color }} />
+        <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: theme.textMuted }}>{label}</span>
         {trend && (
-          <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: down ? theme.red : theme.green }}>
+          <span className="flex flex-shrink-0 items-center gap-0.5 text-[11.5px] font-medium" style={{ color: down ? theme.red : theme.green }}>
             <TrendIcon size={12} /> {trend}
           </span>
         )}
       </div>
-      <p className="mt-3 text-xl font-bold" style={{ color: theme.text }}>{value}</p>
-      <p className="text-[12.5px]" style={{ color: theme.textMuted }}>{label}</p>
+      <p className="mt-2 text-2xl font-semibold tracking-[-0.02em]" style={{ color: theme.text }}>{value}</p>
     </div>
   );
 }

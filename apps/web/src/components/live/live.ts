@@ -10,10 +10,10 @@ export const SESSION_STATUS: Record<SessionStatus, { label: string; color: strin
 
 export const ORDER_STATUS: Record<OrderStatus, { label: string; color: string; bg: string; hint: string }> = {
   NEW: { label: "Nouveau", color: theme.textMuted, bg: theme.bg, hint: "JP capturé, client pas encore contacté" },
-  MESSAGED: { label: "Message envoyé", color: "#2563eb", bg: "#E8F0FE", hint: "En attente de la réponse du client" },
+  MESSAGED: { label: "Message envoyé", color: "#1D4ED8", bg: "#E8F0FE", hint: "En attente de la réponse du client" },
   PARTIAL: { label: "Infos incomplètes", color: theme.amber, bg: theme.amberSoft, hint: "Le client a répondu, il manque des informations" },
   CONFIRMED: { label: "Confirmé", color: theme.green, bg: theme.greenSoft, hint: "Coordonnées complètes" },
-  WAITLIST: { label: "Liste d'attente", color: "#7c3aed", bg: "#F1ECFE", hint: "Article épuisé" },
+  WAITLIST: { label: "Liste d'attente", color: "#6D28D9", bg: "#F1ECFE", hint: "Article épuisé" },
   DELIVERED: { label: "Livré", color: theme.goldDark, bg: theme.goldSoft, hint: "Commande livrée" },
   CANCELED: { label: "Annulé", color: theme.red, bg: "#FDECEC", hint: "Commande annulée" },
 };

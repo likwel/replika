@@ -128,7 +128,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
   };
 
   if (!session) {
-    return <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />;
+    return <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
   }
 
   const stats = session.stats;
@@ -161,7 +161,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
             <p className="flex flex-wrap items-center gap-2">
               <span className="truncate text-base font-semibold" style={{ color: theme.text }}>{session.title}</span>
               {isLive && (
-                <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: "#dc2626" }}>
+                <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: "#B91C1C" }}>
                   <StatusDot color="#fff" size={5} pulse /> EN DIRECT
                 </span>
               )}
@@ -207,9 +207,9 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {card("JP capturés", String(stats.jp ?? stats.orders), ShoppingBag, theme.goldDark, `${session._count.comments} commentaires`)}
-        {card("Clients", String(stats.customers), Users, "#2563eb")}
-        {card("À compléter", String(todo), AlertTriangle, todo ? "#b45309" : theme.textMuted, `${confirmed} confirmée${confirmed > 1 ? "s" : ""}`)}
-        {card("Chiffre d'affaires", formatAriary(stats.revenue), Wallet, "#15803d", `${stats.items} article${stats.items > 1 ? "s confirmés" : " confirmé"}`)}
+        {card("Clients", String(stats.customers), Users, "#1D4ED8")}
+        {card("À compléter", String(todo), AlertTriangle, todo ? "#92400E" : theme.textMuted, `${confirmed} confirmée${confirmed > 1 ? "s" : ""}`)}
+        {card("Chiffre d'affaires", formatAriary(stats.revenue), Wallet, "#166534", `${stats.items} article${stats.items > 1 ? "s confirmés" : " confirmé"}`)}
       </div>
 
       <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl p-1" style={{ background: theme.bg, border: `1px solid ${theme.border}` }} role="tablist">

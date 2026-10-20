@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
 import { CalendarView } from "@/components/planner/CalendarView";
 import { ScheduleList } from "@/components/planner/ScheduleList";
@@ -19,12 +20,6 @@ interface Ctx { sub: number; setSub: (i: number) => void }
 // Sous-menus de « Planifier » (même ordre)
 const VIEWS = ["calendar", "queue", "drafts", "history"] as const;
 type View = (typeof VIEWS)[number];
-const TITLES: Record<View, string> = {
-  calendar: "Calendrier Éditorial",
-  queue: "File d'Attente",
-  drafts: "Brouillons",
-  history: "Historique des Envois",
-};
 
 type ComposerState = { initial?: Schedule | null; duplicate?: boolean; defaultDate?: Date | null } | null;
 
@@ -132,15 +127,11 @@ export function PlannerPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex-1">
-          <Title className="text-lg">{TITLES[view]}</Title>
-          <p className="text-xs" style={{ color: theme.textMuted }}>
-            Publications, commentaires et messages privés envoyés automatiquement sur vos Pages et comptes.
-          </p>
-        </div>
-        <Button icon={Plus} onClick={() => setComposer({})}>Nouvelle programmation</Button>
-      </div>
+      <PageHeader
+        className="mb-1"
+        description="Publications, commentaires et messages privés envoyés automatiquement sur vos Pages et comptes."
+        actions={<Button icon={Plus} onClick={() => setComposer({})}>Nouvelle programmation</Button>}
+      />
 
       {notice && (
         <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm" style={{ background: notice.warnings.length ? "#FEF3C7" : theme.goldSoft, color: notice.warnings.length ? "#92400e" : theme.goldDark }}>
@@ -155,9 +146,9 @@ export function PlannerPage() {
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {stat("À venir", queue.length, CalendarClock, 1, theme.goldDark)}
-        {stat("Aujourd'hui", today, CalendarDays, 0, "#2563eb")}
+        {stat("Aujourd'hui", today, CalendarDays, 0, "#1D4ED8")}
         {stat("Brouillons", drafts.length, FileText, 2, theme.textMuted)}
-        {stat("Échecs", failures.length, failures.length ? AlertTriangle : History, 3, failures.length ? theme.red : "#15803d")}
+        {stat("Échecs", failures.length, failures.length ? AlertTriangle : History, 3, failures.length ? theme.red : "#166534")}
       </div>
 
       {items === null ? (

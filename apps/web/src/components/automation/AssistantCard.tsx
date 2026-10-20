@@ -63,41 +63,38 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
   const stats = settings?.stats;
 
   return (
-    <div className="rounded-2xl p-5 text-white" style={{ background: theme.bgDark }}>
+    <div className="rounded-xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
       <div className="flex items-start gap-4">
-        <div className="rounded-xl p-3" style={{ background: "rgba(229,172,95,0.15)" }}>
-          <Bot size={24} style={{ color: theme.goldLight }} />
+        <div className="rounded-lg p-2.5" style={{ background: theme.goldSoft }}>
+          <Bot size={22} style={{ color: theme.goldDark }} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold">Réponses automatiques</h3>
+            <h3 className="font-semibold" style={{ color: theme.text }}>Réponses automatiques</h3>
             {settings && (
               <span
-                className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{
-                  background: enabled ? "rgba(34,197,94,0.16)" : "rgba(255,255,255,0.08)",
-                  color: enabled ? theme.greenLight : "#FFFFFF99",
-                }}
+                className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                style={{ background: enabled ? theme.greenSoft : theme.bg, color: enabled ? theme.green : theme.textMuted }}
               >
-                <StatusDot color={enabled ? theme.greenLight : "#FFFFFF66"} size={6} pulse={enabled} />
+                <StatusDot color={enabled ? theme.greenLight : theme.textMuted} size={6} pulse={enabled} />
                 {enabled ? "En ligne" : "En pause"}
               </span>
             )}
           </div>
 
           {stats ? (
-            <p className="mt-1 text-sm opacity-80">
+            <p className="mt-1 text-sm" style={{ color: theme.text }}>
               {plural(stats.autoRepliedToday, "réponse automatique", "réponses automatiques")} aujourd'hui ·{" "}
               {plural(stats.suggested, "suggestion")} à valider · {plural(stats.escalated, "escaladé")}
               {stats.failed > 0 && (
-                <span style={{ color: "#F5A097" }}> · {plural(stats.failed, "échec")} d'envoi</span>
+                <span style={{ color: theme.red }}> · {plural(stats.failed, "échec")} d'envoi</span>
               )}
             </p>
           ) : (
-            <p className="mt-1 text-sm opacity-60">Chargement…</p>
+            <p className="mt-1 text-sm" style={{ color: theme.textMuted }}>Chargement…</p>
           )}
           {settings && (
-            <p className="mt-1 text-[11px] opacity-50">
+            <p className="mt-1 text-[11.5px]" style={{ color: theme.textMuted }}>
               {settings.webhookConfigured ? "Jeton webhook Meta défini" : "Webhooks Meta non configurés"} ·{" "}
               {settings.pollSeconds > 0
                 ? `relève automatique toutes les ${settings.pollSeconds} s`
@@ -116,33 +113,25 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
               size="sm"
               variant={showRulesLink ? "ghost" : "primary"}
               icon={Power}
-              className={showRulesLink ? "!text-white !border-white/20" : ""}
               onClick={toggle}
               disabled={!settings || busy !== null}
             >
               {enabled ? "Mettre en pause" : "Activer"}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={RefreshCw}
-              className="!text-white !border-white/20"
-              onClick={sync}
-              disabled={busy !== null}
-            >
+            <Button size="sm" variant="ghost" icon={RefreshCw} onClick={sync} disabled={busy !== null}>
               {busy === "sync" ? "Synchronisation…" : "Synchroniser"}
             </Button>
           </div>
-          {notice && <p className="mt-2 text-xs" style={{ color: theme.goldLight }}>{notice}</p>}
+          {notice && <p className="mt-2 text-xs" style={{ color: theme.goldDark }}>{notice}</p>}
 
           {/* Relève en échec : sans elle, aucun commentaire n'est vu, donc aucune réponse ne part */}
           {settings && settings.syncIssues.length > 0 && (
-            <div className="mt-4 rounded-xl p-3" style={{ background: "rgba(192,57,43,0.18)", border: "1px solid rgba(245,160,151,0.35)" }}>
-              <p className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: "#F5A097" }}>
+            <div className="mt-4 rounded-lg p-3" style={{ background: theme.dangerBg, color: theme.red }}>
+              <p className="flex items-center gap-1.5 text-sm font-semibold">
                 <AlertTriangle size={15} />
                 Relève impossible sur {plural(settings.syncIssues.length, "compte")} : aucune réponse ne peut partir
               </p>
-              <ul className="mt-1.5 space-y-0.5 text-xs opacity-90">
+              <ul className="mt-1.5 space-y-0.5 text-xs">
                 {settings.syncIssues.map((a) => (
                   <li key={a.id}>
                     <strong>{a.name}</strong> — {a.syncError}
@@ -151,7 +140,7 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
               </ul>
               {settings.syncIssues.some((a) => isPermissionError(a.syncError)) && (
                 <>
-                  <p className="mt-2 text-xs opacity-90">
+                  <p className="mt-2 text-xs">
                     Facebook refuse l'accès : reconnectez Facebook et laissez <strong>toutes</strong> les autorisations
                     cochées (lecture et réponse aux commentaires, messages).
                   </p>

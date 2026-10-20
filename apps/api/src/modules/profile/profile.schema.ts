@@ -37,11 +37,14 @@ export const passwordSchema = z.object({
 });
 
 export const DEFAULT_PAGES = ["gestion", "automatisation", "statistiques"] as const;
+export const ACCENT_THEMES = ["whatsapp", "classic"] as const;
 
 export const preferencesSchema = z.object({
   autoReplyEnabled: z.boolean().optional(),
   defaultPage: z.enum(DEFAULT_PAGES).optional(),
   desktopNotifications: z.boolean().optional(),
+  darkMode: z.boolean().optional(),
+  accentTheme: z.enum(ACCENT_THEMES).optional(),
 });
 
 export const deleteSchema = z.object({

@@ -37,7 +37,7 @@ export function ForgotPasswordPage() {
           <p className="text-sm" style={{ color: theme.textMuted }}>
             Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.
           </p>
-          <Link to="/login" className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: theme.goldDark }}>
+          <Link to="/connexion" className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium" style={{ color: theme.goldDark }}>
             <ArrowLeft size={15} /> Retour à la connexion
           </Link>
         </div>
@@ -50,7 +50,7 @@ export function ForgotPasswordPage() {
               {loading ? "Envoi…" : "Envoyer le lien"}
             </Button>
           </div>
-          <Link to="/login" className="mt-6 mx-auto flex items-center gap-1.5 text-sm font-medium w-fit" style={{ color: theme.goldDark }}>
+          <Link to="/connexion" className="mt-6 mx-auto flex items-center gap-1.5 text-sm font-medium w-fit" style={{ color: theme.goldDark }}>
             <ArrowLeft size={15} /> Retour à la connexion
           </Link>
         </>

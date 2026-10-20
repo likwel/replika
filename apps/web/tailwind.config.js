@@ -4,15 +4,19 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["'Plus Jakarta Sans'", "system-ui", "sans-serif"],
+        sans: ["Inter", "ui-sans-serif", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Helvetica", "Arial", "sans-serif"],
         serif: ["'Playfair Display'", "serif"],
       },
+      // Arrondis plus discrets, façon Notion
+      borderRadius: {
+        lg: "0.375rem",
+        xl: "0.5rem",
+        "2xl": "0.625rem",
+        "3xl": "0.875rem",
+      },
       colors: {
-        gold: "#E5AC5F",
-        "gold-dark": "#C9914A",
-        "gold-light": "#F2CB8E",
-        "gold-soft": "#FBF1E0",
-        brand: "#211C16",
+        // Suit l'accent choisi (index.css) ; la forme rgb permet les opacités (ring-gold/40…)
+        gold: "rgb(var(--color-gold-rgb) / <alpha-value>)",
       },
     },
   },

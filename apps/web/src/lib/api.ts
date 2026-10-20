@@ -4,9 +4,11 @@ export const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/a
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  code?: string; // identifiant stable renvoyé par l'API (ex. NO_CATALOG)
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -19,10 +21,10 @@ const client = axios.create({
 // Transforme les erreurs axios en ApiError exploitables
 client.interceptors.response.use(
   (res) => res,
-  (error: AxiosError<{ message?: string }>) => {
+  (error: AxiosError<{ message?: string; code?: string }>) => {
     const status = error.response?.status ?? 0;
     const message = error.response?.data?.message ?? "Une erreur est survenue";
-    return Promise.reject(new ApiError(message, status));
+    return Promise.reject(new ApiError(message, status, error.response?.data?.code));
   }
 );
 

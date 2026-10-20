@@ -19,6 +19,8 @@ const PROFILE_FIELDS = {
   autoReplyEnabled: true,
   defaultPage: true,
   desktopNotifications: true,
+  darkMode: true,
+  accentTheme: true,
 } as const;
 
 // Événements affichés dans l'historique de sécurité

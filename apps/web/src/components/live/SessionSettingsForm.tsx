@@ -45,7 +45,7 @@ function DetectionTester({ keywords, products }: { keywords: string; products: L
       </p>
       <input value={text} onChange={(e) => setText(e.target.value)} className={input} style={{ ...inputStyle, background: theme.bgCard }} aria-label="Commentaire à tester" />
       {result && (
-        <p className="mt-1.5 text-xs" style={{ color: result.isJp ? "#15803d" : theme.textMuted }}>
+        <p className="mt-1.5 text-xs" style={{ color: result.isJp ? "#166534" : theme.textMuted }}>
           {result.isJp
             ? `✔ JP détecté — ${result.product ? `${result.product.code} · ${result.product.name}` : result.code ? `code ${result.code}` : result.label ? `« ${result.label} »` : "article non précisé"}${result.quantity > 1 ? ` · quantité ${result.quantity}` : ""}`
             : "✘ Pas un JP : ce commentaire sera seulement affiché."}

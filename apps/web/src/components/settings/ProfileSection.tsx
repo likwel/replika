@@ -20,7 +20,7 @@ export function ProfileSection() {
   }, []);
 
   if (loadError) return <SettingsCard title="Profil">Impossible de charger votre profil.</SettingsCard>;
-  if (!profile) return <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bgCard }} />;
+  if (!profile) return <div className="h-64 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
 
   return (
     <>

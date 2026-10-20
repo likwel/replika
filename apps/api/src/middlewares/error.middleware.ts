@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ status: "error", message: err.message });
+    return res.status(err.statusCode).json({ status: "error", message: err.message, ...(err.code ? { code: err.code } : {}) });
   }
 
   // Corps de requête refusé par express (trop lourd, JSON invalide)
