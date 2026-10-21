@@ -205,7 +205,8 @@ export function TermsPage() {
 
       <Section title="14. Contact">
         <p>
-          Pour toute question relative aux présentes CGU, écrivez-nous à{" "}
+          Pour toute question relative aux présentes CGU, utilisez le{" "}
+          <Link to="/contact" className="underline" style={link}>formulaire de contact</Link> ou écrivez-nous à{" "}
           <a href="mailto:contact@suiteflow.mg" className="underline" style={link}>contact@suiteflow.mg</a>.
         </p>
       </Section>

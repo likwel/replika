@@ -86,9 +86,9 @@ export const billingApi = {
   overview: () => api.get<Res<BillingOverview>>("/billing").then((r) => r.data),
   quote: (plan: PlanId, period: BillingPeriod) =>
     api.get<Res<Quote>>(`/billing/quote?plan=${plan}&period=${period}`).then((r) => r.data),
-  checkout: (plan: PlanId, period: BillingPeriod, phone: string) =>
+  checkout: (plan: PlanId, period: BillingPeriod, phone?: string) =>
     api.post<Res<{ reference: string; paymentLink: string }>>("/billing/checkout", { plan, period, phone }).then((r) => r.data),
-  buyLiveHours: (hours: number, phone: string) =>
+  buyLiveHours: (hours: number, phone?: string) =>
     api.post<Res<{ reference: string; paymentLink: string }>>("/billing/live-hours", { hours, phone }).then((r) => r.data),
   refresh: (reference: string) =>
     api

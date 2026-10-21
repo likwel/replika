@@ -9,7 +9,6 @@ import { liveHours, useLiveHoursDialog } from "@/lib/liveHours";
 import { payment } from "@/lib/payment";
 import { fmtAr, fmtNum } from "@/hooks/usePlan";
 import { MOBILE_MONEY } from "@/data/plans";
-import { PhoneField, displayPhone, normalizePhone } from "./PhoneField";
 
 const PACKS = [2, 5, 10, 20];
 const MAX_HOURS = 200;
@@ -27,16 +26,11 @@ function BuyLiveHoursDialog({ reason, onClose }: { reason: string | null; onClos
   const [hours, setHours] = useState(5);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [phone, setPhone] = useState("");
-  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     billingApi
       .overview()
-      .then((o) => {
-        setData(o);
-        setPhone((p) => p || displayPhone(o.paymentPhone));
-      })
+      .then(setData)
       .catch((e: Error) => setLoadError(e.message));
   }, []);
 
@@ -46,14 +40,11 @@ function BuyLiveHoursDialog({ reason, onClose }: { reason: string | null; onClos
   const clamp = (n: number) => Math.min(MAX_HOURS, Math.max(1, Math.round(n) || 1));
 
   const pay = async () => {
-    setTouched(true);
-    const p = normalizePhone(phone);
-    if (!p) return;
     setPaying(true);
     setError(null);
     try {
       // Fenêtre Papi à part : la page reste ouverte et affiche le résultat
-      await payment.start(() => billingApi.buyLiveHours(hours, p), { label: `${hours} h de Live Manager`, amount: total });
+      await payment.start(() => billingApi.buyLiveHours(hours), { label: `${hours} h de Live Manager`, amount: total });
       onClose();
     } catch (e) {
       setError((e as Error).message);
@@ -150,8 +141,6 @@ function BuyLiveHoursDialog({ reason, onClose }: { reason: string | null; onClos
             </div>
             <p className="whitespace-nowrap text-xl font-bold tracking-tight" style={{ color: theme.text }}>{fmtAr(total)}</p>
           </div>
-
-          <PhoneField value={phone} onChange={setPhone} touched={touched} />
 
           <ul className="flex flex-col gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
             <li className="flex items-start gap-1.5">

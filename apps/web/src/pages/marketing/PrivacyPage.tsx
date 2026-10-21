@@ -105,7 +105,8 @@ export function PrivacyPage() {
           <li>demander la suppression complète de votre compte et de vos données.</li>
         </ul>
         <p>
-          Pour toute autre demande relative à vos données (accès, rectification, opposition), écrivez-nous à{" "}
+          Pour toute autre demande relative à vos données (accès, rectification, opposition), utilisez le{" "}
+          <Link to="/contact" className="underline" style={{ color: theme.goldDark }}>formulaire de contact</Link> ou écrivez-nous à{" "}
           <a href="mailto:contact@suiteflow.mg" className="underline" style={{ color: theme.goldDark }}>contact@suiteflow.mg</a>.
         </p>
       </Section>

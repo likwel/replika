@@ -24,6 +24,7 @@ import { PAYMENT_METHOD_LABEL, fmtHours, type PaymentStatus } from "@/lib/billin
 import { fmtAr, fmtDate, fmtNum } from "@/hooks/usePlan";
 import { timeAgo } from "@/lib/format";
 import { swal } from "@/lib/swal";
+import { contactApi, type ContactMessage } from "@/lib/contact.api";
 import type { PlanId } from "@/data/plans";
 
 interface Ctx { sub: number }
@@ -58,6 +59,7 @@ const DESCRIPTIONS = [
   "Tous les paiements Papi.mg : montant brut, commission et net encaissé, numéro du payeur.",
   "Vos dépenses (hébergement, IA, marketing…) : elles sont déduites du bénéfice.",
   "Modèle IA, consommation, coûts estimés et état des services.",
+  "Demandes reçues par le formulaire « Nous contacter » (site et application).",
 ];
 
 // Tableau de bord administrateur : réservé au rôle ADMIN (le premier compte inscrit)
@@ -68,7 +70,7 @@ export function AdminPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader className="mb-0" description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]} />
-      {sub === 1 ? <UsersView /> : sub === 2 ? <PaymentsView /> : sub === 3 ? <ExpensesView /> : sub === 4 ? <AiView /> : <OverviewView />}
+      {sub === 1 ? <UsersView /> : sub === 2 ? <PaymentsView /> : sub === 3 ? <ExpensesView /> : sub === 4 ? <AiView /> : sub === 5 ? <MessagesView /> : <OverviewView />}
     </div>
   );
 }
@@ -759,6 +761,128 @@ function PaymentsView() {
           total={data.total}
           pageSize={data.pageSize}
           pageSizes={[10, 25, 50, 100]}
+          onPageSizeChange={(n) => {
+            setSize(n);
+            setPage(1);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Messages de contact ─────────────────────────────────────────────────────
+
+function MessagesView() {
+  const [status, setStatus] = useState<"" | "NEW" | "HANDLED">("NEW");
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [data, setData] = useState<{ messages: ContactMessage[]; total: number; unread: number; pageSize: number } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    contactApi
+      .list({ status: status || undefined, page, pageSize: size })
+      .then(setData)
+      .catch((e: Error) => swal.toast({ variant: "error", title: "Chargement impossible", text: e.message }))
+      .finally(() => setLoading(false));
+  }, [status, page, size]);
+  useEffect(load, [load]);
+
+  const toggle = async (m: ContactMessage) => {
+    setBusy(m.id);
+    try {
+      await contactApi.setStatus(m.id, m.status === "NEW" ? "HANDLED" : "NEW");
+      load();
+    } catch (e) {
+      swal.toast({ variant: "error", title: "Action impossible", text: (e as Error).message });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const filters: Array<{ id: "" | "NEW" | "HANDLED"; label: string }> = [
+    { id: "NEW", label: data ? `À traiter (${data.unread})` : "À traiter" },
+    { id: "HANDLED", label: "Traités" },
+    { id: "", label: "Tous" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {filters.map((f) => {
+          const on = status === f.id;
+          return (
+            <button
+              key={f.id || "all"}
+              onClick={() => { setStatus(f.id); setPage(1); }}
+              className="rounded-lg px-3 py-1.5 text-[12.5px] font-medium"
+              style={{ background: on ? theme.bgDark : theme.bgCard, color: on ? "#fff" : theme.text, border: `1px solid ${on ? theme.bgDark : theme.border}` }}
+              aria-pressed={on}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+        <button onClick={load} className="ml-auto flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }} title="Actualiser">
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Actualiser
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-3" style={{ opacity: loading && data ? 0.6 : 1 }}>
+        {data?.messages.length === 0 && (
+          <div className="rounded-2xl px-4 py-10 text-center text-[13px]" style={{ ...card, color: theme.textMuted }}>
+            {status === "NEW" ? "Aucun message à traiter." : "Aucun message."}
+          </div>
+        )}
+        {data?.messages.map((m) => {
+          const fresh = m.status === "NEW";
+          const reply = `mailto:${m.email}?subject=${encodeURIComponent(`Re : ${m.subjectLabel} — SuiteFlow`)}`;
+          return (
+            <article key={m.id} className="rounded-2xl p-4" style={{ ...card, borderLeft: `3px solid ${fresh ? theme.gold : theme.border}` }}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold" style={{ color: theme.text }}>
+                    {m.name}
+                    {m.company && <span className="text-[12.5px] font-normal" style={{ color: theme.textMuted }}>· {m.company}</span>}
+                    {m.userId && <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: theme.goldSoft, color: theme.goldDark }}>Client</span>}
+                  </p>
+                  <p className="text-[12.5px]" style={{ color: theme.textMuted }}>
+                    <a href={`mailto:${m.email}`} className="underline">{m.email}</a>
+                    {m.phone && <> · <span className="tabular-nums">{m.phone}</span></>}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: m.subject === "AGENCY" ? theme.goldSoft : theme.bg, color: m.subject === "AGENCY" ? theme.goldDark : theme.text, border: `1px solid ${theme.border}` }}>
+                    {m.subjectLabel}
+                  </span>
+                  <span className="text-[11.5px]" style={{ color: theme.textMuted }} title={new Date(m.createdAt).toLocaleString("fr-FR")}>{timeAgo(m.createdAt)}</span>
+                </div>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed" style={{ color: theme.text }}>{m.message}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <a href={reply}><Button size="sm" icon={Mail}>Répondre</Button></a>
+                <Button size="sm" variant="ghost" icon={fresh ? CheckCircle2 : RotateCcw} disabled={busy === m.id} onClick={() => toggle(m)}>
+                  {fresh ? "Marquer comme traité" : "Remettre à traiter"}
+                </Button>
+                {!fresh && m.handledAt && (
+                  <span className="text-[11.5px]" style={{ color: theme.textMuted }}>Traité {timeAgo(m.handledAt)}</span>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      {data && (
+        <Pagination
+          page={page}
+          pageCount={Math.max(1, Math.ceil(data.total / data.pageSize))}
+          onChange={setPage}
+          total={data.total}
+          pageSize={data.pageSize}
+          pageSizes={[10, 20, 50]}
           onPageSizeChange={(n) => {
             setSize(n);
             setPage(1);

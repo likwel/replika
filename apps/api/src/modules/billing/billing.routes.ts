@@ -11,7 +11,7 @@ import { normalizePhone } from "./billing.logic.js";
 const PURCHASABLE = ["STARTER", "PRO", "BUSINESS"] as const;
 const PERIODS = ["MONTHLY", "ANNUAL"] as const;
 
-// Numéro de paiement (Mobile Money) : obligatoire, normalisé au format international
+// Numéro de paiement (Mobile Money) : facultatif, normalisé au format international
 const phoneField = z
   .string({ required_error: "Numéro de téléphone requis" })
   .trim()
@@ -67,14 +67,14 @@ router.get(
 
 router.post(
   "/checkout",
-  validate(checkoutSchema.extend({ phone: phoneField })),
+  validate(checkoutSchema.extend({ phone: phoneField.optional() })),
   catchAsync(async (req, res) => ok(res, await billingService.checkout(uid(req), req.body.plan, req.body.period, req.body.phone))),
 );
 
 // Heures de Live Manager à l'unité (après le quota du mois, ou sans abonnement)
 const liveHoursSchema = z.object({
   hours: z.number({ invalid_type_error: "Nombre d'heures invalide" }).int("Nombre d'heures entier").min(1, "1 heure minimum").max(200, "200 heures maximum"),
-  phone: phoneField,
+  phone: phoneField.optional(), // le numéro qui paie est communiqué par Papi après le paiement
 });
 router.post(
   "/live-hours",

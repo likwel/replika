@@ -8,32 +8,25 @@ import { billingApi, type BillingPeriod, type PublicPlan, type Quote } from "@/l
 import { payment } from "@/lib/payment";
 import { fmtAr, fmtDate } from "@/hooks/usePlan";
 import { MOBILE_MONEY } from "@/data/plans";
-import { PhoneField, displayPhone, normalizePhone } from "./PhoneField";
 
 interface Props {
   plan: PublicPlan;
   period: BillingPeriod;
   quote: Quote;
-  defaultPhone: string | null;
   onClose: () => void;
 }
 
-// Récapitulatif avant paiement d'une formule : montant, échéance, numéro du payeur, puis fenêtre Papi
-export function CheckoutDialog({ plan, period, quote, defaultPhone, onClose }: Props) {
-  const [phone, setPhone] = useState(displayPhone(defaultPhone));
-  const [touched, setTouched] = useState(false);
+// Récapitulatif avant paiement d'une formule : montant, échéance, puis fenêtre Papi
+export function CheckoutDialog({ plan, period, quote, onClose }: Props) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pay = async () => {
-    setTouched(true);
-    const p = normalizePhone(phone);
-    if (!p) return;
     setPaying(true);
     setError(null);
     try {
       // Fenêtre Papi ouverte dans ce clic ; le résultat s'affiche sur la page (PaymentHost)
-      await payment.start(() => billingApi.checkout(plan.id, period, p), {
+      await payment.start(() => billingApi.checkout(plan.id, period), {
         label: `Formule ${plan.name} · ${period === "ANNUAL" ? "annuel" : "mensuel"}`,
         amount: quote.amount,
       });
@@ -79,8 +72,6 @@ export function CheckoutDialog({ plan, period, quote, defaultPhone, onClose }: P
             {quote.pagesToDeactivate} Page{quote.pagesToDeactivate > 1 ? "s seront désactivées" : " sera désactivée"} : cette formule en permet {plan.limits.pages}.
           </Alert>
         )}
-
-        <PhoneField value={phone} onChange={setPhone} touched={touched} />
 
         <p className="flex items-start gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
           <ShieldCheck size={13} className="mt-px flex-shrink-0" style={{ color: theme.green }} />

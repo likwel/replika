@@ -15,11 +15,12 @@ interface Props {
   toggle?: boolean; // bouton afficher / masquer le mot de passe
   autoComplete?: string; // remplissage automatique du navigateur et des gestionnaires de mots de passe
   required?: boolean;
+  maxLength?: number;
   hint?: ReactNode; // aide sous le champ
   trailingLabel?: ReactNode; // à droite du libellé (ex. « Mot de passe oublié ? »)
 }
 
-export function Field({ icon: Icon, label, type = "text", name, placeholder, value, onChange, toggle, autoComplete, required, hint, trailingLabel }: Props) {
+export function Field({ icon: Icon, label, type = "text", name, placeholder, value, onChange, toggle, autoComplete, required, maxLength, hint, trailingLabel }: Props) {
   const [show, setShow] = useState(false);
   const id = useId();
   const isPw = type === "password";
@@ -42,6 +43,7 @@ export function Field({ icon: Icon, label, type = "text", name, placeholder, val
           onChange={onChange}
           autoComplete={autoComplete}
           required={required}
+          maxLength={maxLength}
           className="h-11 w-full rounded-lg pl-11 pr-11 text-sm outline-none transition-shadow focus:ring-2 focus:ring-gold/30"
           style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
         />

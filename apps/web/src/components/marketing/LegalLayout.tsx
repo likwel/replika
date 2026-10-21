@@ -35,7 +35,9 @@ export function LegalLayout({ title, subtitle, updatedAt, children }: Props) {
         © 2026 SuiteFlow. Tous droits réservés. ·{" "}
         <Link to="/cgu" className="underline hover:opacity-70">CGU</Link> ·{" "}
         <Link to="/confidentialite" className="underline hover:opacity-70">Confidentialité</Link> ·{" "}
-        <Link to="/guide" className="underline hover:opacity-70">Guide</Link>
+        <Link to="/mentions-legales" className="underline hover:opacity-70">Mentions légales</Link> ·{" "}
+        <Link to="/guide" className="underline hover:opacity-70">Guide</Link> ·{" "}
+        <Link to="/contact" className="underline hover:opacity-70">Contact</Link>
       </footer>
     </div>
   );

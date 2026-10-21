@@ -2,7 +2,7 @@ import { Prisma, type BillingPeriod, type Payment, type PlanId } from "@prisma/c
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
-import { computeNextSubscription, newReference, usageMonth } from "./billing.logic.js";
+import { computeNextSubscription, newReference, normalizePhone, usageMonth } from "./billing.logic.js";
 import { feeRates, feeWith } from "./feeRates.js";
 import {
   countActivePages,
@@ -104,6 +104,13 @@ export async function activatePayment(paymentId: string, details: PaidDetails) {
       },
     });
     if (claimed.count === 0) return null; // déjà activé
+    if (details.payerPhone) {
+      const normalized = normalizePhone(details.payerPhone);
+      if (normalized) {
+        const p = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { userId: true } });
+        await tx.user.update({ where: { id: p.userId }, data: { paymentPhone: normalized } });
+      }
+    }
 
     const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
 
@@ -213,7 +220,7 @@ interface Purchase {
   liveHours?: number;
   amount: number;
   description: string;
-  phone: string; // numéro de paiement, déjà normalisé
+  phone?: string | null; // numéro saisi (facultatif) ; sinon celui que Papi transmet après le paiement
 }
 
 // Crée (ou réutilise) le lien de paiement Papi d'un achat
@@ -226,7 +233,7 @@ async function createCheckout(userId: string, purchase: Purchase) {
 
   // Lien déjà créé pour le même achat et encore valide : réutilisé (sauf s'il vient d'être payé)
   const reusable = await prisma.payment.findFirst({
-    where: { userId, kind, plan, period, liveHours, amount, payerPhone: phone, status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
+    where: { userId, kind, plan, period, liveHours, amount, ...(phone ? { payerPhone: phone } : {}), status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
     orderBy: { createdAt: "desc" },
   });
   if (reusable) {
@@ -241,9 +248,8 @@ async function createCheckout(userId: string, purchase: Purchase) {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, companyName: true, email: true } });
   const reference = newReference();
-  const payment = await prisma.payment.create({ data: { reference, userId, kind, plan, period, liveHours, amount, payerPhone: phone } });
-  // Numéro retenu pour les prochains paiements
-  await prisma.user.update({ where: { id: userId }, data: { paymentPhone: phone } });
+  const payment = await prisma.payment.create({ data: { reference, userId, kind, plan, period, liveHours, amount, payerPhone: phone ?? null } });
+  if (phone) await prisma.user.update({ where: { id: userId }, data: { paymentPhone: phone } });
   // Page de retour : prévient la fenêtre principale (paiement ouvert dans une fenêtre à part) puis se ferme
   const back = `${env.clientUrl}/paiement/retour`;
   try {
@@ -256,7 +262,7 @@ async function createCheckout(userId: string, purchase: Purchase) {
       failureUrl: `${back}?payment=failed&ref=${reference}`,
       notificationUrl: notificationUrl(),
       payerEmail: user.email,
-      payerPhone: phone,
+      payerPhone: phone ?? undefined,
     });
     await prisma.payment.update({
       where: { id: payment.id },
@@ -323,7 +329,7 @@ export const billingService = {
     };
   },
 
-  async checkout(userId: string, plan: PlanId, period: BillingPeriod, phone: string) {
+  async checkout(userId: string, plan: PlanId, period: BillingPeriod, phone?: string) {
     return createCheckout(userId, {
       phone,
       kind: "SUBSCRIPTION",
@@ -335,7 +341,7 @@ export const billingService = {
   },
 
   // Heures de Live Manager à l'unité (prix par heure fixé par le serveur)
-  async buyLiveHours(userId: string, hours: number, phone: string) {
+  async buyLiveHours(userId: string, hours: number, phone?: string) {
     return createCheckout(userId, {
       phone,
       kind: "LIVE_HOURS",

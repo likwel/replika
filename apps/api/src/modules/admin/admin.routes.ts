@@ -8,6 +8,7 @@ import { EXPENSE_CATEGORIES, MODERATION_ACTIONS, adminService, type ModerationAc
 import { defaultFeeRates, getFeeRates, setFeeRates } from "../billing/feeRates.js";
 import { prisma } from "../../config/prisma.js";
 import { sendTestMail } from "../mail/mail.service.js";
+import { contactService } from "../contact/contact.service.js";
 
 // Tableau de bord administrateur : réservé au rôle ADMIN (le premier compte inscrit)
 const router = Router();
@@ -120,6 +121,20 @@ router.post(
     const me = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.userId }, select: { email: true } });
     ok(res, { to: me.email, ...(await sendTestMail(me.email)) });
   }),
+);
+
+// Messages du formulaire « Nous contacter »
+router.get(
+  "/contacts",
+  catchAsync(async (req, res) => {
+    const status = req.query.status === "NEW" || req.query.status === "HANDLED" ? req.query.status : undefined;
+    ok(res, await contactService.list({ status, page: page(req.query.page), pageSize: pageSize(req.query.pageSize, 20) }));
+  }),
+);
+router.patch(
+  "/contacts/:id",
+  validate(z.object({ status: z.enum(["NEW", "HANDLED"]) })),
+  catchAsync(async (req, res) => ok(res, await contactService.setStatus(req.params.id, req.body.status))),
 );
 
 router.post(

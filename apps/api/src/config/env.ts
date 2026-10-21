@@ -119,6 +119,8 @@ export const env = {
   // Cloudflare Turnstile (anti-robot) sur la connexion et l'inscription. Sans clés : clés de test Cloudflare
   // hors production (le widget s'affiche et valide toujours), désactivé en production.
   turnstile: turnstileKeys(),
+  // Destinataire(s) du formulaire « Nous contacter » (séparés par des virgules) ; par défaut les administrateurs
+  contactEmail: process.env.CONTACT_EMAIL ?? "",
   // Chiffrement des secrets Google Authenticator (par défaut dérivé de JWT_SECRET)
   twoFactorKey: process.env.TWO_FACTOR_KEY ?? process.env.JWT_SECRET ?? "",
   // Live Manager à l'unité : prix d'une heure (Ar)

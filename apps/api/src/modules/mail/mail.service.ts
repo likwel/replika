@@ -64,14 +64,14 @@ export async function sendTestMail(to: string) {
   }
 }
 
-export async function sendMail(to: string, subject: string, text: string, html: string) {
+export async function sendMail(to: string, subject: string, text: string, html: string, opts: { replyTo?: string } = {}) {
   if (!isMailConfigured()) {
     if (env.isProd) throw new AppError("Envoi d'e-mails non configuré sur le serveur (SMTP_HOST, SMTP_USER, SMTP_PASS).", 503, "MAIL_NOT_CONFIGURED");
     console.log(`\n📧 [dev, SMTP non configuré] À : ${to}\n   Objet : ${subject}\n   ${text.replace(/\n/g, "\n   ")}\n`);
     return;
   }
   try {
-    await transporter().sendMail({ from: env.mail.from, to, subject, text, html });
+    await transporter().sendMail({ from: env.mail.from, to, subject, text, html, replyTo: opts.replyTo });
   } catch (e) {
     const cause = mailFailure(e);
     console.error(`❌ E-mail vers ${to} : ${cause}`);

@@ -15,7 +15,8 @@ import {
   billingApi, fmtHours, paidText, PAYMENT_METHOD_LABEL,
   type BillingOverview, type BillingPeriod, type Quote, type Feature, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
 } from "@/lib/billing.api";
-import { AGENCY_CONTACT_URL, MOBILE_MONEY } from "@/data/plans";
+import { MOBILE_MONEY } from "@/data/plans";
+import { ContactDialog } from "@/components/marketing/ContactDialog";
 import { liveHours } from "@/lib/liveHours";
 import { BILLING_UPDATED, payment } from "@/lib/payment";
 import { paymentSuccess } from "@/lib/paymentSuccess";
@@ -242,7 +243,7 @@ export function BillingSection() {
       </div>
 
       {checkout && (
-        <CheckoutDialog plan={checkout.plan} period={period} quote={checkout.quote} defaultPhone={data.paymentPhone} onClose={() => setCheckout(null)} />
+        <CheckoutDialog plan={checkout.plan} period={period} quote={checkout.quote} onClose={() => setCheckout(null)} />
       )}
 
       <SettingsCard title="Historique des paiements" description="Vos paiements Papi et leur statut.">
@@ -488,6 +489,7 @@ function PlanCard({
 
 // Agence : sur devis, activée par l'équipe SuiteFlow
 function AgencyCard({ current }: { current: boolean }) {
+  const [contact, setContact] = useState(false);
   return (
     <div
       className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-3"
@@ -506,9 +508,8 @@ function AgencyCard({ current }: { current: boolean }) {
           Pages illimitées, volume IA sur mesure, lives illimités, tarif dégressif par marque et accompagnement dédié.
         </p>
       </div>
-      <a href={AGENCY_CONTACT_URL}>
-        <Button variant="ghost">Nous contacter</Button>
-      </a>
+      <Button variant="ghost" onClick={() => setContact(true)}>Nous contacter</Button>
+      {contact && <ContactDialog subject="AGENCY" title="Formule Agence : demande de devis" onClose={() => setContact(false)} />}
     </div>
   );
 }

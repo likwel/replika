@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { Reveal } from "@/components/marketing/Reveal";
 import { ChatDemo } from "@/components/marketing/ChatDemo";
-import { AGENCY_CONTACT_URL, AI_PACK, MOBILE_MONEY, PLAN_DEFS, annualMonthly } from "@/data/plans";
+import { AI_PACK, MOBILE_MONEY, PLAN_DEFS, annualMonthly } from "@/data/plans";
 
 // Même palette que les menus de l'application : chaque fonctionnalité garde sa couleur
 const features = [
@@ -108,6 +108,7 @@ export function LandingPage() {
             <a href="#pricing" className="transition-opacity hover:opacity-60">Tarifs</a>
             <a href="#faq" className="transition-opacity hover:opacity-60">FAQ</a>
             <Link to="/guide" className="transition-opacity hover:opacity-60">Guide</Link>
+            <Link to="/contact" className="transition-opacity hover:opacity-60">Contact</Link>
           </nav>
           <div className="hidden md:flex items-center gap-2">
             <Link to="/connexion"><Button variant="ghost" size="sm">Connexion</Button></Link>
@@ -122,6 +123,7 @@ export function LandingPage() {
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="py-2 text-sm font-medium" style={{ color: theme.text }}>Tarifs</a>
             <a href="#faq" onClick={() => setMenuOpen(false)} className="py-2 text-sm font-medium" style={{ color: theme.text }}>FAQ</a>
             <Link to="/guide" className="py-2 text-sm font-medium" style={{ color: theme.text }}>Guide</Link>
+            <Link to="/contact" className="py-2 text-sm font-medium" style={{ color: theme.text }}>Contact</Link>
             <Link to="/connexion"><Button variant="ghost" size="sm" className="w-full justify-center">Connexion</Button></Link>
             <Link to="/register"><Button variant="primary" size="sm" className="w-full justify-center">Essai gratuit</Button></Link>
           </div>
@@ -313,8 +315,8 @@ export function LandingPage() {
           </div>
           {[
             { t: "Produit", l: [{ label: "Fonctionnalités", href: "#features" }, { label: "Comment ça marche", href: "#how" }, { label: "Tarifs", href: "#pricing" }, { label: "FAQ", href: "#faq" }] },
-            { t: "Ressources", l: [{ label: "Guide de démarrage", to: "/guide" }] },
-            { t: "Légal", l: [{ label: "Confidentialité", to: "/confidentialite" }, { label: "CGU", to: "/cgu" }] },
+            { t: "Ressources", l: [{ label: "Guide de démarrage", to: "/guide" }, { label: "Nous contacter", to: "/contact" }] },
+            { t: "Légal", l: [{ label: "Mentions légales", to: "/mentions-legales" }, { label: "Confidentialité", to: "/confidentialite" }, { label: "CGU", to: "/cgu" }] },
           ].map((c, i) => (
             <div key={i}>
               <p className="mb-2.5 text-[13px] font-bold text-white">{c.t}</p>
@@ -435,7 +437,7 @@ function PricingSection() {
                 {pl.base ? (
                   <Link to="/register"><Button variant={pl.hl ? "primary" : "ghost"} size="sm" className="w-full justify-center">Essai gratuit 14 jours</Button></Link>
                 ) : (
-                  <a href={AGENCY_CONTACT_URL}><Button variant="ghost" size="sm" className="w-full justify-center">Nous contacter</Button></a>
+                  <Link to="/contact?sujet=agence"><Button variant="ghost" size="sm" className="w-full justify-center">Nous contacter</Button></Link>
                 )}
               </div>
             </Reveal>

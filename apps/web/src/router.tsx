@@ -13,6 +13,8 @@ import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
 import { PaymentReturnPage } from "@/pages/PaymentReturnPage";
 import { AdminPage } from "@/pages/app/AdminPage";
+import { ContactPage } from "@/pages/marketing/ContactPage";
+import { LegalNoticePage } from "@/pages/marketing/LegalNoticePage";
 
 import { PlannerPage } from "@/pages/app/PlannerPage";
 import { LivePage } from "@/pages/app/LivePage";
@@ -39,6 +41,8 @@ export const router = createBrowserRouter([
   },
   { path: "/cgu", element: <TermsPage /> },
   { path: "/confidentialite", element: <PrivacyPage /> },
+  { path: "/mentions-legales", element: <LegalNoticePage /> },
+  { path: "/contact", element: <ContactPage /> },
   { path: "/guide", element: <GuidePage /> },
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },

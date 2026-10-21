@@ -664,3 +664,22 @@ model TwoFactorChallenge {
 
   @@index([userId, purpose])
 }
+
+// Messages reçus par le formulaire « Nous contacter » (site public et application)
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  phone     String?
+  subject   String // AGENCY, SALES, SUPPORT, BILLING, PARTNERSHIP, OTHER
+  message   String
+  status    String    @default("NEW") // NEW | HANDLED
+  userId    String? // expéditeur connecté à SuiteFlow, le cas échéant
+  ip        String?
+  handledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@index([ip, createdAt])
+}
