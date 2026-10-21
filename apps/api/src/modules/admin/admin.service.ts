@@ -8,6 +8,8 @@ import { feeRates, feeWith, type FeeRates } from "../billing/feeRates.js";
 import { computeEntitlements, invalidateEntitlements } from "../billing/entitlements.js";
 import { notificationUrl } from "../billing/billing.service.js";
 import { workingUserWhere, type Moderation } from "../../utils/accountAccess.js";
+import { twoFactorService } from "../auth/twoFactor.service.js";
+import { mailStatus } from "../mail/mail.service.js";
 import { isPapiConfigured } from "../billing/papi.client.js";
 import { PLANS, annualMonthly } from "../billing/plans.js";
 
@@ -29,8 +31,8 @@ function fillDays(rows: Array<{ day: string; value: number }>, days: number) {
   return out;
 }
 
-export type ModerationAction = "suspend" | "unsuspend" | "ban" | "unban" | "delete" | "restore" | "logout";
-export const MODERATION_ACTIONS: ModerationAction[] = ["suspend", "unsuspend", "ban", "unban", "delete", "restore", "logout"];
+export type ModerationAction = "suspend" | "unsuspend" | "ban" | "unban" | "delete" | "restore" | "logout" | "reset2fa";
+export const MODERATION_ACTIONS: ModerationAction[] = ["suspend", "unsuspend", "ban", "unban", "delete", "restore", "logout", "reset2fa"];
 const MODERATION_LOG: Record<ModerationAction, string> = {
   suspend: "ACCOUNT_SUSPENDED",
   unsuspend: "ACCOUNT_REACTIVATED",
@@ -39,6 +41,7 @@ const MODERATION_LOG: Record<ModerationAction, string> = {
   delete: "ACCOUNT_DELETED",
   restore: "ACCOUNT_RESTORED",
   logout: "SESSIONS_REVOKED",
+  reset2fa: "TWO_FACTOR_RESET",
 };
 
 export type AccountFilter = "current" | "active" | "suspended" | "banned" | "deleted" | "all";
@@ -277,6 +280,7 @@ export const adminService = {
       system: {
         papi: { configured: isPapiConfigured(), testMode: env.papi.testMode, notifications: Boolean(notificationUrl()) },
         liveHourPrice: env.liveHourPrice,
+        mail: mailStatus(),
         pollSeconds: env.autoReply.pollSeconds,
         webhookConfigured: Boolean(env.fb.webhookVerifyToken),
         publicApiUrl: env.publicApiUrl,
@@ -284,9 +288,9 @@ export const adminService = {
     };
   },
 
-  async users(q: { search?: string; plan?: PlanId; status?: Status; account?: AccountFilter; page: number }) {
+  async users(q: { search?: string; plan?: PlanId; status?: Status; account?: AccountFilter; page: number; pageSize?: number }) {
     const now = new Date();
-    const PAGE = 20;
+    const PAGE = q.pageSize ?? 20;
     const where: Prisma.UserWhereInput = {
       ...accountWhere(q.account ?? "current", now),
       ...(q.search
@@ -312,7 +316,7 @@ export const adminService = {
         take: PAGE,
         select: {
           id: true, name: true, email: true, role: true, createdAt: true, avatarUrl: true, paymentPhone: true,
-          status: true, suspendedUntil: true, moderationReason: true, moderatedAt: true, deletedAt: true,
+          status: true, suspendedUntil: true, moderationReason: true, moderatedAt: true, deletedAt: true, twoFactorMethod: true,
           subscription: true,
           _count: { select: { accounts: { where: { platform: "FACEBOOK", isActive: true } } } },
         },
@@ -341,6 +345,7 @@ export const adminService = {
           suspendedUntil: u.suspendedUntil,
           moderationReason: u.moderationReason,
           moderatedAt: u.moderatedAt,
+          twoFactorMethod: u.twoFactorMethod,
           role: u.role,
           createdAt: u.createdAt,
           plan: ent.plan,
@@ -361,8 +366,8 @@ export const adminService = {
     };
   },
 
-  async payments(q: { status?: PaymentStatus; page: number }) {
-    const PAGE = 25;
+  async payments(q: { status?: PaymentStatus; page: number; pageSize?: number }) {
+    const PAGE = q.pageSize ?? 25;
     const rates = await feeRates();
     const where: Prisma.PaymentWhereInput = q.status ? { status: q.status } : {};
     const [total, rows] = await Promise.all([
@@ -427,7 +432,7 @@ export const adminService = {
     if (!target) throw new AppError("Utilisateur introuvable", 404);
     const { action } = input;
     const reason = input.reason?.trim() || null;
-    if (target.role === "ADMIN" && action !== "logout") throw new AppError("Un compte administrateur ne peut pas être suspendu, banni ni supprimé.", 403);
+    if (target.role === "ADMIN" && action !== "logout" && action !== "reset2fa") throw new AppError("Un compte administrateur ne peut pas être suspendu, banni ni supprimé.", 403);
     if (["suspend", "ban", "delete"].includes(action) && !reason) throw new AppError("Indiquez le motif : il est montré à la personne et conservé dans l'historique.", 422);
     if (action === "suspend" && input.until && input.until <= new Date()) throw new AppError("La fin de suspension doit être dans le futur.", 422);
 
@@ -441,7 +446,9 @@ export const adminService = {
       delete: { deletedAt: now, moderationReason: reason, moderatedAt: now, ...revoke },
       restore: { deletedAt: null, moderatedAt: now },
       logout: revoke,
+      reset2fa: revoke, // téléphone ou boîte mail perdus : la personne se reconnecte avec son seul mot de passe
     }[action];
+    if (action === "reset2fa") await twoFactorService.adminReset(userId);
     await prisma.user.update({ where: { id: userId }, data });
     await prisma.activityLog.create({
       data: { userId, action: MODERATION_LOG[action], meta: { by: adminId, reason, until: input.until?.toISOString() ?? null } },

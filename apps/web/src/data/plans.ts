@@ -84,7 +84,7 @@ export function annualMonthly(base: number): number {
   return Math.round((base * (1 - ANNUAL_DISCOUNT)) / 1000) * 1000;
 }
 
-export const CONTACT_EMAIL = "contact@replyka.mg";
+export const CONTACT_EMAIL = "contact@suiteflow.mg";
 export const AGENCY_CONTACT_URL = `mailto:${CONTACT_EMAIL}?subject=SuiteFlow%20Agence`;
 
 export const MOBILE_MONEY = "MVola · Orange Money · Airtel Money · carte bancaire";

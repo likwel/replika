@@ -7,6 +7,7 @@ import { AppError } from "../../utils/AppError.js";
 import type { RegisterInput, LoginInput } from "./auth.schema.js";
 import { PROVIDER_LABEL, type SocialProfile } from "./social.service.js";
 import { assertAccess } from "../../utils/accountAccess.js";
+import { twoFactorService } from "./twoFactor.service.js";
 import { summarizeSubscription } from "../billing/entitlements.js";
 import { trialSubscription } from "../billing/plans.js";
 
@@ -32,6 +33,7 @@ export function publicUser(u: User & { subscription: Subscription | null }) {
     desktopNotifications: u.desktopNotifications,
     darkMode: u.darkMode,
     accentTheme: u.accentTheme,
+    twoFactorMethod: u.twoFactorMethod, // null : validation en deux étapes désactivée
     subscription: summarizeSubscription(u),
   };
 }
@@ -65,8 +67,19 @@ export const authService = {
       throw new AppError("E-mail ou mot de passe incorrect", 401);
     }
     assertAccess(user); // suspendu, banni ou supprimé par un administrateur
+    // Validation en deux étapes : pas de session tant que le code n'est pas vérifié
+    if (user.twoFactorMethod) return { twoFactor: await twoFactorService.startLogin(user, data.remember !== false) };
     await prisma.activityLog.create({ data: { userId: user.id, action: "LOGIN", meta: client } });
     return { user: publicUser(user), token: sessionToken(user) };
+  },
+
+  // Seconde étape de la connexion : code e-mail, code de l'application ou code de secours
+  async completeTwoFactor(challengeId: string, code: string, client: ClientInfo) {
+    const { userId, remember, usedRecovery } = await twoFactorService.verifyLogin(challengeId, code);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: withSub });
+    assertAccess(user);
+    await prisma.activityLog.create({ data: { userId, action: "LOGIN", meta: { ...client, twoFactor: usedRecovery ? "recovery" : user.twoFactorMethod } } });
+    return { user: publicUser(user), token: sessionToken(user), remember, recoveryLeft: user.twoFactorRecovery.length, usedRecovery };
   },
 
   // Connexion / inscription via Facebook ou Google
@@ -107,6 +120,7 @@ export const authService = {
     }
 
     assertAccess(user); // suspendu, banni ou supprimé par un administrateur
+    if (user.twoFactorMethod) return { twoFactor: await twoFactorService.startLogin(user, true) };
     await prisma.activityLog.create({
       data: { userId: user.id, action: created ? "REGISTER" : "LOGIN", meta: { ...client, provider: profile.provider } },
     });

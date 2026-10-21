@@ -64,6 +64,7 @@ export interface AdminOverview {
   system: {
     papi: { configured: boolean; testMode: boolean; notifications: boolean };
     liveHourPrice: number;
+    mail: { configured: boolean; host: string | null; from: string; user: string | null };
     pollSeconds: number;
     webhookConfigured: boolean;
     publicApiUrl: string;
@@ -80,6 +81,7 @@ export interface AdminUser {
   suspendedUntil: string | null;
   moderationReason: string | null;
   moderatedAt: string | null;
+  twoFactorMethod: "EMAIL" | "TOTP" | null;
   role: string;
   createdAt: string;
   plan: PlanId;
@@ -118,7 +120,7 @@ export interface AdminPayment {
 
 export type AccountState = "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
 export type AccountFilter = "current" | "active" | "suspended" | "banned" | "deleted" | "all";
-export type ModerationAction = "suspend" | "unsuspend" | "ban" | "unban" | "delete" | "restore" | "logout";
+export type ModerationAction = "suspend" | "unsuspend" | "ban" | "unban" | "delete" | "restore" | "logout" | "reset2fa";
 
 export type FeeMethod = "MVOLA" | "ORANGE_MONEY" | "AIRTEL_MONEY" | "BRED";
 export type FeeRates = Record<FeeMethod, number>;
@@ -160,9 +162,9 @@ const qs = (o: Record<string, string | number | undefined>) =>
 
 export const adminApi = {
   overview: (days: number) => api.get<Res<AdminOverview>>(`/admin/overview?days=${days}`).then((r) => r.data),
-  users: (q: { search?: string; plan?: string; status?: string; account?: AccountFilter; page?: number }) =>
+  users: (q: { search?: string; plan?: string; status?: string; account?: AccountFilter; page?: number; pageSize?: number }) =>
     api.get<Res<Paged & { users: AdminUser[] }>>(`/admin/users?${qs(q)}`).then((r) => r.data),
-  payments: (q: { status?: string; page?: number }) =>
+  payments: (q: { status?: string; page?: number; pageSize?: number }) =>
     api.get<Res<Paged & { payments: AdminPayment[] }>>(`/admin/payments?${qs(q)}`).then((r) => r.data),
   expenses: (days: number) => api.get<Res<{ expenses: Expense[]; total: number }>>(`/admin/expenses?days=${days}`).then((r) => r.data),
   addExpense: (body: { date: string; category: ExpenseCategory; label: string; amount: number; recurring: boolean; note?: string }) =>
@@ -170,6 +172,7 @@ export const adminApi = {
   removeExpense: (id: string) => api.delete<void>(`/admin/expenses/${id}`),
   moderate: (userId: string, body: { action: ModerationAction; reason?: string; until?: string | null }) =>
     api.post<Res<{ ok: true }>>(`/admin/users/${userId}/moderation`, body).then((r) => r.data),
+  mailTest: () => api.post<Res<{ to: string; delivered: boolean; error: string | null }>>("/admin/settings/mail-test").then((r) => r.data),
   feeSettings: () => api.get<Res<FeeSettings>>("/admin/settings/fees").then((r) => r.data),
   saveFeeRates: (rates: FeeRates | null) => api.put<Res<FeeSettings>>("/admin/settings/fees", { rates }).then((r) => r.data),
   addLiveHours: (userId: string, hours: number) =>

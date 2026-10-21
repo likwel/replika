@@ -7,16 +7,61 @@ import { AppError } from "../../utils/AppError.js";
 
 let transport: Transporter | null = null;
 
-export const isMailConfigured = () => Boolean(env.mail.host && env.mail.user && env.mail.pass);
+// Un serveur local de test (Mailpit, MailHog… sur localhost:1025) n'exige pas d'identifiants
+const isLocalHost = () => /^(localhost|127\.0\.0\.1|::1|mailpit|mailhog|maildev)$/i.test(env.mail.host);
+export const isMailConfigured = () => Boolean(env.mail.host && ((env.mail.user && env.mail.pass) || isLocalHost()));
 
+// Cause lisible d'un échec SMTP
+function mailFailure(e: unknown): string {
+  const err = e as { code?: string; message?: string };
+  const where = `${env.mail.host}:${env.mail.port}`;
+  if (err.code === "ECONNREFUSED") {
+    return isLocalHost()
+      ? `aucun serveur d'e-mail n'écoute sur ${where} : lancez Mailpit (docker run -d -p 1025:1025 -p 8025:8025 axllent/mailpit) ou utilisez un vrai SMTP`
+      : `le serveur ${where} refuse la connexion`;
+  }
+  if (err.code === "ETIMEDOUT" || err.code === "ESOCKET" || err.code === "ECONNECTION" || err.code === "ENOTFOUND") return `serveur ${where} injoignable (vérifiez SMTP_HOST, SMTP_PORT, le pare-feu)`;
+  if (err.code === "EAUTH") return "identifiants SMTP refusés (Gmail : utilisez un mot de passe d'application)";
+  return err.message ?? "erreur inconnue";
+}
+
+// Transport Nodemailer (même réglage que factura.mg : TLS direct sur le port 465, STARTTLS sinon)
 function transporter() {
   transport ??= nodemailer.createTransport({
     host: env.mail.host,
     port: env.mail.port,
     secure: env.mail.secure,
-    auth: { user: env.mail.user, pass: env.mail.pass },
+    auth: env.mail.user && env.mail.pass ? { user: env.mail.user, pass: env.mail.pass } : undefined,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    // Serveur de test local : pas de certificat valide
+    tls: isLocalHost() ? { rejectUnauthorized: false } : undefined,
   });
   return transport;
+}
+
+export const mailDelivery = (): "email" | "console" => (isMailConfigured() ? "email" : "console");
+
+export function mailStatus() {
+  return { configured: isMailConfigured(), host: env.mail.host || null, from: env.mail.from, user: env.mail.user ? env.mail.user.replace(/^(.).*(@.*)$/, "$1***$2") : null };
+}
+
+// Test depuis l'administration : renvoie l'erreur SMTP exacte (identifiants refusés, port bloqué…)
+export async function sendTestMail(to: string) {
+  if (!isMailConfigured()) return { delivered: false, error: "Aucun serveur SMTP configuré : renseignez SMTP_HOST, SMTP_USER et SMTP_PASS dans apps/api/.env, puis redémarrez l'API." };
+  try {
+    await transporter().verify();
+    await transporter().sendMail({
+      from: env.mail.from,
+      to,
+      subject: "Test d'envoi SuiteFlow",
+      text: "Cet e-mail confirme que SuiteFlow peut envoyer des messages (codes de validation en deux étapes).",
+      html: '<p style="font-family:Inter,Arial,sans-serif">Cet e-mail confirme que SuiteFlow peut envoyer des messages (codes de validation en deux étapes).</p>',
+    });
+    return { delivered: true, error: null };
+  } catch (e) {
+    return { delivered: false, error: `Échec : ${mailFailure(e)}.` };
+  }
 }
 
 export async function sendMail(to: string, subject: string, text: string, html: string) {
@@ -28,8 +73,10 @@ export async function sendMail(to: string, subject: string, text: string, html: 
   try {
     await transporter().sendMail({ from: env.mail.from, to, subject, text, html });
   } catch (e) {
-    console.error("❌ E-mail :", (e as Error).message);
-    throw new AppError("L'e-mail n'a pas pu être envoyé, réessayez dans un instant.", 502, "MAIL_FAILED");
+    const cause = mailFailure(e);
+    console.error(`❌ E-mail vers ${to} : ${cause}`);
+    // En production, la cause technique reste dans les journaux
+    throw new AppError(`L'e-mail n'a pas pu être envoyé${env.isProd ? ", réessayez dans un instant." : ` : ${cause}.`}`, 502, "MAIL_FAILED");
   }
 }
 

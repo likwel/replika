@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useOutletContext } from "react-router-dom";
 import {
   AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, CreditCard, Gift, Hourglass, Languages, Loader2,
-  Ban, LogOut, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus,
+  Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus,
   Users, Wallet, XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -15,6 +15,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Pagination } from "@/components/ui/Pagination";
 import { BarList, ColumnChart } from "@/components/admin/Charts";
+import { FloatingMenu, MenuItem, MenuSeparator } from "@/components/ui/FloatingMenu";
 import {
   EXPENSE_LABELS, adminApi, type AccountFilter, type AccountState, type AdminOverview, type AdminPayment, type AdminStatus, type AdminUser,
   type Expense, type ExpenseCategory, type FeeMethod, type FeeRates, type FeeSettings, type ModerationAction,
@@ -321,6 +322,7 @@ function UsersView() {
   const [status, setStatus] = useState("");
   const [account, setAccount] = useState<AccountFilter>("current");
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(10);
   const [moderating, setModerating] = useState<{ user: AdminUser; action: ModerationAction } | null>(null);
   const me = useAuth().user?.id;
   const [data, setData] = useState<{ users: AdminUser[]; total: number; pageSize: number } | null>(null);
@@ -340,11 +342,11 @@ function UsersView() {
   const load = useCallback(() => {
     setLoading(true);
     adminApi
-      .users({ search: query, plan, status, account, page })
+      .users({ search: query, plan, status, account, page, pageSize: size })
       .then(setData)
       .catch((e: Error) => swal.toast({ variant: "error", title: "Chargement impossible", text: e.message }))
       .finally(() => setLoading(false));
-  }, [query, plan, status, account, page]);
+  }, [query, plan, status, account, page, size]);
   useEffect(load, [load]);
 
   const select = "rounded-lg px-2.5 py-1.5 text-[13px] outline-none";
@@ -396,7 +398,7 @@ function UsersView() {
             ) : data?.users.length === 0 ? (
               <tr><td colSpan={9} className="px-3 py-10 text-center" style={{ color: theme.textMuted }}>Aucun compte ne correspond.</td></tr>
             ) : (
-              data?.users.map((u, i) => (
+              data?.users.map((u) => (
                 <tr key={u.id} style={{ borderTop: `1px solid ${theme.border}`, background: u.account !== "ACTIVE" ? ACCOUNT_META[u.account].rowBg : undefined }}>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2.5">
@@ -406,6 +408,11 @@ function UsersView() {
                           {u.name}
                           {u.role === "ADMIN" && <span className="rounded px-1 text-[10px] font-bold" style={{ background: "#6366F11f", color: "#6366F1" }}>ADMIN</span>}
                           {u.account !== "ACTIVE" && <AccountBadge user={u} />}
+                          {u.twoFactorMethod && (
+                            <span className="inline-flex items-center gap-0.5 rounded px-1 text-[10px] font-bold" style={{ background: theme.greenSoft, color: theme.green }} title={u.twoFactorMethod === "TOTP" ? "Validation en deux étapes : application" : "Validation en deux étapes : e-mail"}>
+                              <ShieldCheck size={10} /> 2FA
+                            </span>
+                          )}
                         </p>
                         <p className="truncate text-[11.5px]" style={{ color: theme.textMuted }}>{u.email} · inscrit le {fmtDate(u.createdAt)}</p>
                         {u.paymentPhone && (
@@ -435,7 +442,6 @@ function UsersView() {
                     <UserMenu
                       user={u}
                       self={u.id === me}
-                      up={(data?.users.length ?? 0) > 4 && i >= (data?.users.length ?? 0) - 3}
                       onEdit={() => setEditing(u)}
                       onGift={() => setGifting(u)}
                       onModerate={(action) => setModerating({ user: u, action })}
@@ -447,7 +453,20 @@ function UsersView() {
           </tbody>
         </table>
       </div>
-      {data && <Pagination page={page} pageCount={Math.max(1, Math.ceil(data.total / data.pageSize))} onChange={setPage} total={data.total} pageSize={data.pageSize} />}
+      {data && (
+        <Pagination
+          page={page}
+          pageCount={Math.max(1, Math.ceil(data.total / data.pageSize))}
+          onChange={setPage}
+          total={data.total}
+          pageSize={data.pageSize}
+          pageSizes={[10, 20, 50, 100]}
+          onPageSizeChange={(n) => {
+            setSize(n);
+            setPage(1);
+          }}
+        />
+      )}
 
       {editing && <EditPlanModal user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
       {gifting && <GiftHoursModal user={gifting} onClose={() => setGifting(null)} onSaved={() => { setGifting(null); load(); }} />}
@@ -460,16 +479,14 @@ function UsersView() {
 
 // Actions sur un compte, selon son état. Un administrateur ne peut ni se modérer ni modérer un autre administrateur.
 function UserMenu({
-  user: u, self, up, onEdit, onGift, onModerate,
+  user: u, self, onEdit, onGift, onModerate,
 }: {
   user: AdminUser;
   self: boolean;
-  up: boolean; // dernières lignes du tableau défilant : le menu s'ouvre vers le haut
   onEdit: () => void;
   onGift: () => void;
   onModerate: (a: ModerationAction) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const deleted = u.account === "DELETED";
   const protectedAccount = self || u.role === "ADMIN";
   type Item = { icon: LucideIcon; label: string; fn: () => void; danger?: boolean } | "sep";
@@ -479,6 +496,7 @@ function UserMenu({
         { icon: CalendarClock, label: "Modifier la formule", fn: onEdit },
         { icon: Gift, label: "Offrir des heures de live", fn: onGift },
         ...(!self ? [{ icon: LogOut, label: "Déconnecter partout", fn: () => onModerate("logout") } as Item] : []),
+        ...(!self && u.twoFactorMethod ? [{ icon: ShieldOff, label: "Réinitialiser la 2FA", fn: () => onModerate("reset2fa") } as Item] : []),
         ...(!protectedAccount
           ? ([
               "sep",
@@ -492,28 +510,37 @@ function UserMenu({
             ] as Item[])
           : []),
       ];
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   return (
-    <div className="relative" onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setOpen(false)}>
-      <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-1.5 hover:bg-black/5" aria-label={`Actions sur ${u.name}`} aria-expanded={open}>
+    <>
+      <button
+        onClick={(e) => {
+          const el = e.currentTarget;
+          setAnchor((cur) => (cur ? null : el));
+        }}
+        className="rounded-lg p-1.5 hover:bg-black/5"
+        aria-label={`Actions sur ${u.name}`}
+        aria-expanded={Boolean(anchor)}
+        aria-haspopup="menu"
+      >
         <MoreHorizontal size={16} style={{ color: theme.textMuted }} />
       </button>
-      {open && (
-        <div className={`animate-panel-in absolute right-0 z-20 w-56 rounded-xl p-1 shadow-xl ${up ? "bottom-8" : "top-8"}`} style={card}>
+      {anchor && (
+        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={232}>
           {items.map((it, i) =>
             it === "sep" ? (
-              <div key={`sep${i}`} className="mx-1 my-1" style={{ borderTop: `1px solid ${theme.border}` }} />
+              <MenuSeparator key={`sep${i}`} />
             ) : (
-              <button
+              <MenuItem
                 key={it.label}
+                icon={it.icon}
+                label={it.label}
+                danger={it.danger}
                 onClick={() => {
-                  setOpen(false);
+                  setAnchor(null);
                   it.fn();
                 }}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-black/5"
-                style={{ color: it.danger ? theme.red : theme.text }}
-              >
-                <it.icon size={14} /> {it.label}
-              </button>
+              />
             ),
           )}
           {protectedAccount && !deleted && (
@@ -521,9 +548,9 @@ function UserMenu({
               {self ? "Votre propre compte ne peut pas être modéré." : "Un administrateur ne peut pas être suspendu, banni ni supprimé."}
             </p>
           )}
-        </div>
+        </FloatingMenu>
       )}
-    </div>
+    </>
   );
 }
 
@@ -636,17 +663,18 @@ function GiftHoursModal({ user, onClose, onSaved }: { user: AdminUser; onClose: 
 function PaymentsView() {
   const [status, setStatus] = useState<"" | PaymentStatus>("");
   const [page, setPage] = useState(1);
+  const [size, setSize] = useState(10);
   const [data, setData] = useState<{ payments: AdminPayment[]; total: number; pageSize: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     adminApi
-      .payments({ status: status || undefined, page })
+      .payments({ status: status || undefined, page, pageSize: size })
       .then(setData)
       .catch((e: Error) => swal.toast({ variant: "error", title: "Chargement impossible", text: e.message }))
       .finally(() => setLoading(false));
-  }, [status, page]);
+  }, [status, page, size]);
 
   const filters: Array<{ id: "" | PaymentStatus; label: string }> = [
     { id: "", label: "Tous" },
@@ -723,7 +751,20 @@ function PaymentsView() {
           </tbody>
         </table>
       </div>
-      {data && <Pagination page={page} pageCount={Math.max(1, Math.ceil(data.total / data.pageSize))} onChange={setPage} total={data.total} pageSize={data.pageSize} />}
+      {data && (
+        <Pagination
+          page={page}
+          pageCount={Math.max(1, Math.ceil(data.total / data.pageSize))}
+          onChange={setPage}
+          total={data.total}
+          pageSize={data.pageSize}
+          pageSizes={[10, 25, 50, 100]}
+          onPageSizeChange={(n) => {
+            setSize(n);
+            setPage(1);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -782,6 +823,7 @@ function AiView() {
         <ul className="grid grid-cols-1 gap-x-8 gap-y-3 text-[13px] md:grid-cols-2">
           <ServiceRow label="Paiement Papi.mg" ok={sys.papi.configured} value={sys.papi.configured ? (sys.papi.testMode ? "Configuré · mode test" : "Configuré · production") : "Clés absentes"} warn={sys.papi.testMode} />
           <ServiceRow label="Notifications de paiement" ok value={sys.papi.notifications ? "Adresse publique joignable" : "Adresse locale : paiements confirmés par vérification périodique"} warn={!sys.papi.notifications} />
+          <li className="md:col-span-2"><MailTest mail={sys.mail} /></li>
           <ServiceRow label="Webhooks Meta" ok={sys.webhookConfigured} value={sys.webhookConfigured ? "Jeton défini" : "Non configurés"} warn={!sys.webhookConfigured} />
           <ServiceRow label="Relève automatique" ok={sys.pollSeconds > 0} value={sys.pollSeconds > 0 ? `Toutes les ${sys.pollSeconds} s` : "Désactivée"} />
           <ServiceRow label="Heures de live à l'unité" ok value={`${fmtAr(sys.liveHourPrice)} l'heure · ${fmtHours(data.usage.liveCreditLeft)} en circulation`} />
@@ -1066,6 +1108,16 @@ const MODERATION_COPY: Record<ModerationAction, { title: string; button: string;
     ],
   },
   restore: { title: "Restaurer le compte", button: "Restaurer", danger: false, needsReason: false, effects: ["Le compte réapparaît dans les listes et la personne peut se reconnecter (sauf s'il est aussi banni)."] },
+  reset2fa: {
+    title: "Réinitialiser la validation en deux étapes",
+    button: "Réinitialiser",
+    danger: false,
+    needsReason: false,
+    effects: [
+      "À utiliser si la personne a perdu son téléphone ou l'accès à sa boîte mail, après avoir vérifié son identité.",
+      "La validation en deux étapes est désactivée et ses sessions sont fermées : elle se reconnecte avec son seul mot de passe.",
+    ],
+  },
   logout: { title: "Déconnecter partout", button: "Déconnecter", danger: false, needsReason: false, effects: ["Toutes les sessions ouvertes (ordinateurs, téléphones) sont fermées. La personne peut se reconnecter."] },
 };
 
@@ -1270,5 +1322,49 @@ function FeeRatesCard() {
         </>
       )}
     </Panel>
+  );
+}
+
+// E-mails (codes de validation en deux étapes) : état et envoi d'un message de test
+function MailTest({ mail }: { mail: AdminOverview["system"]["mail"] }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ to: string; delivered: boolean; error: string | null } | null>(null);
+  const Icon = mail.configured ? CheckCircle2 : AlertTriangle;
+  return (
+    <div className="flex flex-wrap items-start gap-2.5">
+      <Icon size={15} className="mt-0.5 flex-shrink-0" style={{ color: mail.configured ? theme.green : theme.amber }} />
+      <div className="min-w-0 flex-1 basis-60">
+        <p className="font-medium" style={{ color: theme.text }}>E-mails (SMTP)</p>
+        <p className="text-[12px]" style={{ color: theme.textMuted }}>
+          {mail.configured
+            ? `${mail.host} · expéditeur ${mail.from}${mail.user ? ` · compte ${mail.user}` : ""}`
+            : "Non configuré : les codes de validation par e-mail ne partent pas (affichés dans le terminal de l'API en développement)."}
+        </p>
+        {result && (
+          <Alert variant={result.delivered ? "success" : "error"} className="mt-2">
+            {result.delivered ? `E-mail de test envoyé à ${result.to} : vérifiez la boîte de réception (et les indésirables).` : result.error}
+          </Alert>
+        )}
+      </div>
+      <Button
+        size="sm"
+        variant="ghost"
+        icon={busy ? Loader2 : Mail}
+        className={busy ? "[&>svg]:animate-spin" : ""}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            setResult(await adminApi.mailTest());
+          } catch (e) {
+            setResult({ to: "", delivered: false, error: (e as Error).message });
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Envoyer un e-mail de test
+      </Button>
+    </div>
   );
 }

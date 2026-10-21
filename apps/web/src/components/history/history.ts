@@ -1,7 +1,7 @@
 import {
   UserPlus, LogIn, LogOut, KeyRound, Mail, Facebook, Bot, Sparkles, Send,
   MessageCircle, Trash2, Target, CalendarClock, CheckCircle2, XCircle, Radio, Settings2, Power, History as HistoryIcon,
-  CreditCard, Gauge, PauseCircle, ShieldAlert,
+  CreditCard, Gauge, PauseCircle, ShieldAlert, ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -60,6 +60,9 @@ export const ACTION_META: Record<string, ActionMeta> = {
   ACCOUNT_DELETED: { label: "Compte supprimé par l'administrateur", icon: Trash2, color: theme.red },
   ACCOUNT_RESTORED: { label: "Compte restauré", icon: Power, color: "#166534" },
   SESSIONS_REVOKED: { label: "Sessions fermées par l'administrateur", icon: LogOut, color: theme.textMuted },
+  TWO_FACTOR_ENABLED: { label: "Validation en deux étapes activée", icon: ShieldCheck, color: "#166534" },
+  TWO_FACTOR_DISABLED: { label: "Validation en deux étapes désactivée", icon: ShieldAlert, color: theme.amber },
+  TWO_FACTOR_RESET: { label: "Validation en deux étapes réinitialisée par l'administrateur", icon: ShieldAlert, color: theme.amber },
   FEE_RATES_UPDATED: { label: "Commissions Papi modifiées", icon: CreditCard, color: theme.textMuted },
 };
 

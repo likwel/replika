@@ -105,11 +105,10 @@ export function RuleTable({ rules, sort, onSort, selected, onSelect, ...a }: Tab
           </tr>
         </thead>
         <tbody>
-          {rules.map((r, i) => {
+          {rules.map((r) => {
             const channel = CHANNEL_META[r.channel];
             const reply = replyText(r);
             const on = selected.has(r.id);
-            const menuUp = rules.length > 3 && i >= rules.length - 2;
             return (
               <tr
                 key={r.id}
@@ -161,7 +160,7 @@ export function RuleTable({ rules, sort, onSort, selected, onSelect, ...a }: Tab
                 <td className="px-3 py-2.5 text-center tabular-nums" style={{ color: r.priority ? theme.text : theme.textMuted }}>{r.priority}</td>
                 <td className="px-3 py-2.5 text-[12.5px]"><Usage rule={r} /></td>
                 <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                  <RowMenu up={menuUp} onEdit={() => a.onEdit(r)} onDuplicate={() => a.onDuplicate(r)} onDelete={() => a.onDelete(r)} />
+                  <RowMenu onEdit={() => a.onEdit(r)} onDuplicate={() => a.onDuplicate(r)} onDelete={() => a.onDelete(r)} />
                 </td>
               </tr>
             );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { theme } from "@/theme";
@@ -7,21 +7,26 @@ import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { Turnstile, type TurnstileHandle } from "@/components/auth/Turnstile";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaOn, setCaptchaOn] = useState(true);
+  const turnstile = useRef<TurnstileHandle>(null);
 
   const handleSubmit = async () => {
     setError("");
     setLoading(true);
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(email, captcha);
       setSent(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Envoi impossible");
+      turnstile.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -46,7 +51,8 @@ export function ForgotPasswordPage() {
           <div className="flex flex-col gap-3">
             <Field icon={Mail} type="email" placeholder="Adresse e-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
             {error && <p className="text-sm" style={{ color: theme.red }}>{error}</p>}
-            <Button variant="primary" size="lg" className="w-full mt-1 justify-center" icon={ArrowRight} onClick={handleSubmit} disabled={loading}>
+            <Turnstile ref={turnstile} onToken={setCaptcha} onEnabled={setCaptchaOn} />
+            <Button variant="primary" size="lg" className="w-full mt-1 justify-center" icon={ArrowRight} onClick={handleSubmit} disabled={loading || (captchaOn && !captcha)}>
               {loading ? "Envoi…" : "Envoyer le lien"}
             </Button>
           </div>

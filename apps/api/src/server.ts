@@ -5,6 +5,7 @@ import { startAutoReplyPoller } from "./modules/autoreply/autoreply.poller.js";
 import { startScheduler } from "./modules/schedules/schedule.worker.js";
 import { startLivePoller } from "./modules/lives/live.poller.js";
 import { startBillingReconciler } from "./modules/billing/billing.worker.js";
+import { isMailConfigured } from "./modules/mail/mail.service.js";
 
 const app = createApp();
 
@@ -16,6 +17,14 @@ const stopPoller = startAutoReplyPoller();
 const stopScheduler = startScheduler();
 const stopLivePoller = startLivePoller();
 const stopBilling = startBillingReconciler();
+console.log(
+  isMailConfigured()
+    ? `📧 E-mails : SMTP ${env.mail.host}:${env.mail.port}`
+    : "📧 E-mails : aucun SMTP configuré (SMTP_HOST, SMTP_USER, SMTP_PASS) : les codes de validation s'affichent ici, dans ce terminal",
+);
+if (env.turnstile.incomplete) {
+  console.warn("⚠️  Cloudflare Turnstile : TURNSTILE_SITE_KEY et TURNSTILE_SECRET_KEY doivent être renseignées ensemble (clés de test utilisées en attendant).");
+}
 
 // Arrêt propre
 async function shutdown() {

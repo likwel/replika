@@ -3,6 +3,8 @@ import { catchAsync } from "../../utils/catchAsync.js";
 import { AppError } from "../../utils/AppError.js";
 import { env } from "../../config/env.js";
 import { authService } from "./auth.service.js";
+import { twoFactorService } from "./twoFactor.service.js";
+import { isTurnstileEnabled } from "../../middlewares/turnstile.middleware.js";
 import { clientInfo, setSessionCookie } from "../../utils/session.js";
 import { consumeOAuthState, issueOAuthState } from "../../utils/oauthState.js";
 import { authorizeUrl, fetchProfile, isConfigured, PROVIDER_LABEL, SOCIAL_PROVIDERS, type SocialProvider } from "./social.service.js";
@@ -18,10 +20,27 @@ export const authController = {
   }),
 
   login: catchAsync(async (req: Request, res: Response) => {
-    const { user, token } = await authService.login(req.body, clientInfo(req));
-    setSessionCookie(res, token, req.body.remember !== false);
-    res.json({ status: "success", data: { user, token } });
+    const r = await authService.login(req.body, clientInfo(req));
+    // Validation en deux étapes : le navigateur demande le code, aucune session n'est ouverte
+    if (r.twoFactor) return res.json({ status: "success", data: { twoFactor: r.twoFactor } });
+    setSessionCookie(res, r.token!, req.body.remember !== false);
+    res.json({ status: "success", data: { user: r.user, token: r.token } });
   }),
+
+  verifyTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    const r = await authService.completeTwoFactor(req.body.challengeId, req.body.code, clientInfo(req));
+    setSessionCookie(res, r.token, r.remember);
+    res.json({ status: "success", data: { user: r.user, token: r.token, usedRecovery: r.usedRecovery, recoveryLeft: r.recoveryLeft } });
+  }),
+
+  resendTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    res.json({ status: "success", data: { twoFactor: await twoFactorService.resend(req.body.challengeId) } });
+  }),
+
+  // Réglages publics du formulaire de connexion (Cloudflare Turnstile)
+  config: (_req: Request, res: Response) => {
+    res.json({ status: "success", data: { turnstileSiteKey: isTurnstileEnabled() ? env.turnstile.siteKey : null } });
+  },
 
   logout: catchAsync(async (_req: Request, res: Response) => {
     res.clearCookie("token").json({ status: "success", message: "Déconnecté" });
@@ -68,8 +87,13 @@ export const authController = {
 
     try {
       const profile = await fetchProfile(provider, code);
-      const { token } = await authService.socialLogin(profile, clientInfo(req));
-      setSessionCookie(res, token);
+      const r = await authService.socialLogin(profile, clientInfo(req));
+      if (r.twoFactor) {
+        // Code demandé sur la page de connexion avant d'ouvrir la session
+        const t = r.twoFactor;
+        return res.redirect(`${env.clientUrl}/connexion?${new URLSearchParams({ challenge: t.challengeId, method: t.method, ...(t.emailHint ? { hint: t.emailHint } : {}) })}`);
+      }
+      setSessionCookie(res, r.token!);
       res.redirect(`${env.clientUrl}/app`);
     } catch (e) {
       if (!(e instanceof AppError)) console.error(`❌ Connexion ${label} :`, e);

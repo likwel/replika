@@ -24,6 +24,29 @@ function publicApiUrl(): string {
   return `http://localhost:${process.env.PORT ?? 4000}`;
 }
 
+// Expéditeur : MAIL_FROM, sinon SMTP_FROM (+ SMTP_FROM_NAME) comme factura.mg, sinon le compte SMTP
+function mailFrom(): string {
+  const clean = (v?: string) => v?.trim().replace(/^["']|["']$/g, "") || "";
+  if (clean(process.env.MAIL_FROM)) return clean(process.env.MAIL_FROM);
+  const address = clean(process.env.SMTP_FROM).replace(/^<|>$/g, "") || clean(process.env.SMTP_USER);
+  if (!address) return "SuiteFlow <no-reply@suiteflow.mg>";
+  return `${clean(process.env.SMTP_FROM_NAME) || "SuiteFlow"} <${address}>`;
+}
+
+// Cloudflare Turnstile : les deux clés doivent venir du même site Turnstile. Une seule renseignée = configuration
+// incomplète (le widget de test produirait des jetons refusés par la vraie clé secrète).
+function turnstileKeys() {
+  const site = process.env.TURNSTILE_SITE_KEY?.trim() ?? "";
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim() ?? "";
+  if (site && secret) return { siteKey: site, secretKey: secret, incomplete: false };
+  const incomplete = Boolean(site || secret);
+  if (process.env.NODE_ENV !== "production") {
+    // Clés de test Cloudflare : le widget s'affiche et valide toujours
+    return { siteKey: "1x00000000000000000000AA", secretKey: "1x0000000000000000000000000000000AA", incomplete };
+  }
+  return { siteKey: "", secretKey: "", incomplete };
+}
+
 function required(key: string, fallback?: string): string {
   const v = process.env[key] ?? fallback;
   if (v === undefined) throw new Error(`Variable d'environnement manquante : ${key}`);
@@ -89,15 +112,13 @@ export const env = {
     port: Number(process.env.SMTP_PORT ?? 465),
     secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : Number(process.env.SMTP_PORT ?? 465) === 465,
     user: process.env.SMTP_USER ?? "",
-    pass: process.env.SMTP_PASS ?? "",
-    from: process.env.MAIL_FROM ?? (process.env.SMTP_USER ? `SuiteFlow <${process.env.SMTP_USER}>` : "SuiteFlow <no-reply@suiteflow.mg>"),
+    // Gmail affiche le mot de passe d'application par groupes de 4 : les espaces ne font pas partie du mot de passe
+    pass: /gmail|google/i.test(process.env.SMTP_HOST ?? "") ? (process.env.SMTP_PASS ?? "").replace(/\s/g, "") : (process.env.SMTP_PASS ?? ""),
+    from: mailFrom(),
   },
   // Cloudflare Turnstile (anti-robot) sur la connexion et l'inscription. Sans clés : clés de test Cloudflare
   // hors production (le widget s'affiche et valide toujours), désactivé en production.
-  turnstile: {
-    siteKey: process.env.TURNSTILE_SITE_KEY ?? (process.env.NODE_ENV !== "production" ? "1x00000000000000000000AA" : ""),
-    secretKey: process.env.TURNSTILE_SECRET_KEY ?? (process.env.NODE_ENV !== "production" ? "1x0000000000000000000000000000000AA" : ""),
-  },
+  turnstile: turnstileKeys(),
   // Chiffrement des secrets Google Authenticator (par défaut dérivé de JWT_SECRET)
   twoFactorKey: process.env.TWO_FACTOR_KEY ?? process.env.JWT_SECRET ?? "",
   // Live Manager à l'unité : prix d'une heure (Ar)

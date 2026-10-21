@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, Lock } from "lucide-react";
 import { theme } from "@/theme";
@@ -9,6 +9,7 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { Turnstile, type TurnstileHandle } from "@/components/auth/Turnstile";
 
 const MIN_PASSWORD = 8;
 
@@ -21,6 +22,9 @@ export function RegisterPage() {
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaOn, setCaptchaOn] = useState(true);
+  const turnstile = useRef<TurnstileHandle>(null);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -30,10 +34,11 @@ export function RegisterPage() {
     if (!accepted) return setError("Acceptez les conditions d'utilisation pour créer votre compte.");
     setLoading(true);
     try {
-      await register(form.name.trim(), form.email.trim(), form.password);
+      await register(form.name.trim(), form.email.trim(), form.password, captcha);
       nav("/app", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Inscription impossible, réessayez.");
+      turnstile.current?.reset(); // un jeton Cloudflare ne sert qu'une fois
     } finally {
       setLoading(false);
     }
@@ -89,7 +94,8 @@ export function RegisterPage() {
             .
           </span>
         </label>
-        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading}>
+        <Turnstile ref={turnstile} onToken={setCaptcha} onEnabled={setCaptchaOn} />
+        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
           {loading ? "Création…" : "Créer mon compte"}
         </Button>
       </form>

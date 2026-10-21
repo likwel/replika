@@ -31,6 +31,10 @@ const SECURITY_ACTIONS = [
   "PASSWORD_RESET",
   "EMAIL_CHANGED",
   "LOGOUT_ALL",
+  "TWO_FACTOR_ENABLED",
+  "TWO_FACTOR_DISABLED",
+  "TWO_FACTOR_RESET",
+  "SESSIONS_REVOKED",
 ];
 
 async function checkPassword(userId: string, password: string) {

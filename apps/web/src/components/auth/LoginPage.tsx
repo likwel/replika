@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import { theme } from "@/theme";
@@ -9,6 +9,9 @@ import { SocialButtons } from "@/components/auth/SocialButtons";
 import { Field } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { Turnstile, type TurnstileHandle } from "@/components/auth/Turnstile";
+import { TwoFactorStep } from "@/components/auth/TwoFactorStep";
+import type { TwoFactorChallenge, TwoFactorMethod } from "@/lib/auth.api";
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -23,26 +26,54 @@ export function LoginPage() {
   // Retour de Facebook / Google avec un message (connexion annulée, e-mail non partagé…)
   const [error, setError] = useState(params.get("oauth_error") ?? "");
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaOn, setCaptchaOn] = useState(true);
+  const turnstile = useRef<TurnstileHandle>(null);
+  // Validation en deux étapes : retour de Facebook / Google avec un code à saisir, ou connexion par mot de passe
+  const [challenge, setChallenge] = useState<TwoFactorChallenge | null>(() =>
+    params.get("challenge")
+      ? { challengeId: params.get("challenge")!, method: (params.get("method") as TwoFactorMethod) ?? "TOTP", emailHint: params.get("hint"), expiresAt: "" }
+      : null,
+  );
 
   // Le message est affiché une fois : il ne réapparaît pas en rechargeant la page
   useEffect(() => {
-    if (params.has("oauth_error")) setParams({}, { replace: true });
+    if (params.has("oauth_error") || params.has("challenge")) setParams({}, { replace: true });
   }, []);
+
+  const goIn = () => nav(from?.startsWith("/app") ? from : "/app", { replace: true });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await login(email.trim(), password, remember);
+      const r = await login(email.trim(), password, remember, captcha);
+      if (r.twoFactor) return setChallenge(r.twoFactor);
       // Sinon /app → page d'ouverture choisie dans les préférences. replace : « précédent » ne revient pas au formulaire.
-      nav(from?.startsWith("/app") ? from : "/app", { replace: true });
+      goIn();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Connexion impossible, réessayez.");
+      turnstile.current?.reset(); // un jeton Cloudflare ne sert qu'une fois
     } finally {
       setLoading(false);
     }
   };
+
+  if (challenge) {
+    return (
+      <AuthShell title="Validation en deux étapes" subtitle="Une vérification de plus pour protéger votre compte.">
+        <TwoFactorStep
+          challenge={challenge}
+          onDone={goIn}
+          onCancel={() => {
+            setChallenge(null);
+            setPassword("");
+          }}
+        />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell title="Bon retour parmi nous" subtitle="Connectez-vous à votre espace SuiteFlow.">
@@ -81,7 +112,8 @@ export function LoginPage() {
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
           Rester connecté
         </label>
-        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading}>
+        <Turnstile ref={turnstile} onToken={setCaptcha} onEnabled={setCaptchaOn} />
+        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
           {loading ? "Connexion…" : "Se connecter"}
         </Button>
       </form>

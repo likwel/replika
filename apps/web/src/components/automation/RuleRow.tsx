@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { FloatingMenu, MenuItem } from "@/components/ui/FloatingMenu";
 import {
   AlertTriangle, BookOpen, Copy, CornerDownRight, Image, Layers, Lock, Mail, MessageCircle, MoreHorizontal, Pencil, Sparkles, Trash2, UserCheck, Zap,
 } from "lucide-react";
@@ -124,42 +125,34 @@ export function RuleRow({ rule, onToggle, onEdit, onDuplicate, onDelete }: Props
   );
 }
 
-// up : s'ouvre vers le haut (dernières lignes d'un tableau défilant, où le menu serait coupé)
-export function RowMenu({ onEdit, onDuplicate, onDelete, up = false }: { onEdit: () => void; onDuplicate: () => void; onDelete: () => void; up?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  const item = (icon: ReactNode, label: string, fn: () => void, danger = false) => (
-    <button
-      onClick={() => {
-        setOpen(false);
-        fn();
-      }}
-      className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px] hover:bg-black/5"
-      style={{ color: danger ? theme.red : theme.text }}
-    >
-      {icon} {label}
-    </button>
-  );
-
+// Actions d'une règle : menu flottant, jamais coupé par le tableau ou la grille
+export function RowMenu({ onEdit, onDuplicate, onDelete }: { onEdit: () => void; onDuplicate: () => void; onDelete: () => void }) {
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const act = (fn: () => void) => () => {
+    setAnchor(null);
+    fn();
+  };
   return (
-    <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-1.5 hover:bg-black/5" aria-label="Actions de la règle" aria-expanded={open}>
+    <>
+      <button
+        onClick={(e) => {
+          const el = e.currentTarget;
+          setAnchor((cur) => (cur ? null : el));
+        }}
+        className="rounded-lg p-1.5 hover:bg-black/5"
+        aria-label="Actions de la règle"
+        aria-expanded={Boolean(anchor)}
+        aria-haspopup="menu"
+      >
         <MoreHorizontal size={16} style={{ color: theme.textMuted }} />
       </button>
-      {open && (
-        <div className={`animate-panel-in absolute right-0 z-20 w-40 rounded-xl p-1 shadow-xl ${up ? "bottom-8" : "top-8"}`} style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-          {item(<Pencil size={14} />, "Modifier", onEdit)}
-          {item(<Copy size={14} />, "Dupliquer", onDuplicate)}
-          {item(<Trash2 size={14} />, "Supprimer", onDelete, true)}
-        </div>
+      {anchor && (
+        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={168}>
+          <MenuItem icon={Pencil} label="Modifier" onClick={act(onEdit)} />
+          <MenuItem icon={Copy} label="Dupliquer" onClick={act(onDuplicate)} />
+          <MenuItem icon={Trash2} label="Supprimer" onClick={act(onDelete)} danger />
+        </FloatingMenu>
       )}
-    </div>
+    </>
   );
 }

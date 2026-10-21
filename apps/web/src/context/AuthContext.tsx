@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { authApi, type User } from "@/lib/auth.api";
+import { authApi, type TwoFactorChallenge, type User } from "@/lib/auth.api";
 import { useThemeAttrs } from "@/hooks/useThemeAttrs";
 
 interface AuthState {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string, remember?: boolean) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  // Renvoie l'étape de validation en deux étapes si un code est demandé (pas encore de session)
+  login: (email: string, password: string, remember?: boolean, turnstileToken?: string | null) => Promise<{ twoFactor?: TwoFactorChallenge }>;
+  completeTwoFactor: (challengeId: string, code: string) => Promise<{ usedRecovery: boolean; recoveryLeft: number }>;
+  register: (name: string, email: string, password: string, turnstileToken?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   // Met à jour l'utilisateur affiché (en-tête, préférences) après une modification dans les paramètres
   updateUser: (patch: Partial<User>) => void;
@@ -33,13 +35,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = async (email: string, password: string, remember = true) => {
-    const res = await authApi.login({ email, password, remember });
-    setUser(res.data.user);
+  const login = async (email: string, password: string, remember = true, turnstileToken?: string | null) => {
+    const res = await authApi.login({ email, password, remember, turnstileToken });
+    if (res.data.twoFactor) return { twoFactor: res.data.twoFactor };
+    setUser(res.data.user!);
+    return {};
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    const res = await authApi.register({ name, email, password });
+  const completeTwoFactor = async (challengeId: string, code: string) => {
+    const r = await authApi.verifyTwoFactor(challengeId, code);
+    setUser(r.user);
+    return { usedRecovery: r.usedRecovery, recoveryLeft: r.recoveryLeft };
+  };
+
+  const register = async (name: string, email: string, password: string, turnstileToken?: string | null) => {
+    const res = await authApi.register({ name, email, password, turnstileToken });
     setUser(res.data.user);
   };
 
@@ -56,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, refreshUser, clearUser }}>
+    <AuthContext.Provider value={{ user, loading, login, completeTwoFactor, register, logout, updateUser, refreshUser, clearUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -106,7 +106,7 @@ export function PrivacyPage() {
         </ul>
         <p>
           Pour toute autre demande relative à vos données (accès, rectification, opposition), écrivez-nous à{" "}
-          <a href="mailto:contact@replyka.mg" className="underline" style={{ color: theme.goldDark }}>contact@replyka.mg</a>.
+          <a href="mailto:contact@suiteflow.mg" className="underline" style={{ color: theme.goldDark }}>contact@suiteflow.mg</a>.
         </p>
       </Section>
 

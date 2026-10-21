@@ -29,7 +29,9 @@ export interface Profile {
 
 export interface SecurityEvent {
   id: string;
-  action: "REGISTER" | "LOGIN" | "PASSWORD_CHANGED" | "PASSWORD_RESET" | "EMAIL_CHANGED" | "LOGOUT_ALL";
+  action:
+    | "REGISTER" | "LOGIN" | "PASSWORD_CHANGED" | "PASSWORD_RESET" | "EMAIL_CHANGED" | "LOGOUT_ALL"
+    | "TWO_FACTOR_ENABLED" | "TWO_FACTOR_DISABLED" | "TWO_FACTOR_RESET" | "SESSIONS_REVOKED";
   meta: { ip?: string | null; ua?: string | null; from?: string; to?: string } | null;
   createdAt: string;
 }

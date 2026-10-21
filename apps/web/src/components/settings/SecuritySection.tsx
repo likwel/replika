@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Loader2, LogIn, KeyRound, Mail, UserPlus, MonitorSmartphone, ShieldCheck, Trash2,
+  Loader2, LogIn, KeyRound, Mail, UserPlus, MonitorSmartphone, ShieldCheck, ShieldOff, Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -12,6 +12,7 @@ import { profileApi, type SecurityEvent } from "@/lib/profile.api";
 import { useAuth } from "@/context/AuthContext";
 import { Feedback, SettingsCard, TextField } from "./SettingsUi";
 import { swal } from "@/lib/swal";
+import { TwoFactorCard } from "./TwoFactorCard";
 
 const errorOf = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
@@ -26,6 +27,10 @@ const EVENT_META: Record<SecurityEvent["action"], { label: string; icon: LucideI
   PASSWORD_RESET: { label: "Mot de passe réinitialisé", icon: KeyRound },
   EMAIL_CHANGED: { label: "Adresse e-mail modifiée", icon: Mail },
   LOGOUT_ALL: { label: "Autres appareils déconnectés", icon: MonitorSmartphone },
+  TWO_FACTOR_ENABLED: { label: "Validation en deux étapes activée", icon: ShieldCheck },
+  TWO_FACTOR_DISABLED: { label: "Validation en deux étapes désactivée", icon: ShieldOff },
+  TWO_FACTOR_RESET: { label: "Validation en deux étapes réinitialisée par l'administrateur", icon: ShieldOff },
+  SESSIONS_REVOKED: { label: "Sessions fermées par l'administrateur", icon: MonitorSmartphone },
 };
 
 export function SecuritySection() {
@@ -34,6 +39,7 @@ export function SecuritySection() {
   return (
     <>
       <PasswordCard onDone={refreshActivity} />
+      <TwoFactorCard onChanged={refreshActivity} />
       <SessionsCard refreshKey={refreshKey} onDone={refreshActivity} />
       <DeleteAccountCard />
     </>

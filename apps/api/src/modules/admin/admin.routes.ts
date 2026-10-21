@@ -7,6 +7,7 @@ import { AppError } from "../../utils/AppError.js";
 import { EXPENSE_CATEGORIES, MODERATION_ACTIONS, adminService, type ModerationAction } from "./admin.service.js";
 import { defaultFeeRates, getFeeRates, setFeeRates } from "../billing/feeRates.js";
 import { prisma } from "../../config/prisma.js";
+import { sendTestMail } from "../mail/mail.service.js";
 
 // Tableau de bord administrateur : réservé au rôle ADMIN (le premier compte inscrit)
 const router = Router();
@@ -14,6 +15,7 @@ router.use(authenticate, authorize("ADMIN"));
 
 const ok = (res: Response, data: unknown) => res.json({ status: "success", data });
 const page = (v: unknown) => Math.max(1, Math.min(10_000, Number(v) || 1));
+const pageSize = (v: unknown, fallback: number) => ([10, 20, 25, 50, 100].includes(Number(v)) ? Number(v) : fallback);
 
 router.get(
   "/overview",
@@ -41,7 +43,7 @@ router.get(
       account: req.query.account || undefined,
     });
     if (!q.success) throw new AppError("Filtres invalides", 422);
-    ok(res, await adminService.users({ ...q.data, page: page(req.query.page) }));
+    ok(res, await adminService.users({ ...q.data, page: page(req.query.page), pageSize: pageSize(req.query.pageSize, 20) }));
   }),
 );
 
@@ -50,7 +52,7 @@ router.get(
   catchAsync(async (req, res) => {
     const status = z.enum(["PENDING", "PAID", "FAILED", "EXPIRED"]).optional().safeParse(req.query.status || undefined);
     if (!status.success) throw new AppError("Statut invalide", 422);
-    ok(res, await adminService.payments({ status: status.data, page: page(req.query.page) }));
+    ok(res, await adminService.payments({ status: status.data, page: page(req.query.page), pageSize: pageSize(req.query.pageSize, 25) }));
   }),
 );
 
@@ -108,6 +110,15 @@ router.put(
     const r = await setFeeRates(req.body.rates);
     await prisma.activityLog.create({ data: { userId: req.user!.userId, action: "FEE_RATES_UPDATED", meta: { rates: r.rates } } });
     ok(res, r);
+  }),
+);
+
+// E-mails : envoi d'un message de test à l'administrateur (erreur SMTP détaillée)
+router.post(
+  "/settings/mail-test",
+  catchAsync(async (req: Request, res) => {
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.userId }, select: { email: true } });
+    ok(res, { to: me.email, ...(await sendTestMail(me.email)) });
   }),
 );
 

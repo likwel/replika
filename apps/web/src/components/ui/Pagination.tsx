@@ -7,6 +7,9 @@ interface Props {
   onChange: (page: number) => void;
   total?: number;
   pageSize?: number;
+  // Toujours affichée (même une seule page), avec le choix du nombre de lignes par page
+  pageSizes?: number[];
+  onPageSizeChange?: (size: number) => void;
 }
 
 // Numéros affichés autour de la page courante, avec « … » au-delà de 5-6 pages
@@ -24,18 +27,36 @@ function pageNumbers(page: number, pageCount: number): Array<number | "…"> {
 
 const btn = "flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
-export function Pagination({ page, pageCount, onChange, total, pageSize }: Props) {
-  if (pageCount <= 1) return null;
-  const from = total && pageSize ? (page - 1) * pageSize + 1 : null;
-  const to = total && pageSize ? Math.min(page * pageSize, total) : null;
+export function Pagination({ page, pageCount, onChange, total, pageSize, pageSizes, onPageSizeChange }: Props) {
+  const sizable = Boolean(pageSizes && onPageSizeChange);
+  if (pageCount <= 1 && !sizable) return null;
+  const from = total && pageSize ? (page - 1) * pageSize + 1 : total === 0 ? 0 : null;
+  const to = total && pageSize ? Math.min(page * pageSize, total) : total === 0 ? 0 : null;
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-      {total !== undefined && from !== null && (
-        <p className="text-xs" style={{ color: theme.textMuted }}>
-          {from}–{to} sur {total}
-        </p>
-      )}
+      <div className="flex flex-wrap items-center gap-3">
+        {total !== undefined && from !== null && (
+          <p className="text-xs" style={{ color: theme.textMuted }}>
+            {from}–{to} sur {total}
+          </p>
+        )}
+        {sizable && (
+          <label className="flex items-center gap-1.5 text-xs" style={{ color: theme.textMuted }}>
+            Lignes par page
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange!(Number(e.target.value))}
+              className="rounded-md px-1.5 py-1 text-xs outline-none"
+              style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+            >
+              {pageSizes!.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
       <div className="ml-auto flex items-center gap-1">
         <button className={btn} style={{ color: theme.text }} disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Page précédente">
           <ChevronLeft size={15} />
@@ -55,7 +76,7 @@ export function Pagination({ page, pageCount, onChange, total, pageSize }: Props
             </button>
           )
         )}
-        <button className={btn} style={{ color: theme.text }} disabled={page >= pageCount} onClick={() => onChange(page + 1)} aria-label="Page suivante">
+        <button className={btn} style={{ color: theme.text }} disabled={page >= Math.max(1, pageCount)} onClick={() => onChange(page + 1)} aria-label="Page suivante">
           <ChevronRight size={15} />
         </button>
       </div>
