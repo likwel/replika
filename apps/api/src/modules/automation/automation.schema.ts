@@ -7,6 +7,13 @@ export const ruleSchema = z.object({
   trigger: z.string().trim().optional(),
   response: z.string().trim().optional(),
   useAi: z.boolean().optional(),
+  language: z.enum(["ACCOUNT", "AUTO", "FR", "MG"]).optional(),
+  aiKnowledge: z
+    .string()
+    .trim()
+    .max(500, "Connaissances pour l'IA : 500 caractères maximum")
+    .nullish()
+    .transform((v) => (v === undefined ? undefined : v || null)),
   privateReply: z
     .string()
     .trim()

@@ -3,7 +3,7 @@ import { env } from "../../config/env.js";
 import { graphClient } from "../facebook/graph.client.js";
 import { pollSession } from "./live.capture.js";
 import { getEntitlements } from "../billing/entitlements.js";
-import { accrueLiveTime, liveQuotaReached, markLiveQuotaHit } from "../billing/usage.js";
+import { accrueLiveTime, liveAllowance, markLiveQuotaHit } from "../billing/usage.js";
 
 // État du direct (EN DIRECT / terminé) relu toutes les minutes environ
 const STATUS_EVERY_MS = 60 * 1000;
@@ -24,24 +24,29 @@ async function pauseSession(s: ActiveSession, reason: string, action: string) {
   if (count) await prisma.activityLog.create({ data: { userId: s.userId, action, meta: { sessionId: s.id, title: s.title } } });
 }
 
-// Abonnement et quota d'heures : retourne false si la session a été mise en pause
+// Heures de live : formule active (quota du mois) ou heures achetées. Retourne false si la session est mise en pause.
 async function checkAllowance(s: ActiveSession): Promise<boolean> {
-  const ent = await getEntitlements(s.userId);
-  if (!ent.active) {
-    await pauseSession(s, "Abonnement expiré : capture des commandes en pause. Renouvelez votre formule pour reprendre.", "LIVE_PAUSED_SUBSCRIPTION");
-    return false;
-  }
   if (s.activeSince && Date.now() - s.activeSince.getTime() >= ACCRUE_EVERY_MS) await accrueLiveTime(s);
-  if (await liveQuotaReached(s.userId)) {
-    const first = await markLiveQuotaHit(s.userId);
+  const allowance = await liveAllowance(s.userId);
+  if (allowance.ok) return true;
+  if (allowance.reason === "blocked") {
+    await pauseSession(s, "Compte suspendu par l'administrateur : capture des commandes arrêtée.", "LIVE_PAUSED_SUBSCRIPTION");
+  } else if (allowance.reason === "inactive") {
     await pauseSession(
       s,
-      `Quota de ${ent.limits.liveHours} h de live atteint ce mois-ci : passez à une formule supérieure pour continuer.`,
+      "Abonnement expiré et plus d'heures de live : capture en pause. Achetez des heures ou renouvelez votre formule pour reprendre.",
+      "LIVE_PAUSED_SUBSCRIPTION",
+    );
+  } else {
+    const first = await markLiveQuotaHit(s.userId);
+    const ent = await getEntitlements(s.userId);
+    await pauseSession(
+      s,
+      `Quota de ${ent.limits.liveHours} h de live atteint ce mois-ci : achetez des heures à l'unité pour continuer.`,
       first ? "LIVE_QUOTA_REACHED" : "LIVE_PAUSED_QUOTA",
     );
-    return false;
   }
-  return true;
+  return false;
 }
 
 async function tick() {

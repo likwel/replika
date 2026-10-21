@@ -63,6 +63,44 @@ export function newReference(): string {
   return `SF-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
+// Jour calendaire de Madagascar : "2026-10-21"
+export function usageDay(date = new Date()): string {
+  return new Date(date.getTime() + 3 * 3_600_000).toISOString().slice(0, 10);
+}
+
+// Commissions Papi TTC (papi.mg/pricing, octobre 2026). Mode Transit : Papi encaisse pour vous, frais
+// opérateurs compris. Mode Direct : 1,20 %, les frais de l'opérateur ou de la banque étant facturés à part.
+export const PAPI_FEE_RATES = {
+  transit: { BRED: 4.2, MVOLA: 3.8, ORANGE_MONEY: 3.6, AIRTEL_MONEY: 3.6, default: 3.8 },
+  direct: { BRED: 1.2, MVOLA: 1.2, ORANGE_MONEY: 1.2, AIRTEL_MONEY: 1.2, default: 1.2 },
+} as const;
+
+export function feeRate(method: string | null | undefined, mode: "transit" | "direct", override: number | null = null): number {
+  if (override !== null && Number.isFinite(override)) return override;
+  const rates = PAPI_FEE_RATES[mode] as Record<string, number>;
+  return rates[method ?? ""] ?? rates.default;
+}
+
+export function estimateFee(amount: number, method: string | null | undefined, mode: "transit" | "direct", override: number | null = null): number {
+  return Math.round((amount * feeRate(method, mode, override)) / 100);
+}
+
+// Numéro de paiement : mobile malgache (034 12 345 67, +261 34 12 345 67) ou international (+33…).
+// Retourne le format international, ou null si invalide.
+export function normalizePhone(raw: string): string | null {
+  const s = raw.replace(/[\s().-]/g, "");
+  const mg = s.match(/^(?:\+?261|00261|0)?(3[2-9]\d{7})$/);
+  if (mg) return `+261${mg[1]}`;
+  if (/^(\+|00)[1-9]\d{7,14}$/.test(s)) return s.startsWith("00") ? `+${s.slice(2)}` : s;
+  return null;
+}
+
+// Affichage : +261 34 12 345 67
+export function formatPhone(p: string): string {
+  const m = p.match(/^\+261(3\d)(\d{2})(\d{3})(\d{2})$/);
+  return m ? `+261 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : p;
+}
+
 export function daysLeft(periodEnd: Date | null, now = new Date()): number | null {
   if (!periodEnd) return null;
   return Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / DAY));

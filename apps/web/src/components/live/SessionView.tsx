@@ -18,6 +18,7 @@ import { SessionSettingsForm } from "./SessionSettingsForm";
 import { InvoicesPanel } from "./InvoicesPanel";
 import { SESSION_STATUS, fromRows, toRows, type ProductRow } from "./live";
 import { swal } from "@/lib/swal";
+import { liveHours } from "@/lib/liveHours";
 import { Alert } from "@/components/ui/Alert";
 
 interface Props {
@@ -89,6 +90,8 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
       await fn();
       if (ok) swal.toast({ title: ok });
     } catch (e) {
+      // Plus d'heures de live : proposer l'achat d'heures à l'unité
+      if (e instanceof ApiError && e.code === "LIVE_HOURS_REQUIRED") return liveHours.open(e.message);
       setMessage({ error: e instanceof ApiError ? e.message : "Action impossible." });
     } finally {
       setBusy(null);

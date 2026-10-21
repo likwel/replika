@@ -41,6 +41,7 @@ export const ACTION_META: Record<string, ActionMeta> = {
   // Abonnement
   CHECKOUT_CREATED: { label: "Paiement démarré", icon: CreditCard, color: theme.textMuted },
   SUBSCRIPTION_ACTIVATED: { label: "Formule activée", icon: CreditCard, color: "#166534" },
+  LIVE_HOURS_PURCHASED: { label: "Heures de live achetées", icon: Radio, color: "#166534" },
   SUBSCRIPTION_SET_BY_ADMIN: { label: "Formule modifiée par l'équipe SuiteFlow", icon: CreditCard, color: theme.goldDark },
   PAYMENT_FAILED: { label: "Paiement refusé", icon: CreditCard, color: theme.red },
   PAYMENT_AMOUNT_MISMATCH: { label: "Paiement à vérifier", icon: ShieldAlert, color: theme.red },
@@ -50,6 +51,16 @@ export const ACTION_META: Record<string, ActionMeta> = {
   LIVE_PAUSED_SUBSCRIPTION: { label: "Live en pause : abonnement expiré", icon: PauseCircle, color: theme.red },
   SCHEDULE_SKIPPED_SUBSCRIPTION: { label: "Publication non envoyée : abonnement expiré", icon: XCircle, color: theme.red },
   PAGES_DEACTIVATED_FOR_PLAN: { label: "Pages désactivées (limite de la formule)", icon: Power, color: theme.amber },
+  LIVE_HOURS_GIFTED: { label: "Heures de live offertes par SuiteFlow", icon: Radio, color: "#166534" },
+  // Modération par un administrateur
+  ACCOUNT_SUSPENDED: { label: "Compte suspendu", icon: PauseCircle, color: theme.amber },
+  ACCOUNT_REACTIVATED: { label: "Suspension levée", icon: Power, color: "#166534" },
+  ACCOUNT_BANNED: { label: "Compte banni", icon: ShieldAlert, color: theme.red },
+  ACCOUNT_UNBANNED: { label: "Bannissement levé", icon: Power, color: "#166534" },
+  ACCOUNT_DELETED: { label: "Compte supprimé par l'administrateur", icon: Trash2, color: theme.red },
+  ACCOUNT_RESTORED: { label: "Compte restauré", icon: Power, color: "#166534" },
+  SESSIONS_REVOKED: { label: "Sessions fermées par l'administrateur", icon: LogOut, color: theme.textMuted },
+  FEE_RATES_UPDATED: { label: "Commissions Papi modifiées", icon: CreditCard, color: theme.textMuted },
 };
 
 const PLAN_NAMES: Record<string, string> = { STARTER: "Starter", PRO: "Pro", BUSINESS: "Business", AGENCY: "Agence" };
@@ -118,6 +129,11 @@ export function detailOf(e: HistoryEntry): string | null {
         .filter(Boolean)
         .join(" · ");
     }
+    case "LIVE_HOURS_PURCHASED": {
+      const hours = num(m, "hours");
+      const amount = num(m, "amount");
+      return [hours !== null ? `${hours} h de Live Manager` : null, amount !== null ? fmtAr(amount) : null].filter(Boolean).join(" · ");
+    }
     case "SUBSCRIPTION_SET_BY_ADMIN": {
       const end = str(m, "periodEnd");
       return [PLAN_NAMES[str(m, "plan") ?? ""], end ? `jusqu'au ${new Date(end).toLocaleDateString("fr-FR")}` : "sans échéance"].filter(Boolean).join(" · ");
@@ -132,6 +148,16 @@ export function detailOf(e: HistoryEntry): string | null {
     case "LIVE_QUOTA_REACHED":
     case "LIVE_PAUSED_SUBSCRIPTION":
       return str(m, "title");
+    case "ACCOUNT_SUSPENDED":
+    case "ACCOUNT_BANNED":
+    case "ACCOUNT_DELETED": {
+      const until = str(m, "until");
+      return [str(m, "reason"), until ? `jusqu'au ${new Date(until).toLocaleDateString("fr-FR")}` : null].filter(Boolean).join(" · ") || null;
+    }
+    case "LIVE_HOURS_GIFTED": {
+      const hours = num(m, "hours");
+      return hours !== null ? `${hours} h ajoutées au crédit` : null;
+    }
     case "PAGES_DEACTIVATED_FOR_PLAN": {
       const pages = m && Array.isArray(m.pages) ? (m.pages as string[]) : [];
       return pages.join(", ") || null;

@@ -17,6 +17,7 @@ export interface CreateLinkInput {
   failureUrl: string;
   notificationUrl?: string; // facultatif : sans adresse publique, le paiement est confirmé par interrogation
   payerEmail?: string;
+  payerPhone?: string; // numéro saisi par le client (Papi le préremplit)
 }
 
 export interface PaymentLink {
@@ -88,6 +89,7 @@ export async function createPaymentLink(input: CreateLinkInput): Promise<Payment
         ...(input.notificationUrl ? { notificationUrl: input.notificationUrl } : {}),
         validDuration: Math.min(596, Math.max(1, env.papi.linkHours)),
         ...(input.payerEmail ? { payerEmail: input.payerEmail } : {}),
+        ...(input.payerPhone ? { payerPhone: input.payerPhone } : {}),
         isTestMode: env.papi.testMode,
         ...(env.papi.testMode ? { testReason: "Tests SuiteFlow" } : {}),
       },

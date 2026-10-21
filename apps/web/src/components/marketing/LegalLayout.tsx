@@ -15,7 +15,7 @@ interface Props {
 export function LegalLayout({ title, subtitle, updatedAt, children }: Props) {
   return (
     <div style={{ background: theme.bg }}>
-      <header className="sticky top-0 z-50 backdrop-blur" style={{ background: "rgba(242,239,233,0.85)", borderBottom: `1px solid ${theme.border}` }}>
+      <header className="sticky top-0 z-50 backdrop-blur" style={{ background: "color-mix(in srgb, var(--color-bg) 85%, transparent)", borderBottom: `1px solid ${theme.border}` }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5">
           <Link to="/"><Logo /></Link>
           <Link to="/" className="flex items-center gap-1.5 text-sm font-medium hover:opacity-70" style={{ color: theme.text }}>

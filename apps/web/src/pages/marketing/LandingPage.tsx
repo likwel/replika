@@ -98,7 +98,7 @@ export function LandingPage() {
     <div style={{ background: theme.bg }}>
       <header
         className="sticky top-0 z-50 backdrop-blur transition-shadow"
-        style={{ background: "rgba(242,239,233,0.88)", borderBottom: `1px solid ${theme.border}`, boxShadow: scrolled ? "0 4px 16px rgba(28,24,19,0.06)" : "none" }}
+        style={{ background: "color-mix(in srgb, var(--color-bg) 88%, transparent)", borderBottom: `1px solid ${theme.border}`, boxShadow: scrolled ? "0 4px 16px rgba(28,24,19,0.06)" : "none" }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-2.5">
           <Logo />
@@ -287,7 +287,16 @@ export function LandingPage() {
             </p>
             <div className="relative mt-6 flex flex-col sm:flex-row items-center justify-center gap-2.5">
               <Link to="/register"><Button variant="primary" size="lg" icon={ArrowRight}>Commencer gratuitement</Button></Link>
-              <Link to="/guide"><Button variant="ghost" size="lg" className="!text-white !border-white/25">Voir le guide</Button></Link>
+              <Link to="/guide">
+                {/* Bandeau toujours sombre : bouton clair sur fond sombre, quel que soit le thème */}
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  style={{ background: "rgba(255,255,255,0.08)", color: "#fff", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }}
+                >
+                  Voir le guide
+                </Button>
+              </Link>
             </div>
           </div>
         </Reveal>

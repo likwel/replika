@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search, Settings } from "lucide-react";
+import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search, Settings, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { LogoMark, Wordmark } from "@/components/ui/Logo";
@@ -29,6 +30,7 @@ interface Props {
 
 export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCollapse }: Props) {
   const online = useOnline();
+  const isAdmin = useAuth().user?.role === "ADMIN";
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([active]));
 
   // Le menu ouvert est toujours déplié
@@ -109,6 +111,7 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
       </nav>
 
       <div className="flex flex-col gap-px px-2 py-2" style={{ borderTop: `1px solid ${theme.border}` }}>
+        {isAdmin && <Row icon={ShieldCheck} label="Administration" active={active === "admin"} onClick={() => onNavigate("admin", 0)} />}
         <Row icon={Settings} label="Paramètres" active={active === "set"} onClick={() => onNavigate("set", 0)} />
         <a href="/guide" target="_blank" rel="noreferrer" className="block">
           <Row icon={BookOpen} label="Guide d'utilisation" />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router-dom";
 import { Plus, Radio } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -11,8 +11,8 @@ import { SessionsList } from "@/components/live/SessionsList";
 import { OrdersTable } from "@/components/live/OrdersTable";
 import { OrderEditor } from "@/components/live/OrderEditor";
 import { liveApi, type LiveOrder, type LiveSession } from "@/lib/live.api";
-import { usePlan } from "@/hooks/usePlan";
-import { swal } from "@/lib/swal";
+import { billingApi, liveHoursLeft } from "@/lib/billing.api";
+import { liveHours } from "@/lib/liveHours";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
 
@@ -24,19 +24,15 @@ export function LivePage() {
   const [orders, setOrders] = useState<LiveOrder[] | null>(null);
   const [sessionFilter, setSessionFilter] = useState("");
   const [editing, setEditing] = useState<LiveOrder | null>(null);
-  const { active } = usePlan();
-  const nav = useNavigate();
-
-  // Abonnement expiré : la capture des JP est en pause, on l'explique avant d'ouvrir l'assistant
+  // Plus d'heures de live (quota du mois épuisé ou abonnement terminé) : achat d'heures à l'unité
   const openWizard = async () => {
-    if (active) return setWizard(true);
-    const go = await swal.confirm({
-      variant: "warning",
-      title: "Abonnement expiré",
-      text: "La capture des commandes en live est en pause. Renouvelez votre formule pour démarrer une session.",
-      confirmText: "Voir les formules",
-    });
-    if (go) nav("/app/facturation");
+    const o = await billingApi.overview().catch(() => null);
+    if (!o || liveHoursLeft(o).canRun) return setWizard(true);
+    liveHours.open(
+      o.subscription.active
+        ? `Les ${o.subscription.limits.liveHours} h de live de votre formule sont utilisées ce mois-ci.`
+        : "Votre abonnement est terminé : Live Manager fonctionne avec des heures achetées à l'unité.",
+    );
   };
 
   const loadSessions = () => liveApi.sessions().then(setSessions).catch(() => setSessions([]));

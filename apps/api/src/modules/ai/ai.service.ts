@@ -32,11 +32,48 @@ export interface AiReplyInput {
 }
 
 // userId : propriétaire du compte, à qui la réponse est décomptée (quota mensuel de la formule)
-type AiProfile = Pick<SocialAccount, "name" | "platform" | "aiContext" | "aiInstructions" | "userId">;
+type AiProfile = Pick<SocialAccount, "name" | "platform" | "aiContext" | "aiInstructions" | "aiLanguage" | "userId"> & {
+  ruleKnowledge?: string | null; // connaissances de la règle déclenchée (prioritaires)
+};
+
+// Règle IA déclenchée : sa langue (sinon celle du compte) et ses connaissances
+export interface RuleAiOptions {
+  language?: string | null; // ACCOUNT | AUTO | FR | MG
+  knowledge?: string | null;
+}
+
+const withRule = <T extends AiProfile>(account: T, rule?: RuleAiOptions): T =>
+  rule
+    ? {
+        ...account,
+        aiLanguage: rule.language && rule.language !== "ACCOUNT" ? rule.language : account.aiLanguage,
+        ruleKnowledge: rule.knowledge?.trim() || null,
+      }
+    : account;
+
+// Rappel en fin de message : les petits modèles suivent mieux la consigne de langue placée en dernier
+const LANGUAGE_REMINDER: Record<string, string> = {
+  FR: "Rédige le champ \"reply\" en français.",
+  MG: "Soraty amin'ny teny malagasy ny valiny (champ \"reply\"), na amin'ny teny frantsay aza ny hafatry ny mpanjifa.",
+};
+
+const LANGUAGE_RULE: Record<string, string> = {
+  FR: "- Réponds toujours en français, quelle que soit la langue du client.",
+  MG: "- Réponds toujours en malagasy (teny malagasy tsotra sy mazava, tonony ho an'ny mpanjifa), quelle que soit la langue du client.",
+};
 
 // Limites de sécurité : Messenger refuse au-delà de 2 000 caractères
 const MAX_REPLY_CHARS = 1000;
 const MAX_POST_CHARS = 1500;
+
+// Connaissances de la règle déclenchée d'abord (prioritaires), puis celles du compte
+function knowledge(account: AiProfile): string {
+  const parts = [
+    account.ruleKnowledge ? `Pour cette question (prioritaire) :\n${account.ruleKnowledge}` : null,
+    account.aiContext?.trim() || null,
+  ].filter(Boolean);
+  return parts.join("\n\n") || "Aucune information fournie.";
+}
 
 function systemPrompt(account: AiProfile, kind: AiReplyInput["kind"]): string {
   const platform = account.platform === "INSTAGRAM" ? "Instagram" : "Facebook";
@@ -46,14 +83,19 @@ function systemPrompt(account: AiProfile, kind: AiReplyInput["kind"]): string {
     "",
     "Informations sur l'activité (ta seule source fiable) :",
     '"""',
-    account.aiContext?.trim() || "Aucune information fournie.",
+    knowledge(account),
     '"""',
     ...(account.aiInstructions?.trim()
       ? ["", "Consignes du propriétaire :", account.aiInstructions.trim()]
       : []),
     "",
     "Règles :",
-    "- Réponds dans la langue du client (français, malgache, anglais…).",
+    LANGUAGE_RULE[account.aiLanguage] ?? "- Réponds dans la langue du client (français, malgache, anglais…).",
+    ...(account.ruleKnowledge
+      ? [
+          "- Les informations « pour cette question » répondent justement à ce message : appuie-toi d'abord sur elles. Elles peuvent être écrites dans une autre langue que celle du client (ex. « akanjo » = robe, vêtement ; « vidiny » = prix) : fais le lien et donne l'information, ne dis pas qu'elle manque.",
+        ]
+      : []),
     "- N'invente jamais un prix, un stock, un délai, une adresse ou une promotion absents des informations ci-dessus. S'il manque l'information, réponds poliment que l'équipe revient vers lui" +
       (kind === "COMMENT" ? " en message privé" : "") +
       ' et mets "needsHuman" à true.',
@@ -106,7 +148,10 @@ export function parseAiOutput(raw: string): AiReply {
 export async function generateReply(account: AiProfile, input: AiReplyInput): Promise<AiReply> {
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(account, input.kind) },
-    { role: "user", content: userPrompt(input) },
+    {
+      role: "user",
+      content: LANGUAGE_REMINDER[account.aiLanguage] ? `${userPrompt(input)}\n\n${LANGUAGE_REMINDER[account.aiLanguage]}` : userPrompt(input),
+    },
   ];
   const month = await consumeAiReply(account.userId);
   try {
@@ -155,18 +200,22 @@ async function conversationHistory(msg: SocialMessage): Promise<string> {
 // Suggestion pour un contenu quelconque (espace de gestion) : ajoute le texte de la publication commentée
 export async function suggestReply(
   account: SocialAccount,
-  input: Omit<AiReplyInput, "postText"> & { postId?: string | null }
+  input: Omit<AiReplyInput, "postText"> & { postId?: string | null },
+  rule?: RuleAiOptions,
 ) {
   const { postId, ...rest } = input;
-  return generateReply(account, { ...rest, postText: await postText(account, postId ?? null) });
+  return generateReply(withRule(account, rule), { ...rest, postText: await postText(account, postId ?? null) });
 }
 
-export async function generateReplyForMessage(account: SocialAccount, msg: SocialMessage) {
+// rule : règle « Réponse par IA » déclenchée (langue et connaissances propres)
+export async function generateReplyForMessage(account: SocialAccount, msg: SocialMessage, rule?: RuleAiOptions) {
   return suggestReply(account, {
     kind: msg.kind === "DIRECT" ? "DIRECT" : "COMMENT",
     authorName: msg.authorName,
     content: msg.content,
     postId: msg.postId,
     history: await conversationHistory(msg),
-  });
+  }, rule);
 }
+
+export { withRule };

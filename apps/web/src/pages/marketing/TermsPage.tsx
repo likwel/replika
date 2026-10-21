@@ -129,6 +129,12 @@ export function TermsPage() {
           connectées les plus récentes sont désactivées, sans être supprimées.
         </p>
         <p>
+          Des heures de Live Manager peuvent être achetées à l'unité, au prix horaire affiché dans Paramètres →
+          Facturation. Elles sont utilisées après les heures incluses dans votre formule, ou lorsque votre abonnement
+          est terminé, et n'expirent pas. Elles permettent uniquement la capture des commandes en live et les messages
+          associés ; elles ne réactivent pas les autres automatisations et ne sont pas remboursables.
+        </p>
+        <p>
           À l'échéance de l'essai ou de la période payée, les automatisations (réponses automatiques, assistant IA,
           capture des lives, publications programmées) sont mises en pause. Votre compte, vos données et vos Pages
           restent accessibles, les nouveaux messages continuent d'arriver dans votre file et vous pouvez y répondre

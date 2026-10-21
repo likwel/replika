@@ -13,6 +13,20 @@ model User {
   password             String
   name                 String
   role                 Role                 @default(USER)
+  // Modération par un administrateur : un compte non actif ne peut plus se connecter et ses automatisations s'arrêtent
+  status               AccountStatus        @default(ACTIVE)
+  suspendedUntil       DateTime? // fin de suspension (null : jusqu'à réactivation)
+  moderationReason     String?
+  moderatedAt          DateTime?
+  deletedAt            DateTime? // suppression par un administrateur : compte fermé, données conservées (restaurable)
+  // Validation en deux étapes (désactivée par défaut) : code par e-mail ou application (Google Authenticator…)
+  twoFactorMethod      TwoFactorMethod?
+  twoFactorEnabledAt   DateTime?
+  totpSecret           String? // secret chiffré (AES-256-GCM)
+  totpPendingSecret    String? // en cours d'activation, pas encore confirmé
+  totpLastStep         Int? // dernier pas de 30 s accepté : un même code ne sert qu'une fois
+  twoFactorRecovery    String[]             @default([]) // codes de secours (empreintes SHA-256), à usage unique
+  twoFactorChallenges  TwoFactorChallenge[]
   resetToken           String?
   resetExpires         DateTime?
   // Connexion via Facebook / Google : identifiant du compte chez le fournisseur
@@ -22,6 +36,7 @@ model User {
   // Profil
   avatarUrl            String? // photo de profil (data URL compressée côté navigateur)
   phone                String?
+  paymentPhone         String? // dernier numéro de paiement saisi (Mobile Money), proposé au paiement suivant
   companyName          String?
   address              String? // affichée sur les factures imprimées (Lives)
   // Préférences
@@ -64,6 +79,7 @@ model SocialAccount {
   aiEnabled           Boolean              @default(false)
   aiAutoSend          Boolean              @default(false) // sinon : suggestion à valider
   aiChannel           RuleChannel          @default(ALL)
+  aiLanguage          String               @default("AUTO") // langue des réponses IA : AUTO (celle du client), FR, MG
   aiContext           String? // base de connaissances : produits, prix, livraison, horaires…
   aiInstructions      String? // consignes de ton, signature…
   // Gescom : Catalogue Facebook connecté (Commerce Manager), pour importer les produits publiés sur Marketplace
@@ -117,6 +133,8 @@ model AutomationRule {
   trigger         String          @default("") // mots-clés séparés par des virgules (ignoré si ANY)
   response        String? // variantes séparées par ||, variables {nom} et {page} (ignoré si useAi)
   useAi           Boolean         @default(false) // réponse générée par l'IA (contexte du compte) au lieu du texte fixe
+  language        String          @default("ACCOUNT") // langue de la réponse : ACCOUNT (réglage du compte), AUTO, FR, MG
+  aiKnowledge     String? // connaissances propres à la règle (500 caractères max), données à l'IA en priorité
   privateReply    String? // commentaires : message privé envoyé en plus à l'auteur
   autoSend        Boolean         @default(false)
   isActive        Boolean         @default(true)
@@ -495,37 +513,41 @@ enum MarketplaceOrderStatus {
 
 // Formule en cours d'un utilisateur. L'expiration se déduit de periodEnd (aucun statut à basculer).
 model Subscription {
-  id            String           @id @default(cuid())
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String           @unique
-  plan          PlanId           @default(PRO)
-  kind          SubscriptionKind @default(TRIAL)
-  billingPeriod BillingPeriod? // période du dernier paiement (sert à convertir les jours restants)
-  periodEnd     DateTime? // null = sans échéance (MANUAL uniquement)
-  trialEndsAt   DateTime? // posé une fois à l'inscription
-  customLimits  Json? // Agence : { pages, aiReplies, liveHours } ; null = illimité
-  note          String?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id                String           @id @default(cuid())
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String           @unique
+  plan              PlanId           @default(PRO)
+  kind              SubscriptionKind @default(TRIAL)
+  billingPeriod     BillingPeriod? // période du dernier paiement (sert à convertir les jours restants)
+  periodEnd         DateTime? // null = sans échéance (MANUAL uniquement)
+  trialEndsAt       DateTime? // posé une fois à l'inscription
+  customLimits      Json? // Agence : { pages, aiReplies, liveHours } ; null = illimité
+  liveCreditSeconds Int              @default(0) // heures de live achetées à l'unité, utilisées après le quota ou sans abonnement
+  note              String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 // Un lien de paiement Papi = une période achetée
 model Payment {
-  id                String        @id @default(cuid())
-  reference         String        @unique // envoyée à Papi (clé d'idempotence)
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String         @id @default(cuid())
+  reference         String         @unique // envoyée à Papi (clé d'idempotence)
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId            String
-  plan              PlanId
-  period            BillingPeriod
+  kind              PaymentKind    @default(SUBSCRIPTION)
+  plan              PlanId? // SUBSCRIPTION uniquement
+  period            BillingPeriod? // SUBSCRIPTION uniquement
+  liveHours         Int? // LIVE_HOURS : heures achetées
   amount            Int // Ar, calculé par le serveur
-  status            PaymentStatus @default(PENDING)
+  status            PaymentStatus  @default(PENDING)
   paymentLink       String?
   shortLink         String?
   linkExpiresAt     DateTime?
   notificationToken String? // renvoyé par Papi dans la notification ; jamais exposé au front
   papiReference     String?
   paymentMethod     String?
-  fee               Int?
+  fee               Int? // commission Papi (Ar) : réelle si Papi la transmet, sinon estimée
+  feeEstimated      Boolean        @default(false)
   payerPhone        String?
   failureMessage    String?
   lastCheckedAt     DateTime?
@@ -533,8 +555,8 @@ model Payment {
   appliedPeriodEnd  DateTime? // échéance obtenue à l'activation
   extraDays         Int? // jours convertis depuis la formule précédente
   raw               Json? // dernière notification ou dernier statut reçu
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -548,6 +570,7 @@ model Usage {
   month          String
   aiReplies      Int       @default(0)
   liveSeconds    Int       @default(0)
+  liveCreditUsed Int       @default(0) // secondes prises sur les heures achetées
   aiQuotaHitAt   DateTime? // journalise « quota atteint » une seule fois par mois
   liveQuotaHitAt DateTime?
   updatedAt      DateTime  @updatedAt
@@ -573,9 +596,71 @@ enum SubscriptionKind {
   MANUAL // posé par un administrateur (Agence, prolongation, geste commercial)
 }
 
+enum PaymentKind {
+  SUBSCRIPTION // période d'une formule
+  LIVE_HOURS // heures de Live Manager à l'unité
+}
+
 enum PaymentStatus {
   PENDING
   PAID
   FAILED
   EXPIRED
+}
+
+// Réponses IA de toute la plateforme, par jour (heure de Madagascar) : coût IA d'une période
+model AiDailyUsage {
+  day     String @id // "2026-10-21"
+  replies Int    @default(0)
+}
+
+// Dépenses de l'entreprise saisies par l'administrateur (hébergement, marketing…) ; mensuelles si recurring
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime // date de la dépense, ou du premier mois si mensuelle
+  category    String // HOSTING, AI, MARKETING, SALARY, SOFTWARE, OTHER
+  label       String
+  amount      Int // Ar
+  recurring   Boolean  @default(false) // répétée chaque mois à partir de date
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+// Réglages de la plateforme modifiables depuis l'administration (ex. commissions Papi par opérateur)
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+enum TwoFactorMethod {
+  EMAIL
+  TOTP
+}
+
+// Étape de vérification en cours : connexion en attente du code, ou activation de la validation par e-mail
+model TwoFactorChallenge {
+  id         String          @id // jeton aléatoire remis au navigateur
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  purpose    String // LOGIN | SETUP_EMAIL
+  method     TwoFactorMethod
+  codeHash   String? // e-mail : empreinte du code envoyé
+  attempts   Int             @default(0)
+  remember   Boolean         @default(true) // « Rester connecté » choisi à la connexion
+  lastSentAt DateTime?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime        @default(now())
+
+  @@index([userId, purpose])
 }

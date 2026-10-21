@@ -16,6 +16,7 @@ import leadRoutes from "../modules/leads/lead.routes.js";
 import statsRoutes from "../modules/stats/stats.routes.js";
 import marketplaceRoutes from "../modules/marketplace/marketplace.routes.js";
 import billingRoutes from "../modules/billing/billing.routes.js";
+import adminRoutes from "../modules/admin/admin.routes.js";
 
 const router = Router();
 
@@ -37,5 +38,6 @@ router.use("/leads", leadRoutes);
 router.use("/stats", statsRoutes);
 router.use("/marketplace", marketplaceRoutes);
 router.use("/billing", billingRoutes);
+router.use("/admin", adminRoutes);
 
 export default router;

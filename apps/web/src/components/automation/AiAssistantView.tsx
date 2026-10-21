@@ -12,7 +12,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { IntentChip } from "@/components/messages/IntentChip";
 import { ApiError } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
-import { aiApi, type AiAccount, type AiOverview, type AiReply } from "@/lib/ai.api";
+import { aiApi, type AiAccount, type AiLanguage, type AiOverview, type AiReply } from "@/lib/ai.api";
 import type { RuleChannel } from "@/lib/automation.api";
 
 const CHANNELS: Array<{ value: RuleChannel; label: string; icon: LucideIcon }> = [
@@ -29,7 +29,57 @@ Horaires : …
 Contact / adresse : …
 Questions fréquentes : …`;
 
-const SAMPLES = ["C'est combien ?", "Vous livrez à Toamasina ?", "Colis reçu abîmé 😡", "Mbola misy ve ?"];
+// Langue des réponses : Auto suit la langue du client ; Malagasy / Français l'imposent
+const LANGS: Array<{ value: AiLanguage; flag: string; label: string; short: string; hint: string }> = [
+  { value: "MG", flag: "🇲🇬", label: "Malagasy", short: "MG", hint: "Valiny amin'ny teny malagasy foana" },
+  { value: "FR", flag: "🇫🇷", label: "Français", short: "FR", hint: "Toujours en français" },
+  { value: "AUTO", flag: "🌐", label: "Automatique", short: "AUTO", hint: "Dans la langue du client" },
+];
+
+function LanguagePicker({ value, onChange }: { value: AiLanguage; onChange: (v: AiLanguage) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Langue des réponses">
+      <p className="text-[13px] font-semibold" style={{ color: theme.text }}>Langue des réponses</p>
+      <p className="mb-2 text-[11.5px]" style={{ color: theme.textMuted }}>
+        Choisissez la langue dans laquelle l'assistant répond à vos clients, quelle que soit la langue de leur message.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {LANGS.map((l) => {
+          const on = value === l.value;
+          return (
+            <button
+              key={l.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(l.value)}
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-all"
+              style={{
+                background: on ? theme.goldSoft : theme.bg,
+                border: `1.5px solid ${on ? theme.gold : theme.border}`,
+                opacity: on ? 1 : 0.75,
+              }}
+            >
+              <span className="text-xl leading-none" aria-hidden>{l.flag}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold" style={{ color: on ? theme.goldDark : theme.text }}>{l.label}</span>
+                <span className="block text-[11px] leading-snug" style={{ color: theme.textMuted }}>{l.hint}</span>
+              </span>
+              <span
+                className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ border: `1.5px solid ${on ? theme.gold : theme.border}` }}
+              >
+                {on && <span className="h-2 w-2 rounded-full" style={{ background: theme.gold }} />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const SAMPLES = ["C'est combien ?", "Vous livrez à Toamasina ?", "Colis reçu abîmé 😡", "Mbola misy ve ?", "Ohatrinona ny akanjo ?"];
 
 const inputClass = "w-full rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-gold/40";
 const inputStyle = { background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text };
@@ -98,6 +148,11 @@ export function AiAssistantView() {
                     </span>
                   )}
                   {a.name}
+                  {a.aiEnabled && (
+                    <span className="rounded px-1 text-[10px] font-bold" style={{ background: active ? "#ffffff26" : theme.bg, color: active ? "#fff" : theme.textMuted }}>
+                      {LANGS.find((l) => l.value === (a.aiLanguage ?? "AUTO"))!.short}
+                    </span>
+                  )}
                   <span
                     className="h-1.5 w-1.5 rounded-full"
                     style={{ background: a.aiEnabled ? theme.gold : active ? "#FFFFFF40" : theme.border }}
@@ -181,6 +236,7 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
     aiEnabled: account.aiEnabled,
     aiAutoSend: account.aiAutoSend,
     aiChannel: account.aiChannel,
+    aiLanguage: account.aiLanguage ?? "AUTO",
     aiContext: account.aiContext ?? "",
     aiInstructions: account.aiInstructions ?? "",
   };
@@ -226,6 +282,8 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
           </div>
           <Toggle checked={draft.aiEnabled} onChange={(v) => set("aiEnabled", v)} label="Activer l'IA" />
         </div>
+
+        <LanguagePicker value={draft.aiLanguage} onChange={(v) => set("aiLanguage", v)} />
 
         <div className={draft.aiEnabled ? "flex flex-col gap-4" : "pointer-events-none flex flex-col gap-4 opacity-50"}>
           <div>
@@ -308,7 +366,7 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
         </div>
       </div>
 
-      <AiTester accountId={account.id} configured={configured} aiContext={draft.aiContext} aiInstructions={draft.aiInstructions} />
+      <AiTester accountId={account.id} configured={configured} aiContext={draft.aiContext} aiInstructions={draft.aiInstructions} aiLanguage={draft.aiLanguage} />
     </div>
   );
 }
@@ -318,10 +376,11 @@ interface TesterProps {
   configured: boolean;
   aiContext: string;
   aiInstructions: string;
+  aiLanguage: AiLanguage;
 }
 
 // Teste le brouillon en cours (même non enregistré) : rien n'est publié
-function AiTester({ accountId, configured, aiContext, aiInstructions }: TesterProps) {
+function AiTester({ accountId, configured, aiContext, aiInstructions, aiLanguage }: TesterProps) {
   const [text, setText] = useState("");
   const [kind, setKind] = useState<"COMMENT" | "DIRECT">("COMMENT");
   const [result, setResult] = useState<AiReply | null>(null);
@@ -337,7 +396,7 @@ function AiTester({ accountId, configured, aiContext, aiInstructions }: TesterPr
     setError(null);
     setResult(null);
     try {
-      setResult(await aiApi.test({ accountId, text: message, kind, aiContext, aiInstructions }));
+      setResult(await aiApi.test({ accountId, text: message, kind, aiContext, aiInstructions, aiLanguage }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Test impossible.");
     } finally {

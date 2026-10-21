@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { computeNextSubscription, newReference, usageMonth } from "./billing.logic.js";
+import { feeRates, feeWith } from "./feeRates.js";
 import {
   countActivePages,
   enforcePageLimit,
@@ -43,9 +44,11 @@ function publicPayment(p: Payment) {
   const linkUsable = p.status === "PENDING" && p.paymentLink && (!p.linkExpiresAt || p.linkExpiresAt > new Date());
   return {
     reference: p.reference,
+    kind: p.kind,
     plan: p.plan,
-    planName: PLANS[p.plan].name,
+    planName: p.plan ? PLANS[p.plan].name : "Heures de live",
     period: p.period,
+    liveHours: p.liveHours,
     amount: p.amount,
     status: p.status,
     paymentMethod: p.paymentMethod,
@@ -81,7 +84,11 @@ interface PaidDetails {
 // Active la période achetée. Idempotent : notification, retour utilisateur et vérification
 // périodique peuvent arriver en même temps, une seule activation a lieu.
 export async function activatePayment(paymentId: string, details: PaidDetails) {
+  const rates = await feeRates();
   const done = await prisma.$transaction(async (tx) => {
+    const before = await tx.payment.findUnique({ where: { id: paymentId }, select: { amount: true, paymentMethod: true } });
+    // Commission : transmise par Papi dans la notification, sinon estimée d'après les taux par opérateur
+    const fee = details.fee ?? (before ? feeWith(rates, before.amount, details.paymentMethod ?? before.paymentMethod) : undefined);
     const claimed = await tx.payment.updateMany({
       where: { id: paymentId, status: { not: "PAID" } },
       data: {
@@ -90,7 +97,8 @@ export async function activatePayment(paymentId: string, details: PaidDetails) {
         failureMessage: null,
         paymentMethod: details.paymentMethod ?? undefined,
         papiReference: details.papiReference ?? undefined,
-        fee: details.fee ?? undefined,
+        fee,
+        feeEstimated: details.fee === undefined || details.fee === null,
         payerPhone: details.payerPhone ?? undefined,
         raw: details.raw ? stripToken(details.raw) : undefined,
       },
@@ -98,10 +106,29 @@ export async function activatePayment(paymentId: string, details: PaidDetails) {
     if (claimed.count === 0) return null; // déjà activé
 
     const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId } });
+
+    // Heures de Live Manager à l'unité : ajoutées au crédit, la formule ne change pas
+    if (payment.kind === "LIVE_HOURS") {
+      const seconds = (payment.liveHours ?? 0) * 3600;
+      await tx.subscription.upsert({
+        where: { userId: payment.userId },
+        create: { userId: payment.userId, plan: "STARTER", kind: "PAID", periodEnd: new Date(), liveCreditSeconds: seconds },
+        update: { liveCreditSeconds: { increment: seconds } },
+      });
+      await tx.activityLog.create({
+        data: {
+          userId: payment.userId,
+          action: "LIVE_HOURS_PURCHASED",
+          meta: { reference: payment.reference, hours: payment.liveHours, amount: payment.amount, paymentMethod: details.paymentMethod ?? null },
+        },
+      });
+      return { ...payment, liveOnly: true };
+    }
+
     // Verrou : deux paiements du même utilisateur s'appliquent l'un après l'autre
     await tx.$queryRaw`SELECT "id" FROM "Subscription" WHERE "userId" = ${payment.userId} FOR UPDATE`;
     const sub = await tx.subscription.findUnique({ where: { userId: payment.userId } });
-    const next = computeNextSubscription(sub, { plan: payment.plan, period: payment.period });
+    const next = computeNextSubscription(sub, { plan: payment.plan!, period: payment.period! });
     const data = { plan: next.plan, kind: next.kind, billingPeriod: next.billingPeriod, periodEnd: next.periodEnd };
     await tx.subscription.upsert({
       where: { userId: payment.userId },
@@ -124,12 +151,12 @@ export async function activatePayment(paymentId: string, details: PaidDetails) {
         },
       },
     });
-    return payment;
+    return { ...payment, liveOnly: false };
   });
 
   if (done) {
     invalidateEntitlements(done.userId);
-    await enforcePageLimit(done.userId).catch((e) => console.error("❌ Limite de Pages :", e));
+    if (!done.liveOnly) await enforcePageLimit(done.userId).catch((e) => console.error("❌ Limite de Pages :", e));
   }
   return done;
 }
@@ -179,18 +206,99 @@ async function logMismatch(p: Payment, received: number) {
   });
 }
 
+interface Purchase {
+  kind: "SUBSCRIPTION" | "LIVE_HOURS";
+  plan?: PlanId;
+  period?: BillingPeriod;
+  liveHours?: number;
+  amount: number;
+  description: string;
+  phone: string; // numéro de paiement, déjà normalisé
+}
+
+// Crée (ou réutilise) le lien de paiement Papi d'un achat
+async function createCheckout(userId: string, purchase: Purchase) {
+  if (!isPapiConfigured()) {
+    throw new AppError("Le paiement en ligne n'est pas encore configuré : contactez-nous pour souscrire.", 503, "PAPI_NOT_CONFIGURED");
+  }
+  const { kind, plan = null, period = null, liveHours = null, amount, phone } = purchase;
+  const now = Date.now();
+
+  // Lien déjà créé pour le même achat et encore valide : réutilisé (sauf s'il vient d'être payé)
+  const reusable = await prisma.payment.findFirst({
+    where: { userId, kind, plan, period, liveHours, amount, payerPhone: phone, status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (reusable) {
+    await reconcilePayment(reusable).catch(() => {});
+    const fresh = await prisma.payment.findUnique({ where: { id: reusable.id } });
+    if (fresh?.status === "PENDING" && fresh.paymentLink) return { reference: fresh.reference, paymentLink: fresh.paymentLink };
+    if (fresh?.status === "PAID") throw new AppError("Ce paiement vient d'être confirmé.", 409, "ALREADY_PAID");
+  }
+
+  const recent = await prisma.payment.count({ where: { userId, createdAt: { gt: new Date(now - HOUR) } } });
+  if (recent >= 10) throw new AppError("Trop de tentatives de paiement : réessayez dans une heure.", 429);
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, companyName: true, email: true } });
+  const reference = newReference();
+  const payment = await prisma.payment.create({ data: { reference, userId, kind, plan, period, liveHours, amount, payerPhone: phone } });
+  // Numéro retenu pour les prochains paiements
+  await prisma.user.update({ where: { id: userId }, data: { paymentPhone: phone } });
+  // Page de retour : prévient la fenêtre principale (paiement ouvert dans une fenêtre à part) puis se ferme
+  const back = `${env.clientUrl}/paiement/retour`;
+  try {
+    const link = await createPaymentLink({
+      amount,
+      reference,
+      clientName: user.companyName?.trim() || user.name,
+      description: purchase.description,
+      successUrl: `${back}?payment=success&ref=${reference}`,
+      failureUrl: `${back}?payment=failed&ref=${reference}`,
+      notificationUrl: notificationUrl(),
+      payerEmail: user.email,
+      payerPhone: phone,
+    });
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        paymentLink: link.paymentLink,
+        shortLink: link.shortLink ?? null,
+        notificationToken: link.notificationToken,
+        linkExpiresAt: link.linkExpirationDateTime ? new Date(link.linkExpirationDateTime) : new Date(now + env.papi.linkHours * HOUR),
+      },
+    });
+    await prisma.activityLog.create({ data: { userId, action: "CHECKOUT_CREATED", meta: { reference, kind, plan, period, liveHours, amount } } });
+    return { reference, paymentLink: link.paymentLink };
+  } catch (e) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED", failureMessage: e instanceof AppError ? e.message : "Création du lien de paiement impossible" },
+    });
+    throw e;
+  }
+}
+
 export const billingService = {
   async overview(userId: string) {
     invalidateEntitlements(userId);
-    const [ent, usage, pages, payments] = await Promise.all([
+    const [ent, usage, pages, payments, owner] = await Promise.all([
       getEntitlements(userId),
       getUsage(userId),
       countActivePages(userId),
       prisma.payment.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 20 }),
+      prisma.user.findUnique({ where: { id: userId }, select: { paymentPhone: true, phone: true } }),
     ]);
     return {
       subscription: summarize(ent),
-      usage: { month: usageMonth(), aiReplies: usage?.aiReplies ?? 0, liveSeconds: usage?.liveSeconds ?? 0, pages },
+      usage: {
+        month: usageMonth(),
+        aiReplies: usage?.aiReplies ?? 0,
+        liveSeconds: usage?.liveSeconds ?? 0,
+        liveCreditUsed: usage?.liveCreditUsed ?? 0,
+        pages,
+      },
+      liveHourPrice: env.liveHourPrice,
+      paymentPhone: owner?.paymentPhone ?? owner?.phone ?? null,
       plans: publicPlans(),
       payments: payments.map(publicPayment),
       papiConfigured: isPapiConfigured(),
@@ -215,61 +323,26 @@ export const billingService = {
     };
   },
 
-  async checkout(userId: string, plan: PlanId, period: BillingPeriod) {
-    if (!isPapiConfigured()) {
-      throw new AppError("Le paiement en ligne n'est pas encore configuré : contactez-nous pour souscrire.", 503, "PAPI_NOT_CONFIGURED");
-    }
-    const amount = priceOf(plan, period); // jamais un montant envoyé par le navigateur
-    const now = Date.now();
-
-    // Lien déjà créé pour le même achat et encore valide : réutilisé (sauf s'il vient d'être payé)
-    const reusable = await prisma.payment.findFirst({
-      where: { userId, plan, period, amount, status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
-      orderBy: { createdAt: "desc" },
+  async checkout(userId: string, plan: PlanId, period: BillingPeriod, phone: string) {
+    return createCheckout(userId, {
+      phone,
+      kind: "SUBSCRIPTION",
+      plan,
+      period,
+      amount: priceOf(plan, period), // jamais un montant envoyé par le navigateur
+      description: `SuiteFlow ${PLANS[plan].name} — abonnement ${PERIOD_LABEL[period]}`,
     });
-    if (reusable) {
-      await reconcilePayment(reusable).catch(() => {});
-      const fresh = await prisma.payment.findUnique({ where: { id: reusable.id } });
-      if (fresh?.status === "PENDING" && fresh.paymentLink) return { reference: fresh.reference, paymentLink: fresh.paymentLink };
-      if (fresh?.status === "PAID") throw new AppError("Ce paiement vient d'être confirmé : votre formule est déjà active.", 409, "ALREADY_PAID");
-    }
+  },
 
-    const recent = await prisma.payment.count({ where: { userId, createdAt: { gt: new Date(now - HOUR) } } });
-    if (recent >= 10) throw new AppError("Trop de tentatives de paiement : réessayez dans une heure.", 429);
-
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, companyName: true, email: true } });
-    const reference = newReference();
-    const payment = await prisma.payment.create({ data: { reference, userId, plan, period, amount } });
-    const back = `${env.clientUrl}/app/facturation`;
-    try {
-      const link = await createPaymentLink({
-        amount,
-        reference,
-        clientName: user.companyName?.trim() || user.name,
-        description: `SuiteFlow ${PLANS[plan].name} — abonnement ${PERIOD_LABEL[period]}`,
-        successUrl: `${back}?payment=success&ref=${reference}`,
-        failureUrl: `${back}?payment=failed&ref=${reference}`,
-        notificationUrl: notificationUrl(),
-        payerEmail: user.email,
-      });
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          paymentLink: link.paymentLink,
-          shortLink: link.shortLink ?? null,
-          notificationToken: link.notificationToken,
-          linkExpiresAt: link.linkExpirationDateTime ? new Date(link.linkExpirationDateTime) : new Date(now + env.papi.linkHours * HOUR),
-        },
-      });
-      await prisma.activityLog.create({ data: { userId, action: "CHECKOUT_CREATED", meta: { reference, plan, period, amount } } });
-      return { reference, paymentLink: link.paymentLink };
-    } catch (e) {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: "FAILED", failureMessage: e instanceof AppError ? e.message : "Création du lien de paiement impossible" },
-      });
-      throw e;
-    }
+  // Heures de Live Manager à l'unité (prix par heure fixé par le serveur)
+  async buyLiveHours(userId: string, hours: number, phone: string) {
+    return createCheckout(userId, {
+      phone,
+      kind: "LIVE_HOURS",
+      liveHours: hours,
+      amount: hours * env.liveHourPrice,
+      description: `SuiteFlow — ${hours} h de Live Manager`,
+    });
   },
 
   // Notification de Papi : signature vérifiée sur le corps brut, puis référence et jeton

@@ -149,6 +149,18 @@ export function Header({ active, sub, attention, sidebarCollapsed, onExpandSideb
                 <it.icon size={16} style={{ color: theme.textMuted }} /> {it.label}
               </button>
             ))}
+            {user.role === "ADMIN" && (
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNavigate("admin", 0);
+                }}
+                className="mx-1 flex h-8 w-[calc(100%-8px)] items-center gap-2.5 rounded-md px-2.5 text-sm hover:bg-black/5"
+                style={{ color: theme.text }}
+              >
+                <ShieldCheck size={16} style={{ color: "#6366F1" }} /> Administration
+              </button>
+            )}
             <div className="mx-1 my-1" style={{ borderTop: `1px solid ${theme.border}` }} />
             <button
               onClick={handleLogout}

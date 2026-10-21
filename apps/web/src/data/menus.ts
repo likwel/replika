@@ -1,4 +1,4 @@
-import { CalendarDays, Radio, Bot, BarChart3, History, Plug, Settings, LayoutDashboard, Target, Store } from "lucide-react";
+import { CalendarDays, Radio, Bot, BarChart3, History, Plug, Settings, LayoutDashboard, Target, Store, ShieldCheck } from "lucide-react";
 import type { Menu } from "@/types";
 
 // Chaque menu porte sa couleur : l'icône du rail est toujours colorée, l'accent sert d'état actif.
@@ -24,5 +24,7 @@ export const MENUS: Menu[] = [
   // Masqué du rail : accessible depuis l'icône Historique de l'en-tête.
   { id: "hist", icon: History, label: "Historique", color: "#64748B", sub: ["Actions", "Messages", "Connexions"], hidden: true },
   // Masqué du rail : accessible depuis le menu du compte (avatar, en haut à droite).
+  // Tableau de bord de la plateforme : visible des administrateurs seulement (lien dans la barre latérale)
+  { id: "admin", icon: ShieldCheck, label: "Administration", color: "#6366F1", sub: ["Vue d'ensemble", "Utilisateurs", "Paiements", "Dépenses", "IA & système"], hidden: true },
   { id: "set", icon: Settings, label: "Paramètres", color: "#A1A1AA", sub: ["Profil", "Sécurité", "Préférences", "Équipe", "Facturation"], hidden: true },
 ];

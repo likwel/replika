@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { graphClient, graphErrorMessage, isNetworkError } from "../facebook/graph.client.js";
 import { handleIncoming, type IncomingEvent } from "./autoreply.engine.js";
+import { workingUserWhere } from "../../utils/accountAccess.js";
 
 // Chevauchement entre deux passages : Meta indexe parfois avec retard (les doublons sont écartés par l'index unique)
 const OVERLAP_MS = 60 * 1000;
@@ -205,6 +206,7 @@ export async function pollAccounts(userId?: string) {
     where: {
       isActive: true,
       platform: { in: ["FACEBOOK", "INSTAGRAM"] },
+      user: workingUserWhere(), // comptes suspendus, bannis ou supprimés : plus relevés
       ...(userId ? { userId } : {}),
     },
   });

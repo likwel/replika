@@ -12,6 +12,8 @@ export type Intent =
   | "spam"
   | "autre";
 
+export type AiLanguage = "AUTO" | "FR" | "MG";
+
 export interface AiAccount {
   id: string;
   name: string;
@@ -21,12 +23,13 @@ export interface AiAccount {
   aiEnabled: boolean;
   aiAutoSend: boolean;
   aiChannel: RuleChannel;
+  aiLanguage: AiLanguage;
   aiContext: string | null;
   aiInstructions: string | null;
 }
 
 export type AiAccountInput = Partial<
-  Pick<AiAccount, "aiEnabled" | "aiAutoSend" | "aiChannel" | "aiContext" | "aiInstructions">
+  Pick<AiAccount, "aiEnabled" | "aiAutoSend" | "aiChannel" | "aiLanguage" | "aiContext" | "aiInstructions">
 >;
 
 export interface AiOverview {
@@ -56,6 +59,9 @@ export const aiApi = {
     accountId: string;
     text: string;
     kind: "COMMENT" | "DIRECT";
+    aiLanguage?: AiLanguage;
+    ruleLanguage?: "ACCOUNT" | AiLanguage; // essai d'une règle IA
+    ruleKnowledge?: string;
     aiContext?: string | null;
     aiInstructions?: string | null;
   }) => api.post<Res<AiReply>>("/ai/test", body).then((r) => r.data),

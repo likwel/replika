@@ -6,9 +6,20 @@ import { catchAsync } from "../../utils/catchAsync.js";
 import { AppError } from "../../utils/AppError.js";
 import { billingService } from "./billing.service.js";
 import type { PapiNotification } from "./papi.client.js";
+import { normalizePhone } from "./billing.logic.js";
 
 const PURCHASABLE = ["STARTER", "PRO", "BUSINESS"] as const;
 const PERIODS = ["MONTHLY", "ANNUAL"] as const;
+
+// Numéro de paiement (Mobile Money) : obligatoire, normalisé au format international
+const phoneField = z
+  .string({ required_error: "Numéro de téléphone requis" })
+  .trim()
+  .transform((v, ctx) => {
+    const p = normalizePhone(v);
+    if (!p) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Numéro de téléphone invalide (ex. 034 12 345 67)" });
+    return p ?? "";
+  });
 
 const checkoutSchema = z.object({
   plan: z.enum(PURCHASABLE, { errorMap: () => ({ message: "Formule invalide" }) }),
@@ -56,8 +67,19 @@ router.get(
 
 router.post(
   "/checkout",
-  validate(checkoutSchema),
-  catchAsync(async (req, res) => ok(res, await billingService.checkout(uid(req), req.body.plan, req.body.period))),
+  validate(checkoutSchema.extend({ phone: phoneField })),
+  catchAsync(async (req, res) => ok(res, await billingService.checkout(uid(req), req.body.plan, req.body.period, req.body.phone))),
+);
+
+// Heures de Live Manager à l'unité (après le quota du mois, ou sans abonnement)
+const liveHoursSchema = z.object({
+  hours: z.number({ invalid_type_error: "Nombre d'heures invalide" }).int("Nombre d'heures entier").min(1, "1 heure minimum").max(200, "200 heures maximum"),
+  phone: phoneField,
+});
+router.post(
+  "/live-hours",
+  validate(liveHoursSchema),
+  catchAsync(async (req, res) => ok(res, await billingService.buyLiveHours(uid(req), req.body.hours, req.body.phone))),
 );
 
 router.post(

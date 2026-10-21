@@ -11,6 +11,8 @@ import { LoginPage } from "@/components/auth/LoginPage";
 import { RegisterPage } from "@/components/auth/RegisterPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
+import { PaymentReturnPage } from "@/pages/PaymentReturnPage";
+import { AdminPage } from "@/pages/app/AdminPage";
 
 import { PlannerPage } from "@/pages/app/PlannerPage";
 import { LivePage } from "@/pages/app/LivePage";
@@ -41,6 +43,7 @@ export const router = createBrowserRouter([
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/paiement/retour", element: <PaymentReturnPage /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -64,6 +67,7 @@ export const router = createBrowserRouter([
           { path: "messages", element: <HubRedirect tab={2} /> },
           { path: "automatisation", element: <AutomationPage /> },
           { path: "parametres", element: <SettingsPage /> },
+          { path: "admin", element: <AdminPage /> },
           { path: "facturation", element: <HubRedirect tab={4} to="/app/parametres" /> },
           { path: ":section", element: <PlaceholderPage /> },
         ],

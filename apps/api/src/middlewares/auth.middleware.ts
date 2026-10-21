@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken, type JwtPayload } from "../utils/jwt.js";
 import { AppError } from "../utils/AppError.js";
 import { prisma } from "../config/prisma.js";
+import { MODERATION_SELECT, accessError } from "../utils/accountAccess.js";
 
 // Étend Request pour porter l'utilisateur authentifié
 declare global {
@@ -28,11 +29,13 @@ export function authenticate(req: Request, _res: Response, next: NextFunction) {
 
   // Session révoquée (mot de passe changé, « déconnecter partout ») ou compte supprimé
   prisma.user
-    .findUnique({ where: { id: payload.userId }, select: { tokenVersion: true, role: true } })
+    .findUnique({ where: { id: payload.userId }, select: { tokenVersion: true, role: true, ...MODERATION_SELECT } })
     .then((user) => {
       if (!user || (payload.tv ?? 0) !== user.tokenVersion) {
         return next(new AppError("Session expirée, veuillez vous reconnecter", 401));
       }
+      const blocked = accessError(user); // compte suspendu, banni ou supprimé depuis la connexion
+      if (blocked) return next(blocked);
       req.user = { userId: payload.userId, role: user.role };
       next();
     })

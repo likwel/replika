@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Check, CreditCard, ExternalLink, Loader2, Minus, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles,
+  Check, Clock, CreditCard, ExternalLink, Loader2, Minus, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -12,10 +12,14 @@ import { Segmented } from "@/components/ui/Segmented";
 import { SettingsCard } from "@/components/settings/SettingsUi";
 import { swal } from "@/lib/swal";
 import {
-  billingApi, PAYMENT_METHOD_LABEL,
-  type BillingOverview, type BillingPeriod, type Feature, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
+  billingApi, fmtHours, paidText, PAYMENT_METHOD_LABEL,
+  type BillingOverview, type BillingPeriod, type Quote, type Feature, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
 } from "@/lib/billing.api";
 import { AGENCY_CONTACT_URL, MOBILE_MONEY } from "@/data/plans";
+import { liveHours } from "@/lib/liveHours";
+import { BILLING_UPDATED, payment } from "@/lib/payment";
+import { paymentSuccess } from "@/lib/paymentSuccess";
+import { CheckoutDialog } from "@/components/billing/CheckoutDialog";
 import { fmtAr, fmtDate, fmtNum } from "@/hooks/usePlan";
 
 const FEATURE_LABELS: Array<[Feature, string]> = [
@@ -40,6 +44,16 @@ const PERIOD_LABEL: Record<BillingPeriod, string> = { MONTHLY: "mensuel", ANNUAL
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Paiement en attente : son lien Papi rouvert dans la fenêtre de paiement
+const resumePayment = (p: PaymentRow) =>
+  payment
+    .resume(p.reference, p.paymentLink!, {
+      label: p.kind === "LIVE_HOURS" ? `${p.liveHours} h de Live Manager` : `Formule ${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`,
+      amount: p.amount,
+    })
+    .catch((e: Error) => swal.alert({ variant: "error", title: "Paiement impossible", text: e.message }));
+
+
 type Return = { kind: "confirming" | "paid" | "pending" | "failed"; payment?: PaymentRow };
 
 // Paramètres › Facturation : formule en cours, consommation, paiement Papi.mg, historique
@@ -50,6 +64,7 @@ export function BillingSection() {
   const [period, setPeriod] = useState<BillingPeriod>("MONTHLY");
   const [busy, setBusy] = useState<PlanId | null>(null);
   const [ret, setRet] = useState<Return | null>(null);
+  const [checkout, setCheckout] = useState<{ plan: PublicPlan; quote: Quote } | null>(null);
   const [params, setParams] = useSearchParams();
   const plansRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +83,10 @@ export function BillingSection() {
 
   useEffect(() => {
     void load();
+    // Paiement terminé dans la fenêtre Papi (PaymentHost) : formule et historique relus
+    const onUpdated = () => void load();
+    window.addEventListener(BILLING_UPDATED, onUpdated);
+    return () => window.removeEventListener(BILLING_UPDATED, onUpdated);
   }, [load]);
 
   // Retour depuis la page de paiement Papi : seul le statut relu côté serveur fait foi
@@ -80,12 +99,9 @@ export function BillingSection() {
 
     const confirmed = async (r: Awaited<ReturnType<typeof billingApi.refresh>>) => {
       setRet({ kind: "paid", payment: r.payment });
-      swal.toast({
-        title: "Paiement confirmé",
-        text: `Formule ${r.payment.planName} active jusqu'au ${fmtDate(r.payment.appliedPeriodEnd ?? r.subscription.periodEnd!)}.`,
-      });
       await refreshUser().catch(() => {});
       await load();
+      await paymentSuccess.show({ payment: r.payment, subscription: r.subscription });
     };
 
     (async () => {
@@ -114,33 +130,15 @@ export function BillingSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Récapitulatif et numéro du payeur dans une fenêtre, puis paiement Papi (CheckoutDialog)
   const pay = async (plan: PublicPlan) => {
     setBusy(plan.id);
-    let redirecting = false;
     try {
-      const q = await billingApi.quote(plan.id, period);
-      const lines = [
-        `Formule ${plan.name}, ${period === "ANNUAL" ? "12 mois" : "1 mois"}.`,
-        `Valable jusqu'au ${fmtDate(q.periodEnd)}${q.extraDays ? `, dont ${q.extraDays} jours convertis depuis votre formule actuelle` : ""}.`,
-        q.pagesToDeactivate
-          ? `${q.pagesToDeactivate} Page${q.pagesToDeactivate > 1 ? "s seront désactivées" : " sera désactivée"} : cette formule en permet ${plan.limits.pages}.`
-          : "",
-        `Paiement sécurisé sur Papi : ${MOBILE_MONEY}.`,
-      ].filter(Boolean);
-      const ok = await swal.confirm({
-        title: `Payer ${fmtAr(q.amount)} ?`,
-        text: lines.join("\n"),
-        confirmText: "Continuer vers le paiement",
-        variant: q.pagesToDeactivate ? "warning" : "question",
-      });
-      if (!ok) return;
-      const { paymentLink } = await billingApi.checkout(plan.id, period);
-      redirecting = true;
-      window.location.href = paymentLink;
+      setCheckout({ plan, quote: await billingApi.quote(plan.id, period) });
     } catch (e) {
       await swal.alert({ title: "Paiement impossible", text: (e as Error).message, variant: "error" });
     } finally {
-      if (!redirecting) setBusy(null);
+      setBusy(null);
     }
   };
 
@@ -148,7 +146,7 @@ export function BillingSection() {
     try {
       const r = await billingApi.refresh(p.reference);
       if (r.payment.status === "PAID") {
-        swal.toast({ title: "Paiement confirmé", text: `Formule ${r.payment.planName} activée.` });
+        swal.toast({ title: "Paiement confirmé", text: paidText(r.payment, r.subscription.periodEnd) });
         await refreshUser().catch(() => {});
       } else if (r.payment.status === "PENDING") {
         swal.toast({ variant: "info", title: "Toujours en attente", text: r.payment.failureMessage ?? "Papi n'a pas encore reçu le paiement." });
@@ -243,6 +241,10 @@ export function BillingSection() {
         </SettingsCard>
       </div>
 
+      {checkout && (
+        <CheckoutDialog plan={checkout.plan} period={period} quote={checkout.quote} defaultPhone={data.paymentPhone} onClose={() => setCheckout(null)} />
+      )}
+
       <SettingsCard title="Historique des paiements" description="Vos paiements Papi et leur statut.">
         <PaymentHistory payments={data.payments} onVerify={verify} />
       </SettingsCard>
@@ -264,8 +266,7 @@ function ReturnNotice({ ret, onRetry, onClose }: { ret: Return | null; onRetry: 
   if (ret.kind === "paid" && ret.payment) {
     return (
       <Alert variant="success" onClose={onClose}>
-        <strong>Paiement reçu, merci !</strong> Formule {ret.payment.planName} active
-        {ret.payment.appliedPeriodEnd ? ` jusqu'au ${fmtDate(ret.payment.appliedPeriodEnd)}` : ""}.
+        <strong>Paiement reçu, merci !</strong> {paidText(ret.payment, null)}
       </Alert>
     );
   }
@@ -283,9 +284,9 @@ function ReturnNotice({ ret, onRetry, onClose }: { ret: Return | null; onRetry: 
       onClose={onClose}
       action={
         ret.payment?.paymentLink ? (
-          <a href={ret.payment.paymentLink}>
-            <Button size="sm" variant="ghost" icon={ExternalLink}>Réessayer le paiement</Button>
-          </a>
+          <Button size="sm" variant="ghost" icon={ExternalLink} onClick={() => void resumePayment(ret.payment!)}>
+            Réessayer le paiement
+          </Button>
         ) : (
           <Button size="sm" variant="ghost" onClick={onRetry}>Choisir à nouveau</Button>
         )
@@ -354,6 +355,7 @@ function CurrentPlan({ data, onChoose }: { data: BillingOverview; onChoose: () =
           format={(n) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h`}
         />
       </div>
+      <LiveCreditRow credit={s.liveCreditSeconds ?? 0} used={u.liveCreditUsed ?? 0} price={data.liveHourPrice} />
       <p className="mt-2 text-[11.5px]" style={{ color: theme.textMuted }}>
         Les volumes repartent à zéro le 1er de chaque mois. Les réponses par mots-clés sont illimitées.
       </p>
@@ -379,6 +381,29 @@ function Meter({ icon: Icon, label, used, limit, format }: { icon: LucideIcon; l
           style={{ width: limit === null ? "100%" : `${Math.max(pct, used > 0 ? 3 : 0)}%`, background: color, opacity: limit === null ? 0.35 : 1 }}
         />
       </div>
+    </div>
+  );
+}
+
+// Heures de Live Manager à l'unité : solde et achat
+function LiveCreditRow({ credit, used, price }: { credit: number; used: number; price: number }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-3.5 py-3" style={{ background: theme.goldSoft }}>
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: theme.bgCard }}>
+        <Clock size={17} style={{ color: theme.goldDark }} />
+      </span>
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="text-sm font-semibold" style={{ color: theme.text }}>
+          Heures de live achetées : {fmtHours(credit)}
+        </p>
+        <p className="text-[12px]" style={{ color: theme.textMuted }}>
+          {fmtAr(price)} l'heure, sans expiration. Utilisées après les heures de la formule, ou si l'abonnement est terminé
+          {used > 0 ? ` · ${fmtHours(used)} utilisées ce mois-ci` : ""}.
+        </p>
+      </div>
+      <Button size="sm" icon={Radio} onClick={() => liveHours.open()} className="w-full justify-center sm:w-auto">
+        Acheter des heures
+      </Button>
     </div>
   );
 }
@@ -520,7 +545,7 @@ function PaymentHistory({ payments, onVerify }: { payments: PaymentRow[]; onVeri
           >
             <div className="min-w-0 flex-1 basis-48">
               <p className="text-sm font-medium" style={{ color: theme.text }}>
-                {p.planName} · {PERIOD_LABEL[p.period]}
+                {p.kind === "LIVE_HOURS" ? `Live Manager · ${p.liveHours} h` : `${p.planName} · ${p.period ? PERIOD_LABEL[p.period] : ""}`}
               </p>
               <p className="truncate text-xs" style={{ color: theme.textMuted }}>
                 {fmtDate(p.paidAt ?? p.createdAt)}
@@ -534,9 +559,7 @@ function PaymentHistory({ payments, onVerify }: { payments: PaymentRow[]; onVeri
             {p.status === "PENDING" && (
               <div className="flex gap-1.5">
                 {p.paymentLink && (
-                  <a href={p.paymentLink}>
-                    <Button size="sm" variant="soft" icon={ExternalLink}>Payer</Button>
-                  </a>
+                  <Button size="sm" variant="soft" icon={ExternalLink} onClick={() => void resumePayment(p)}>Payer</Button>
                 )}
                 <Button
                   size="sm"

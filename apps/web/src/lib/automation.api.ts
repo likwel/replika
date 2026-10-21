@@ -1,6 +1,7 @@
 import { api } from "./api";
 
 export type RuleChannel = "ALL" | "COMMENT" | "DIRECT";
+export type RuleLanguage = "ACCOUNT" | "AUTO" | "FR" | "MG";
 export type MatchType = "CONTAINS" | "EXACT" | "ANY";
 
 export interface AutomationRule {
@@ -11,6 +12,8 @@ export interface AutomationRule {
   trigger: string;
   response: string | null;
   useAi: boolean;
+  language: RuleLanguage; // langue de la réponse ; ACCOUNT = réglage de l'assistant IA du compte
+  aiKnowledge: string | null; // connaissances propres à la règle, données à l'IA (500 caractères max)
   privateReply: string | null;
   autoSend: boolean;
   isActive: boolean;
@@ -32,6 +35,8 @@ export type RuleInput = Pick<
   | "trigger"
   | "response"
   | "useAi"
+  | "language"
+  | "aiKnowledge"
   | "privateReply"
   | "autoSend"
   | "isActive"

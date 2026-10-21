@@ -76,3 +76,25 @@ test("mois de consommation en heure de Madagascar", () => {
   assert.equal(usageMonth(new Date("2026-10-31T20:59:00Z")), "2026-10");
   assert.equal(usageMonth(new Date("2026-10-31T21:00:00Z")), "2026-11"); // minuit à Antananarivo
 });
+
+test("commission Papi estimée selon le moyen de paiement et le mode", async () => {
+  const { estimateFee, feeRate } = await import("./billing.logic.js");
+  assert.equal(estimateFee(129_000, "MVOLA", "transit"), 4902); // 3,80 %
+  assert.equal(estimateFee(129_000, "BRED", "transit"), 5418); // carte 4,20 %
+  assert.equal(estimateFee(49_000, "ORANGE_MONEY", "transit"), 1764); // 3,60 %
+  assert.equal(estimateFee(49_000, "MVOLA", "direct"), 588); // 1,20 %
+  assert.equal(feeRate(null, "transit"), 3.8);
+  assert.equal(feeRate("MVOLA", "transit", 2.5), 2.5);
+});
+
+test("numéro de paiement normalisé", async () => {
+  const { normalizePhone, formatPhone } = await import("./billing.logic.js");
+  assert.equal(normalizePhone("034 12 345 67"), "+261341234567");
+  assert.equal(normalizePhone("+261 32 12 345 67"), "+261321234567");
+  assert.equal(normalizePhone("0331230001"), "+261331230001");
+  assert.equal(normalizePhone("331230001"), "+261331230001");
+  assert.equal(normalizePhone("+33 6 12 34 56 78"), "+33612345678");
+  assert.equal(normalizePhone("12345"), null);
+  assert.equal(normalizePhone("020 22 123 45"), null); // fixe malgache : pas de Mobile Money
+  assert.equal(formatPhone("+261341234567"), "+261 34 12 345 67");
+});

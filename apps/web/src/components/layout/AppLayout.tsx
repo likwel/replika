@@ -7,10 +7,13 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
+import { BuyLiveHoursHost } from "@/components/billing/BuyLiveHoursDialog";
+import { PaymentHost } from "@/components/billing/PaymentHost";
+import { PaymentSuccessHost } from "@/components/billing/PaymentSuccessModal";
 
 // map id menu -> segment d'URL
 const PATHS: Record<string, string> = {
-  hub: "gestion", leads: "leads", plan: "planifier", stat: "statistiques", conn: "connexions", live: "lives", market: "gescom", auto: "automatisation", hist: "historique", set: "parametres",
+  hub: "gestion", leads: "leads", plan: "planifier", stat: "statistiques", conn: "connexions", live: "lives", market: "gescom", auto: "automatisation", hist: "historique", set: "parametres", admin: "admin",
 };
 
 const QUEUE_SUB = 2; // Gestion → À traiter
@@ -118,6 +121,9 @@ export function AppLayout() {
         </main>
       </div>
 
+      <BuyLiveHoursHost />
+      <PaymentHost />
+      <PaymentSuccessHost />
       <CommandPalette
         open={search}
         onClose={() => setSearch(false)}

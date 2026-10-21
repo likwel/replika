@@ -192,6 +192,37 @@ body { margin: 0; background: var(--color-canvas); color: var(--color-text); tra
 .animate-swal-icon { animation: swalIcon 0.45s 0.05s ease-out both; }
 .animate-swal-ring { animation: swalRing 0.8s 0.2s ease-out both; }
 .animate-toast-in { animation: toastIn 0.2s ease-out both; }
+
+/* Fenêtre « Paiement réussi » */
+@keyframes successCard {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes successBadge {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes checkDraw { to { stroke-dashoffset: 0; } }
+@keyframes confetti {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translateY(150px) rotate(320deg); opacity: 0; }
+}
+@keyframes successRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-success-card { animation: successCard 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.1) both; }
+.animate-success-badge { animation: successBadge 0.55s 0.12s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.animate-check-draw { stroke-dasharray: 40; stroke-dashoffset: 40; animation: checkDraw 0.45s 0.45s ease-out forwards; }
+.animate-confetti { animation: confetti 2.4s ease-in both; }
+.animate-success-rise { animation: successRise 0.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-success-card, .animate-success-badge, .animate-success-rise { animation: none; }
+  .animate-check-draw { animation: none; stroke-dashoffset: 0; }
+  .animate-confetti { display: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   .animate-swal-in, .animate-swal-icon, .animate-toast-in { animation: none; }
   .animate-swal-ring { display: none; }

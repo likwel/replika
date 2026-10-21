@@ -6,11 +6,17 @@ import { sessionToken } from "../../utils/session.js";
 import { AppError } from "../../utils/AppError.js";
 import type { RegisterInput, LoginInput } from "./auth.schema.js";
 import { PROVIDER_LABEL, type SocialProfile } from "./social.service.js";
+import { assertAccess } from "../../utils/accountAccess.js";
 import { summarizeSubscription } from "../billing/entitlements.js";
 import { trialSubscription } from "../billing/plans.js";
 
 // Toute lecture d'utilisateur destinée au navigateur inclut sa formule
 const withSub = { subscription: true } as const;
+
+// Le tout premier compte créé est l'administrateur de la plateforme (tableau de bord /app/admin)
+async function roleForNewUser(): Promise<"ADMIN" | "USER"> {
+  return (await prisma.user.count()) === 0 ? "ADMIN" : "USER";
+}
 
 type ClientInfo = { ip: string | null; ua: string | null };
 
@@ -33,6 +39,9 @@ export function publicUser(u: User & { subscription: Subscription | null }) {
 export const authService = {
   async register(data: RegisterInput, client: ClientInfo) {
     const exists = await prisma.user.findUnique({ where: { email: data.email } });
+    if (exists?.deletedAt || exists?.status === "BANNED") {
+      throw new AppError("Un compte fermé existe déjà avec cet e-mail : contactez le support SuiteFlow.", 409, "ACCOUNT_CLOSED");
+    }
     if (exists) throw new AppError("Cet e-mail est déjà utilisé", 409);
 
     const user = await prisma.user.create({
@@ -40,6 +49,7 @@ export const authService = {
         name: data.name,
         email: data.email,
         password: await hashPassword(data.password),
+        role: await roleForNewUser(),
         subscription: { create: trialSubscription() }, // 14 jours d'essai Pro
       },
       include: withSub,
@@ -54,6 +64,7 @@ export const authService = {
     if (!user || !(await comparePassword(data.password, user.password))) {
       throw new AppError("E-mail ou mot de passe incorrect", 401);
     }
+    assertAccess(user); // suspendu, banni ou supprimé par un administrateur
     await prisma.activityLog.create({ data: { userId: user.id, action: "LOGIN", meta: client } });
     return { user: publicUser(user), token: sessionToken(user) };
   },
@@ -85,6 +96,7 @@ export const authService = {
             email: profile.email,
             // Mot de passe aléatoire inconnu de tous : la personne se connecte via le fournisseur
             password: await hashPassword(crypto.randomBytes(32).toString("hex")),
+            role: await roleForNewUser(),
             ...link,
             subscription: { create: trialSubscription() }, // 14 jours d'essai Pro
           },
@@ -94,6 +106,7 @@ export const authService = {
       }
     }
 
+    assertAccess(user); // suspendu, banni ou supprimé par un administrateur
     await prisma.activityLog.create({
       data: { userId: user.id, action: created ? "REGISTER" : "LOGIN", meta: { ...client, provider: profile.provider } },
     });

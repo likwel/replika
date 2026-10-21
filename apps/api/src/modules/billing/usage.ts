@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
-import { usageMonth } from "./billing.logic.js";
-import { getEntitlements, inactiveError } from "./entitlements.js";
+import { usageDay, usageMonth } from "./billing.logic.js";
+import { getEntitlements, inactiveError, invalidateEntitlements } from "./entitlements.js";
 
 // Consommation mensuelle : réponses IA et heures de live
 
@@ -31,6 +31,7 @@ export async function consumeAiReply(userId: string): Promise<string> {
   const limit = ent.limits.aiReplies;
   if (limit === null) {
     await prisma.usage.update({ where: { userId_month: { userId, month } }, data: { aiReplies: { increment: 1 } } });
+    await countAiDay(1);
     return month;
   }
   // Une seule requête conditionnelle : deux réponses simultanées ne peuvent pas dépasser le quota
@@ -47,7 +48,16 @@ export async function consumeAiReply(userId: string): Promise<string> {
       "QUOTA_EXCEEDED",
     );
   }
+  await countAiDay(1);
   return month;
+}
+
+// Compteur quotidien de la plateforme (coût IA d'une période, tableau de bord administrateur)
+async function countAiDay(delta: 1 | -1) {
+  const day = usageDay();
+  await prisma.aiDailyUsage
+    .upsert({ where: { day }, create: { day, replies: Math.max(0, delta) }, update: { replies: { increment: delta } } })
+    .catch(() => {}); // une statistique ne bloque jamais une réponse
 }
 
 // Le modèle n'a pas répondu : la réponse n'est pas décomptée
@@ -55,6 +65,7 @@ export async function refundAiReply(userId: string, month: string) {
   await prisma.usage
     .updateMany({ where: { userId, month, aiReplies: { gt: 0 } }, data: { aiReplies: { decrement: 1 } } })
     .catch(() => {});
+  await countAiDay(-1);
 }
 
 // ─── Heures de live ──────────────────────────────────────────────────────────
@@ -92,29 +103,79 @@ export async function accrueLiveTime(s: LiveMeter, opts: { stop?: boolean; now?:
   if (count !== 1) return 0;
   s.activeSince = opts.stop ? null : now; // l'objet reste utilisable pour un décompte suivant
   if (seconds === 0) return 0;
+
+  // Le quota mensuel de la formule passe en premier, puis les heures achetées à l'unité
+  const ent = await getEntitlements(s.userId);
   const month = usageMonth(from);
   await ensureUsage(s.userId, month);
-  await prisma.usage.update({ where: { userId_month: { userId: s.userId, month } }, data: { liveSeconds: { increment: seconds } } });
+  let fromQuota = 0;
+  if (ent.active) {
+    const limit = ent.limits.liveHours;
+    const used = (await getUsage(s.userId, month))?.liveSeconds ?? 0;
+    fromQuota = limit === null ? seconds : Math.max(0, Math.min(seconds, limit * 3600 - used));
+  }
+  const taken = await consumeLiveCredit(s.userId, seconds - fromQuota);
+  // Sans crédit, le dépassement reste visible dans la consommation du mois (la session est mise en pause)
+  const toUsage = fromQuota + (ent.active ? seconds - fromQuota - taken : 0);
+  await prisma.usage.update({
+    where: { userId_month: { userId: s.userId, month } },
+    data: { liveSeconds: { increment: toUsage }, liveCreditUsed: { increment: taken } },
+  });
   return seconds;
 }
 
-export async function liveQuotaReached(userId: string): Promise<boolean> {
+// Retire jusqu'à `seconds` du crédit d'heures achetées ; retourne ce qui a été retiré
+async function consumeLiveCredit(userId: string, seconds: number): Promise<number> {
+  if (seconds <= 0) return 0;
+  const sub = await prisma.subscription.findUnique({ where: { userId }, select: { liveCreditSeconds: true } });
+  const take = Math.min(seconds, sub?.liveCreditSeconds ?? 0);
+  if (take <= 0) return 0;
+  const { count } = await prisma.subscription.updateMany({
+    where: { userId, liveCreditSeconds: { gte: take } },
+    data: { liveCreditSeconds: { decrement: take } },
+  });
+  if (count) invalidateEntitlements(userId);
+  return count ? take : 0;
+}
+
+export async function liveCredit(userId: string): Promise<number> {
+  const sub = await prisma.subscription.findUnique({ where: { userId }, select: { liveCreditSeconds: true } });
+  return sub?.liveCreditSeconds ?? 0;
+}
+
+// Live Manager utilisable : formule active avec des heures restantes ce mois-ci, ou heures achetées
+export async function liveAllowance(userId: string): Promise<{ ok: true } | { ok: false; reason: "inactive" | "quota" | "blocked"; error: AppError }> {
   const ent = await getEntitlements(userId);
-  if (ent.limits.liveHours === null) return false;
-  const usage = await getUsage(userId);
-  return (usage?.liveSeconds ?? 0) >= ent.limits.liveHours * 3600;
+  if (ent.blocked) return { ok: false, reason: "blocked", error: inactiveError(ent) };
+  if (ent.active) {
+    const limit = ent.limits.liveHours;
+    if (limit === null) return { ok: true };
+    const used = (await getUsage(userId))?.liveSeconds ?? 0;
+    if (used < limit * 3600) return { ok: true };
+  }
+  if ((await liveCredit(userId)) > 0) return { ok: true };
+  if (!ent.active) {
+    const what = ent.kind === "TRIAL" ? "Votre essai gratuit est terminé" : "Votre abonnement a expiré";
+    return {
+      ok: false,
+      reason: "inactive",
+      error: new AppError(`${what} : achetez des heures de Live Manager à l'unité ou renouvelez votre formule.`, 402, "LIVE_HOURS_REQUIRED"),
+    };
+  }
+  return {
+    ok: false,
+    reason: "quota",
+    error: new AppError(
+      `Quota de ${ent.limits.liveHours} h de live atteint ce mois-ci : achetez des heures à l'unité ou passez à une formule supérieure.`,
+      402,
+      "LIVE_HOURS_REQUIRED",
+    ),
+  };
 }
 
 export async function assertCanRunLive(userId: string) {
-  const ent = await getEntitlements(userId);
-  if (!ent.active) throw inactiveError(ent);
-  if (await liveQuotaReached(userId)) {
-    throw new AppError(
-      `Quota de ${ent.limits.liveHours} h de live atteint ce mois-ci : passez à une formule supérieure pour continuer.`,
-      402,
-      "QUOTA_EXCEEDED",
-    );
-  }
+  const a = await liveAllowance(userId);
+  if (!a.ok) throw a.error;
 }
 
 // Premier dépassement du mois : journalisé une seule fois

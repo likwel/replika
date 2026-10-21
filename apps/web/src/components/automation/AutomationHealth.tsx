@@ -28,6 +28,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [reconnect, setReconnect] = useState<string | null | undefined>(undefined);
+  const [showList, setShowList] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -74,7 +75,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
     <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${blocked.length ? `${theme.red}40` : theme.border}` }}>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Activity size={18} style={{ color: blocked.length ? theme.red : theme.gold }} />
-        <Title className="flex-1 text-base">État de l'Automatisation</Title>
+        <Title className="flex-1 text-base">État de chaque compte</Title>
         <button onClick={load} className="rounded-lg p-1.5 hover:bg-black/5" title="Relancer le diagnostic" aria-label="Relancer le diagnostic">
           {loading ? <Loader2 size={15} className="animate-spin" style={{ color: theme.textMuted }} /> : <RefreshCw size={15} style={{ color: theme.textMuted }} />}
         </button>
@@ -117,7 +118,14 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
         </p>
       )}
 
-      <ul className="mt-3 flex flex-col gap-2">
+      {working === accounts.length && accounts.length > 0 && (
+        <button onClick={() => setShowList((v) => !v)} className="mt-3 flex items-center gap-1 text-[12.5px] font-semibold" style={{ color: theme.goldDark }}>
+          {showList ? "Masquer le détail" : `Voir le détail des ${accounts.length} comptes`}
+          <ChevronDown size={14} className="transition-transform" style={{ transform: showList ? "rotate(180deg)" : undefined }} />
+        </button>
+      )}
+
+      {(showList || working < accounts.length) && <ul className="mt-3 flex flex-col gap-2">
         {accounts.map((a) => {
           const status = STATUS[a.status];
           const failing = a.checks.filter((c) => !c.ok || c.warn);
@@ -161,7 +169,7 @@ export function AutomationHealth({ onCreateRule, onOpenAi, refreshKey }: Props) 
             </li>
           );
         })}
-      </ul>
+      </ul>}
 
       {reconnect !== undefined && <ReconnectDialog accountName={reconnect ?? undefined} onClose={() => setReconnect(undefined)} />}
     </div>

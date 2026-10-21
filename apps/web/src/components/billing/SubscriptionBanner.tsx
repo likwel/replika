@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { AlertTriangle, Clock, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Clock, Radio, Sparkles, X } from "lucide-react";
+import { liveHours } from "@/lib/liveHours";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { fmtDate, usePlan } from "@/hooks/usePlan";
@@ -33,6 +34,9 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
           <strong>{s.kind === "TRIAL" ? "Votre essai gratuit est terminé" : `Votre formule ${s.planName} a expiré`}</strong>
           <span className="hidden md:inline"> : réponses automatiques, IA, lives et publications programmées sont en pause. Les nouveaux messages arrivent toujours dans « À traiter ».</span>
         </p>
+        <Button size="sm" variant="ghost" icon={Radio} onClick={() => liveHours.open()} className="hidden sm:inline-flex">
+          Heures de live
+        </Button>
         <Button size="sm" variant="danger" onClick={onOpenBilling}>
           {s.kind === "TRIAL" ? "Choisir une formule" : "Renouveler"}
         </Button>

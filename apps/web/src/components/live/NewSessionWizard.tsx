@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ApiError } from "@/lib/api";
+import { liveHours } from "@/lib/liveHours";
 import { timeAgo } from "@/lib/format";
 import { liveApi, type ContactField, type LiveSession, type LiveSettings, type LiveSource } from "@/lib/live.api";
 import { workspaceApi, type WsAccount } from "@/lib/workspace.api";
@@ -97,6 +98,7 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
       });
       onCreated(session);
     } catch (e) {
+      if (e instanceof ApiError && e.code === "LIVE_HOURS_REQUIRED") liveHours.open(e.message);
       setError(e instanceof ApiError ? e.message : "Création impossible.");
     } finally {
       setSaving(false);

@@ -12,6 +12,7 @@ export const aiAccountSchema = z.object({
   aiEnabled: z.boolean().optional(),
   aiAutoSend: z.boolean().optional(),
   aiChannel: z.enum(["ALL", "COMMENT", "DIRECT"]).optional(),
+  aiLanguage: z.enum(["AUTO", "FR", "MG"]).optional(),
   aiContext: optionalText(8000),
   aiInstructions: optionalText(2000),
 });
@@ -20,6 +21,10 @@ export const aiTestSchema = z.object({
   accountId: z.string().min(1, "Compte requis"),
   text: z.string().trim().min(1, "Texte requis"),
   kind: z.enum(["COMMENT", "DIRECT"]).default("COMMENT"),
+  aiLanguage: z.enum(["AUTO", "FR", "MG"]).optional(),
+  // Test d'une règle « Réponse par IA » : sa langue et ses connaissances
+  ruleLanguage: z.enum(["ACCOUNT", "AUTO", "FR", "MG"]).optional(),
+  ruleKnowledge: optionalText(500),
   // Brouillon non enregistré : permet de tester avant de sauvegarder
   aiContext: optionalText(8000),
   aiInstructions: optionalText(2000),

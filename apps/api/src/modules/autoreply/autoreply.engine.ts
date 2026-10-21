@@ -157,7 +157,7 @@ async function applyRuleAi(account: SocialAccount, msg: SocialMessage, rule: Aut
 
   let ai: AiReply;
   try {
-    ai = await generateReplyForMessage(account, msg);
+    ai = await generateReplyForMessage(account, msg, { language: rule.language, knowledge: rule.aiKnowledge });
   } catch (e) {
     const { error, log } = aiFailure(e);
     if (log) {
@@ -252,7 +252,9 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
 
   // Publication suivie par une session live : les JP deviennent des commandes ;
   // les autres commentaires (prix, questions…) reçoivent les réponses automatiques habituelles
-  if (ent.active && ev.kind !== "DIRECT" && ev.postId) {
+  // Live Manager : formule active ou heures de live achetées à l'unité
+  const liveOk = ent.active || ent.liveCreditSeconds > 0;
+  if (liveOk && ev.kind !== "DIRECT" && ev.postId) {
     const session = await findActiveSessionForPost(account.id, ev.postId);
     if (session) {
       const createdAt = ev.createdAt ?? new Date();
@@ -292,7 +294,7 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
   }
 
   // Réponse d'un client à une commande JP (coordonnées) : traitée par la session live
-  if (ent.active && ev.kind === "DIRECT") {
+  if (liveOk && ev.kind === "DIRECT") {
     const live = await handleLiveDirectMessage(account, msg).catch((e) => {
       console.error(`❌ Live, message ${msg.externalId} :`, e);
       return null;

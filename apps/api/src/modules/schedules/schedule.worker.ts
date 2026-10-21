@@ -138,10 +138,15 @@ let running = false;
 let again = false;
 
 // Publie tout ce qui est arrivé à échéance ; un appel pendant un passage relance un tour à la fin
-async function skipForSubscription(id: string, userId: string) {
+async function skipForSubscription(id: string, userId: string, blocked = false) {
   const { count } = await prisma.schedule.updateMany({
     where: { id, status: "SCHEDULED" },
-    data: { status: "FAILED", error: "Abonnement expiré : publication non envoyée. Renouvelez votre formule puis reprogrammez-la." },
+    data: {
+      status: "FAILED",
+      error: blocked
+        ? "Compte suspendu par l'administrateur : publication non envoyée."
+        : "Abonnement expiré : publication non envoyée. Renouvelez votre formule puis reprogrammez-la.",
+    },
   });
   if (count) await prisma.activityLog.create({ data: { userId, action: "SCHEDULE_SKIPPED_SUBSCRIPTION", meta: { scheduleId: id } } });
 }
@@ -163,8 +168,9 @@ export async function runDueSchedules() {
       });
       for (const { id, userId } of due) {
         // Abonnement expiré : la publication n'est pas envoyée (elle pourra être reprogrammée après renouvellement)
-        if (!(await getEntitlements(userId)).active) {
-          await skipForSubscription(id, userId);
+        const ent = await getEntitlements(userId);
+        if (!ent.active) {
+          await skipForSubscription(id, userId, ent.blocked);
           continue;
         }
         await executeSchedule(id).catch((e) => console.error(`❌ Planification ${id} :`, e));

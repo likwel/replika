@@ -2,7 +2,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { aiErrorMessage, aiProviderName, isAiConfigured } from "./ai.client.js";
-import { generateReply } from "./ai.service.js";
+import { generateReply, withRule } from "./ai.service.js";
 import type { AiAccountInput, AiTestInput } from "./ai.schema.js";
 
 const AI_FIELDS = {
@@ -14,6 +14,7 @@ const AI_FIELDS = {
   aiEnabled: true,
   aiAutoSend: true,
   aiChannel: true,
+  aiLanguage: true,
   aiContext: true,
   aiInstructions: true,
 } as const;
@@ -63,16 +64,17 @@ export const aiSettingsService = {
     }
     const acc = await findOwned(userId, input.accountId);
     try {
-      return await generateReply(
-        {
-          userId: acc.userId,
-          name: acc.name,
-          platform: acc.platform,
-          aiContext: input.aiContext !== undefined ? input.aiContext : acc.aiContext,
-          aiInstructions: input.aiInstructions !== undefined ? input.aiInstructions : acc.aiInstructions,
-        },
-        { kind: input.kind, authorName: "Rakoto", content: input.text }
-      );
+      const profile = {
+        userId: acc.userId,
+        aiLanguage: input.aiLanguage ?? acc.aiLanguage,
+        name: acc.name,
+        platform: acc.platform,
+        aiContext: input.aiContext !== undefined ? input.aiContext : acc.aiContext,
+        aiInstructions: input.aiInstructions !== undefined ? input.aiInstructions : acc.aiInstructions,
+      };
+      // Test d'une règle IA en brouillon : sa langue et ses connaissances s'ajoutent au compte
+      const rule = input.ruleLanguage !== undefined || input.ruleKnowledge ? { language: input.ruleLanguage, knowledge: input.ruleKnowledge } : undefined;
+      return await generateReply(withRule(profile, rule), { kind: input.kind, authorName: "Rakoto", content: input.text });
     } catch (e) {
       if (e instanceof AppError) throw e; // abonnement expiré, quota atteint
       throw new AppError(`IA indisponible : ${aiErrorMessage(e)}`, 502);

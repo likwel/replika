@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Plug, Radio, Sparkles, Zap } from "lucide-react";
+import { ChevronDown, Clock, Plug, Radio, Sparkles, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { usePlan, fmtNum } from "@/hooks/usePlan";
-import { billingApi, type BillingOverview } from "@/lib/billing.api";
+import { billingApi, fmtHours, type BillingOverview } from "@/lib/billing.api";
+import { liveHours } from "@/lib/liveHours";
+import { BILLING_UPDATED } from "@/lib/payment";
 
 interface Row {
   icon: LucideIcon;
@@ -31,7 +33,11 @@ export function UsageBadge() {
   useEffect(() => {
     void load();
     const t = setInterval(load, 60_000);
-    return () => clearInterval(t);
+    window.addEventListener(BILLING_UPDATED, load); // paiement confirmé : pourcentage à jour tout de suite
+    return () => {
+      clearInterval(t);
+      window.removeEventListener(BILLING_UPDATED, load);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -116,6 +122,12 @@ export function UsageBadge() {
               );
             })}
           </ul>
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-lg px-2.5 py-2" style={{ background: theme.bg }}>
+            <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }}>
+              <Clock size={13} /> Heures de live achetées
+            </span>
+            <span className="text-[12.5px] font-semibold" style={{ color: theme.text }}>{fmtHours(sub.liveCreditSeconds ?? 0)}</span>
+          </div>
           <p className="mt-3 text-[11.5px]" style={{ color: theme.textMuted }}>
             Les volumes repartent à zéro le 1er du mois. Les réponses par mots-clés sont illimitées.
           </p>
@@ -130,6 +142,17 @@ export function UsageBadge() {
             }}
           >
             {expired ? "Renouveler" : "Recharger ou changer de formule"}
+          </Button>
+          <Button
+            className="mt-2 w-full justify-center"
+            icon={Radio}
+            variant="ghost"
+            onClick={() => {
+              setOpen(false);
+              liveHours.open();
+            }}
+          >
+            Acheter des heures de live
           </Button>
         </div>
       )}

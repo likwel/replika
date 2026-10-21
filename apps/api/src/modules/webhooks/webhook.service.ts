@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { graphClient } from "../facebook/graph.client.js";
 import { handleIncoming, type IncomingEvent } from "../autoreply/autoreply.engine.js";
+import { workingUserWhere } from "../../utils/accountAccess.js";
 
 type MetaPlatform = "FACEBOOK" | "INSTAGRAM";
 
@@ -103,7 +104,7 @@ export async function processWebhook(payload: WebhookPayload) {
   for (const entry of payload.entry ?? []) {
     // Une même Page peut être liée par plusieurs utilisateurs de SuiteFlow
     const accounts = await prisma.socialAccount.findMany({
-      where: { platform, externalId: entry.id, isActive: true },
+      where: { platform, externalId: entry.id, isActive: true, user: workingUserWhere() },
     });
     if (!accounts.length) continue;
 

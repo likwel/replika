@@ -51,6 +51,8 @@ export const env = {
     baseUrl: process.env.AI_BASE_URL ?? "https://api.groq.com/openai/v1",
     apiKey: process.env.AI_API_KEY ?? "",
     model: process.env.AI_MODEL ?? "llama-3.3-70b-versatile",
+    // Coût estimé d'une réponse IA en ariary (tableau de bord administrateur) ; ~1 Ar avec gpt-oss-20b
+    costPerReply: Number(process.env.AI_COST_PER_REPLY ?? 1),
   },
   publicApiUrl: publicApiUrl(),
   apiUrl: apiUrl(),
@@ -76,7 +78,30 @@ export const env = {
     // Paiements de test (numéros sandbox) : par défaut hors production
     testMode: process.env.PAPI_TEST_MODE ? process.env.PAPI_TEST_MODE === "true" : process.env.NODE_ENV !== "production",
     linkHours: Number(process.env.PAPI_LINK_HOURS ?? 24), // validité d'un lien de paiement (1 à 596 h)
+    // Commission Papi quand la notification ne la donne pas : mode du compte Papi (papi.mg/pricing),
+    // ou un pourcentage unique qui remplace les taux par moyen de paiement
+    feeMode: (process.env.PAPI_FEE_MODE === "direct" ? "direct" : "transit") as "direct" | "transit",
+    feePercent: process.env.PAPI_FEE_PERCENT ? Number(process.env.PAPI_FEE_PERCENT) : null,
   },
+  // E-mails (codes de validation en deux étapes) : SMTP, par ex. Gmail avec un mot de passe d'application
+  mail: {
+    host: process.env.SMTP_HOST ?? "",
+    port: Number(process.env.SMTP_PORT ?? 465),
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : Number(process.env.SMTP_PORT ?? 465) === 465,
+    user: process.env.SMTP_USER ?? "",
+    pass: process.env.SMTP_PASS ?? "",
+    from: process.env.MAIL_FROM ?? (process.env.SMTP_USER ? `SuiteFlow <${process.env.SMTP_USER}>` : "SuiteFlow <no-reply@suiteflow.mg>"),
+  },
+  // Cloudflare Turnstile (anti-robot) sur la connexion et l'inscription. Sans clés : clés de test Cloudflare
+  // hors production (le widget s'affiche et valide toujours), désactivé en production.
+  turnstile: {
+    siteKey: process.env.TURNSTILE_SITE_KEY ?? (process.env.NODE_ENV !== "production" ? "1x00000000000000000000AA" : ""),
+    secretKey: process.env.TURNSTILE_SECRET_KEY ?? (process.env.NODE_ENV !== "production" ? "1x0000000000000000000000000000000AA" : ""),
+  },
+  // Chiffrement des secrets Google Authenticator (par défaut dérivé de JWT_SECRET)
+  twoFactorKey: process.env.TWO_FACTOR_KEY ?? process.env.JWT_SECRET ?? "",
+  // Live Manager à l'unité : prix d'une heure (Ar)
+  liveHourPrice: Number(process.env.LIVE_HOUR_PRICE ?? 2500),
   // Vérification des paiements en attente auprès de Papi (secondes) ; 0 = désactivé
   billingReconcileSeconds: Number(process.env.BILLING_RECONCILE_SECONDS ?? 120),
   isProd: process.env.NODE_ENV === "production",

@@ -26,6 +26,7 @@ export interface SubscriptionSummary {
   daysLeft: number | null;
   limits: Limits;
   features: Record<Feature, boolean>;
+  liveCreditSeconds: number; // heures de live achetées à l'unité (secondes restantes)
   admin: boolean;
 }
 
@@ -42,9 +43,11 @@ export interface PublicPlan {
 
 export interface PaymentRow {
   reference: string;
-  plan: PlanId;
+  kind: "SUBSCRIPTION" | "LIVE_HOURS";
+  plan: PlanId | null;
   planName: string;
-  period: BillingPeriod;
+  period: BillingPeriod | null;
+  liveHours: number | null;
   amount: number;
   status: PaymentStatus;
   paymentMethod: string | null;
@@ -59,7 +62,9 @@ export interface PaymentRow {
 
 export interface BillingOverview {
   subscription: SubscriptionSummary;
-  usage: { month: string; aiReplies: number; liveSeconds: number; pages: number };
+  usage: { month: string; aiReplies: number; liveSeconds: number; liveCreditUsed: number; pages: number };
+  liveHourPrice: number; // Ar par heure de Live Manager à l'unité
+  paymentPhone: string | null; // dernier numéro de paiement, proposé par défaut
   plans: PublicPlan[];
   payments: PaymentRow[];
   papiConfigured: boolean;
@@ -81,8 +86,10 @@ export const billingApi = {
   overview: () => api.get<Res<BillingOverview>>("/billing").then((r) => r.data),
   quote: (plan: PlanId, period: BillingPeriod) =>
     api.get<Res<Quote>>(`/billing/quote?plan=${plan}&period=${period}`).then((r) => r.data),
-  checkout: (plan: PlanId, period: BillingPeriod) =>
-    api.post<Res<{ reference: string; paymentLink: string }>>("/billing/checkout", { plan, period }).then((r) => r.data),
+  checkout: (plan: PlanId, period: BillingPeriod, phone: string) =>
+    api.post<Res<{ reference: string; paymentLink: string }>>("/billing/checkout", { plan, period, phone }).then((r) => r.data),
+  buyLiveHours: (hours: number, phone: string) =>
+    api.post<Res<{ reference: string; paymentLink: string }>>("/billing/live-hours", { hours, phone }).then((r) => r.data),
   refresh: (reference: string) =>
     api
       .post<Res<{ payment: PaymentRow; subscription: SubscriptionSummary }>>(`/billing/payments/${encodeURIComponent(reference)}/refresh`)
@@ -90,7 +97,17 @@ export const billingApi = {
 };
 
 // Codes d'erreur de l'API liés à la formule
-export const BILLING_CODES = ["PLAN_REQUIRED", "QUOTA_EXCEEDED", "SUBSCRIPTION_INACTIVE", "PAGE_LIMIT"];
+export const BILLING_CODES = ["PLAN_REQUIRED", "QUOTA_EXCEEDED", "SUBSCRIPTION_INACTIVE", "PAGE_LIMIT", "LIVE_HOURS_REQUIRED"];
+
+// Heures de live restantes (formule active : quota du mois ; sinon crédit acheté)
+export function liveHoursLeft(o: BillingOverview): { quota: number | null; credit: number; canRun: boolean } {
+  const s = o.subscription;
+  const quota = !s.active ? 0 : s.limits.liveHours === null ? null : Math.max(0, s.limits.liveHours * 3600 - o.usage.liveSeconds);
+  const credit = s.liveCreditSeconds;
+  return { quota, credit, canRun: quota === null || quota > 0 || credit > 0 };
+}
+
+export const fmtHours = (seconds: number) => `${(seconds / 3600).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h`;
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   MVOLA: "MVola",
@@ -98,3 +115,11 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   AIRTEL_MONEY: "Airtel Money",
   BRED: "Carte bancaire",
 };
+
+// Ce qu'un paiement confirmé a apporté
+export function paidText(p: PaymentRow, periodEnd: string | null): string {
+  if (p.kind === "LIVE_HOURS") return `${p.liveHours} h de Live Manager ajoutées à votre crédit.`;
+  const end = p.appliedPeriodEnd ?? periodEnd;
+  const date = end ? new Date(end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : null;
+  return `Formule ${p.planName} active${date ? ` jusqu'au ${date}` : ""}.`;
+}

@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { AppError } from "../../utils/AppError.js";
 import { daysLeft } from "./billing.logic.js";
 import { PLANS, type Feature, type Limits } from "./plans.js";
+import { MODERATION_SELECT, isBlocked, type Moderation } from "../../utils/accountAccess.js";
 
 // Droits d'un utilisateur selon sa formule : modules accessibles, limites, et abonnement en cours ou non
 
@@ -19,7 +20,9 @@ export interface Entitlements {
   trialEndsAt: Date | null;
   limits: Limits;
   features: Record<Feature, boolean>; // modules de la formule, consultables même expirée
+  liveCreditSeconds: number; // heures de live achetées à l'unité
   admin: boolean;
+  blocked: boolean; // compte suspendu, banni ou supprimé par un administrateur : plus aucune automatisation
 }
 
 export const FEATURE_LABELS: Record<Feature, string> = {
@@ -40,7 +43,14 @@ function customLimits(raw: unknown): Partial<Limits> {
   return out;
 }
 
-export function computeEntitlements(sub: Subscription | null, role: string, now = new Date()): Entitlements {
+export function computeEntitlements(sub: Subscription | null, role: string, now = new Date(), moderation?: Moderation | null): Entitlements {
+  const ent = baseEntitlements(sub, role, now);
+  // Compte bloqué par un administrateur : formule conservée (affichage) mais rien ne tourne
+  if (moderation && isBlocked(moderation, now)) return { ...ent, active: false, liveCreditSeconds: 0, blocked: true };
+  return ent;
+}
+
+function baseEntitlements(sub: Subscription | null, role: string, now: Date): Entitlements {
   if (role === "ADMIN") {
     const agency = PLANS.AGENCY;
     return {
@@ -54,7 +64,9 @@ export function computeEntitlements(sub: Subscription | null, role: string, now 
       trialEndsAt: null,
       limits: agency.limits,
       features: agency.features,
+      liveCreditSeconds: sub?.liveCreditSeconds ?? 0,
       admin: true,
+      blocked: false,
     };
   }
   // Aucun abonnement : traité comme expiré (on ferme par défaut)
@@ -71,7 +83,9 @@ export function computeEntitlements(sub: Subscription | null, role: string, now 
     trialEndsAt: sub?.trialEndsAt ?? null,
     limits: { ...plan.limits, ...customLimits(sub?.customLimits) },
     features: plan.features,
+    liveCreditSeconds: sub?.liveCreditSeconds ?? 0,
     admin: false,
+    blocked: false,
   };
 }
 
@@ -82,9 +96,9 @@ const cache = new Map<string, { at: number; ent: Entitlements }>();
 export async function getEntitlements(userId: string): Promise<Entitlements> {
   const hit = cache.get(userId);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.ent;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, subscription: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, subscription: true, ...MODERATION_SELECT } });
   if (user && !user.subscription && user.role !== "ADMIN") console.warn(`⚠️ Abonnement manquant pour ${userId} : traité comme expiré`);
-  const ent = computeEntitlements(user?.subscription ?? null, user?.role ?? "USER");
+  const ent = computeEntitlements(user?.subscription ?? null, user?.role ?? "USER", new Date(), user);
   cache.set(userId, { at: Date.now(), ent });
   return ent;
 }
@@ -107,6 +121,7 @@ export function summarize(ent: Entitlements) {
     daysLeft: daysLeft(ent.periodEnd),
     limits: ent.limits,
     features: ent.features,
+    liveCreditSeconds: ent.liveCreditSeconds,
     admin: ent.admin,
   };
 }
@@ -116,6 +131,7 @@ export function summarizeSubscription(user: { role: string; subscription: Subscr
 }
 
 export function inactiveError(ent: Entitlements): AppError {
+  if (ent.blocked) return new AppError("Compte suspendu par l'administrateur : les automatisations sont arrêtées.", 403, "ACCOUNT_SUSPENDED");
   const msg =
     ent.kind === "TRIAL"
       ? "Votre essai gratuit est terminé : choisissez une formule pour réactiver les automatisations."
