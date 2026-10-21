@@ -46,9 +46,10 @@ function publicPayment(p: Payment) {
     reference: p.reference,
     kind: p.kind,
     plan: p.plan,
-    planName: p.plan ? PLANS[p.plan].name : "Heures de live",
+    planName: p.plan ? PLANS[p.plan].name : p.kind === "REPLY_CREDITS" ? "Crédits de réponses" : "Heures de live",
     period: p.period,
     liveHours: p.liveHours,
+    replyCredits: p.replyCredits,
     amount: p.amount,
     status: p.status,
     paymentMethod: p.paymentMethod,
@@ -127,6 +128,24 @@ export async function activatePayment(paymentId: string, details: PaidDetails) {
           userId: payment.userId,
           action: "LIVE_HOURS_PURCHASED",
           meta: { reference: payment.reference, hours: payment.liveHours, amount: payment.amount, paymentMethod: details.paymentMethod ?? null },
+        },
+      });
+      return { ...payment, liveOnly: true };
+    }
+
+    // Pack de réponses automatiques : ajouté au crédit, la formule ne change pas
+    if (payment.kind === "REPLY_CREDITS") {
+      const credits = payment.replyCredits ?? 0;
+      await tx.subscription.upsert({
+        where: { userId: payment.userId },
+        create: { userId: payment.userId, plan: "STARTER", kind: "PAID", periodEnd: new Date(), replyCredits: credits },
+        update: { replyCredits: { increment: credits } },
+      });
+      await tx.activityLog.create({
+        data: {
+          userId: payment.userId,
+          action: "REPLY_CREDITS_PURCHASED",
+          meta: { reference: payment.reference, credits, amount: payment.amount, paymentMethod: details.paymentMethod ?? null },
         },
       });
       return { ...payment, liveOnly: true };
@@ -214,10 +233,11 @@ async function logMismatch(p: Payment, received: number) {
 }
 
 interface Purchase {
-  kind: "SUBSCRIPTION" | "LIVE_HOURS";
+  kind: "SUBSCRIPTION" | "LIVE_HOURS" | "REPLY_CREDITS";
   plan?: PlanId;
   period?: BillingPeriod;
   liveHours?: number;
+  replyCredits?: number;
   amount: number;
   description: string;
   phone?: string | null; // numéro saisi (facultatif) ; sinon celui que Papi transmet après le paiement
@@ -228,12 +248,12 @@ async function createCheckout(userId: string, purchase: Purchase) {
   if (!isPapiConfigured()) {
     throw new AppError("Le paiement en ligne n'est pas encore configuré : contactez-nous pour souscrire.", 503, "PAPI_NOT_CONFIGURED");
   }
-  const { kind, plan = null, period = null, liveHours = null, amount, phone } = purchase;
+  const { kind, plan = null, period = null, liveHours = null, replyCredits = null, amount, phone } = purchase;
   const now = Date.now();
 
   // Lien déjà créé pour le même achat et encore valide : réutilisé (sauf s'il vient d'être payé)
   const reusable = await prisma.payment.findFirst({
-    where: { userId, kind, plan, period, liveHours, amount, ...(phone ? { payerPhone: phone } : {}), status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
+    where: { userId, kind, plan, period, liveHours, replyCredits, amount, ...(phone ? { payerPhone: phone } : {}), status: "PENDING", paymentLink: { not: null }, linkExpiresAt: { gt: new Date(now + 10 * MINUTE) } },
     orderBy: { createdAt: "desc" },
   });
   if (reusable) {
@@ -248,7 +268,7 @@ async function createCheckout(userId: string, purchase: Purchase) {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, companyName: true, email: true } });
   const reference = newReference();
-  const payment = await prisma.payment.create({ data: { reference, userId, kind, plan, period, liveHours, amount, payerPhone: phone ?? null } });
+  const payment = await prisma.payment.create({ data: { reference, userId, kind, plan, period, liveHours, replyCredits, amount, payerPhone: phone ?? null } });
   if (phone) await prisma.user.update({ where: { id: userId }, data: { paymentPhone: phone } });
   // Page de retour : prévient la fenêtre principale (paiement ouvert dans une fenêtre à part) puis se ferme
   const back = `${env.clientUrl}/paiement/retour`;
@@ -273,7 +293,7 @@ async function createCheckout(userId: string, purchase: Purchase) {
         linkExpiresAt: link.linkExpirationDateTime ? new Date(link.linkExpirationDateTime) : new Date(now + env.papi.linkHours * HOUR),
       },
     });
-    await prisma.activityLog.create({ data: { userId, action: "CHECKOUT_CREATED", meta: { reference, kind, plan, period, liveHours, amount } } });
+    await prisma.activityLog.create({ data: { userId, action: "CHECKOUT_CREATED", meta: { reference, kind, plan, period, liveHours, replyCredits, amount } } });
     return { reference, paymentLink: link.paymentLink };
   } catch (e) {
     await prisma.payment.update({
@@ -301,9 +321,11 @@ export const billingService = {
         aiReplies: usage?.aiReplies ?? 0,
         liveSeconds: usage?.liveSeconds ?? 0,
         liveCreditUsed: usage?.liveCreditUsed ?? 0,
+        replyCreditUsed: usage?.replyCreditUsed ?? 0,
         pages,
       },
       liveHourPrice: env.liveHourPrice,
+      replyPack: env.replyPack,
       paymentPhone: owner?.paymentPhone ?? owner?.phone ?? null,
       plans: publicPlans(),
       payments: payments.map(publicPayment),
@@ -348,6 +370,18 @@ export const billingService = {
       liveHours: hours,
       amount: hours * env.liveHourPrice,
       description: `SuiteFlow — ${hours} h de Live Manager`,
+    });
+  },
+
+  // Packs de réponses automatiques (taille et prix d'un pack fixés par le serveur)
+  async buyReplyCredits(userId: string, packs: number, phone?: string) {
+    const credits = packs * env.replyPack.size;
+    return createCheckout(userId, {
+      phone,
+      kind: "REPLY_CREDITS",
+      replyCredits: credits,
+      amount: packs * env.replyPack.price,
+      description: `SuiteFlow — ${credits.toLocaleString("fr-FR")} réponses automatiques`,
     });
   },
 

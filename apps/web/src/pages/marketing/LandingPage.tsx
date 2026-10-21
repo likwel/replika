@@ -447,7 +447,7 @@ function PricingSection() {
       <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-1.5 text-center text-[12.5px]" style={{ color: theme.textMuted }}>
         <p>
           <Sparkles size={13} className="mr-1 inline align-text-bottom" style={{ color: theme.goldDark }} />
-          Besoin de plus ? Pack de {fmt(AI_PACK.replies)} réponses IA supplémentaires : <strong style={{ color: theme.text }}>{fmt(AI_PACK.price)} Ar</strong>.
+          Besoin de plus ? Rechargez {fmt(AI_PACK.replies)} réponses automatiques pour <strong style={{ color: theme.text }}>{fmt(AI_PACK.price)} Ar</strong>, sans expiration.
           Les réponses par mots-clés sont illimitées et ne comptent pas dans le volume IA.
         </p>
         <p>

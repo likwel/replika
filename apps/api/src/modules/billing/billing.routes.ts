@@ -82,6 +82,17 @@ router.post(
   catchAsync(async (req, res) => ok(res, await billingService.buyLiveHours(uid(req), req.body.hours, req.body.phone))),
 );
 
+// Crédits de réponses automatiques, par packs (après le quota IA du mois, ou sans abonnement)
+const replyCreditsSchema = z.object({
+  packs: z.number({ invalid_type_error: "Nombre de packs invalide" }).int("Nombre de packs entier").min(1, "1 pack minimum").max(50, "50 packs maximum"),
+  phone: phoneField.optional(),
+});
+router.post(
+  "/reply-credits",
+  validate(replyCreditsSchema),
+  catchAsync(async (req, res) => ok(res, await billingService.buyReplyCredits(uid(req), req.body.packs, req.body.phone))),
+);
+
 router.post(
   "/payments/:reference/refresh",
   catchAsync(async (req, res) => ok(res, await billingService.refresh(uid(req), req.params.reference))),

@@ -125,6 +125,8 @@ export const env = {
   twoFactorKey: process.env.TWO_FACTOR_KEY ?? process.env.JWT_SECRET ?? "",
   // Live Manager à l'unité : prix d'une heure (Ar)
   liveHourPrice: Number(process.env.LIVE_HOUR_PRICE ?? 2500),
+  // Crédits de réponses automatiques : vendus par packs (réponses par pack, prix d'un pack en Ar)
+  replyPack: { size: Number(process.env.REPLY_PACK_SIZE ?? 1000), price: Number(process.env.REPLY_PACK_PRICE ?? 9900) },
   // Vérification des paiements en attente auprès de Papi (secondes) ; 0 = désactivé
   billingReconcileSeconds: Number(process.env.BILLING_RECONCILE_SECONDS ?? 120),
   isProd: process.env.NODE_ENV === "production",

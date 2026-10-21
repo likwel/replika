@@ -11,6 +11,7 @@ import { ConversationsView } from "@/components/workspace/ConversationsView";
 import { InboxView } from "@/components/workspace/InboxView";
 import { readStored, saveStored, type Focus } from "@/components/workspace/helpers";
 import { workspaceApi, type WsAccount } from "@/lib/workspace.api";
+import { useAccess } from "@/hooks/useAccess";
 
 interface Ctx { sub: number; setSub: (i: number) => void }
 
@@ -28,6 +29,7 @@ const isIdList = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) 
 export function WorkspacePage() {
   const { sub, setSub } = useOutletContext<Ctx>();
   const nav = useNavigate();
+  const { can, current } = useAccess();
   const tab = TABS[sub]?.id ?? "posts";
 
   const [accounts, setAccounts] = useState<WsAccount[] | null>(null);
@@ -63,14 +65,18 @@ export function WorkspacePage() {
     .reduce((n, a) => n + a.pending, 0);
 
   if (accounts && accounts.length === 0) {
+    // Membre d'équipe sans droit sur les connexions : c'est au propriétaire de connecter ses Pages
+    const canConnect = can("connections", "write");
     return (
       <StateCard
         icon={Plug}
         title="Aucun Compte Connecté"
         className="mx-auto max-w-lg"
-        action={<Button icon={Facebook} onClick={() => nav("/app/connexions")}>Connecter un compte</Button>}
+        action={canConnect && <Button icon={Facebook} onClick={() => nav("/app/connexions")}>Connecter un compte</Button>}
       >
-        Connectez vos Pages Facebook et comptes Instagram pour gérer ici leurs publications, commentaires et messages.
+        {canConnect
+          ? "Connectez vos Pages Facebook et comptes Instagram pour gérer ici leurs publications, commentaires et messages."
+          : `Aucune Page active dans l'espace ${current?.space ?? ""} : demandez à son propriétaire d'en connecter une.`}
       </StateCard>
     );
   }

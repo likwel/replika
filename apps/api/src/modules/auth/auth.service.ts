@@ -8,7 +8,8 @@ import type { RegisterInput, LoginInput } from "./auth.schema.js";
 import { PROVIDER_LABEL, type SocialProfile } from "./social.service.js";
 import { assertAccess } from "../../utils/accountAccess.js";
 import { twoFactorService } from "./twoFactor.service.js";
-import { summarizeSubscription } from "../billing/entitlements.js";
+import { getEntitlements, summarize, summarizeSubscription } from "../billing/entitlements.js";
+import { teamService } from "../team/team.service.js";
 import { trialSubscription } from "../billing/plans.js";
 
 // Toute lecture d'utilisateur destinée au navigateur inclut sa formule
@@ -38,6 +39,26 @@ export function publicUser(u: User & { subscription: Subscription | null }) {
   };
 }
 
+// Utilisateur et espace de travail ouvert. Dans l'espace d'une équipe, la formule affichée est celle du
+// propriétaire (modules et limites de l'espace) ; workspace.current porte le rôle et les droits du membre.
+export async function sessionUser(u: User & { subscription: Subscription | null }) {
+  const base = publicUser(u);
+  const [{ workspace, unavailable }, memberships] = await Promise.all([
+    teamService.currentWorkspace(u.id, u.activeOwnerId),
+    teamService.memberships(u.id),
+  ]);
+  return {
+    ...base,
+    subscription: workspace ? summarize(await getEntitlements(workspace.ownerId)) : base.subscription,
+    workspace: {
+      current: workspace,
+      unavailable, // accès retiré depuis l'ouverture de l'espace
+      spaces: memberships.filter((m) => m.status === "ACTIVE").map((m) => ({ ownerId: m.ownerId, space: m.space, roleLabel: m.roleLabel })),
+      invitations: memberships.filter((m) => m.status === "INVITED").length,
+    },
+  };
+}
+
 export const authService = {
   async register(data: RegisterInput, client: ClientInfo) {
     const exists = await prisma.user.findUnique({ where: { email: data.email } });
@@ -58,7 +79,7 @@ export const authService = {
     });
 
     await prisma.activityLog.create({ data: { userId: user.id, action: "REGISTER", meta: client } });
-    return { user: publicUser(user), token: sessionToken(user) };
+    return { user: await sessionUser(user), token: sessionToken(user) };
   },
 
   async login(data: LoginInput, client: ClientInfo) {
@@ -70,7 +91,7 @@ export const authService = {
     // Validation en deux étapes : pas de session tant que le code n'est pas vérifié
     if (user.twoFactorMethod) return { twoFactor: await twoFactorService.startLogin(user, data.remember !== false) };
     await prisma.activityLog.create({ data: { userId: user.id, action: "LOGIN", meta: client } });
-    return { user: publicUser(user), token: sessionToken(user) };
+    return { user: await sessionUser(user), token: sessionToken(user) };
   },
 
   // Seconde étape de la connexion : code e-mail, code de l'application ou code de secours
@@ -79,7 +100,7 @@ export const authService = {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, include: withSub });
     assertAccess(user);
     await prisma.activityLog.create({ data: { userId, action: "LOGIN", meta: { ...client, twoFactor: usedRecovery ? "recovery" : user.twoFactorMethod } } });
-    return { user: publicUser(user), token: sessionToken(user), remember, recoveryLeft: user.twoFactorRecovery.length, usedRecovery };
+    return { user: await sessionUser(user), token: sessionToken(user), remember, recoveryLeft: user.twoFactorRecovery.length, usedRecovery };
   },
 
   // Connexion / inscription via Facebook ou Google
@@ -124,7 +145,7 @@ export const authService = {
     await prisma.activityLog.create({
       data: { userId: user.id, action: created ? "REGISTER" : "LOGIN", meta: { ...client, provider: profile.provider } },
     });
-    return { user: publicUser(user), token: sessionToken(user) };
+    return { user: await sessionUser(user), token: sessionToken(user) };
   },
 
   async forgotPassword(email: string) {
@@ -164,6 +185,6 @@ export const authService = {
   async me(userId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId }, include: withSub });
     if (!user) throw new AppError("Utilisateur introuvable", 404);
-    return publicUser(user);
+    return sessionUser(user);
   },
 };

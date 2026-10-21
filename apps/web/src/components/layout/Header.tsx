@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronsRight, CreditCard, LogOut, Menu as MenuIcon, Plus, ShieldCheck, SlidersHorizontal, User } from "lucide-react";
+import { ChevronsRight, CreditCard, LogOut, Menu as MenuIcon, Plus, ShieldCheck, SlidersHorizontal, User, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Avatar } from "@/components/ui/Avatar";
@@ -9,6 +9,7 @@ import { ReconnectDialog } from "@/components/connections/ReconnectDialog";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/hooks/useOnline";
+import { useAccess } from "@/hooks/useAccess";
 import { MENUS } from "@/data/menus";
 import type { SubscriptionSummary } from "@/lib/billing.api";
 
@@ -27,12 +28,14 @@ const ACCOUNT_ITEMS: Array<{ label: string; icon: LucideIcon; sub: number }> = [
   { label: "Mon profil", icon: User, sub: 0 },
   { label: "Sécurité", icon: ShieldCheck, sub: 1 },
   { label: "Préférences", icon: SlidersHorizontal, sub: 2 },
+  { label: "Équipe", icon: Users, sub: 3 },
   { label: "Facturation", icon: CreditCard, sub: 4 },
 ];
 
 // Barre du haut façon Notion : fil d'Ariane à gauche, compte à droite
 export function Header({ active, sub, attention, sidebarCollapsed, onExpandSidebar, onOpenDrawer, onNavigate, onOpenSettings }: Props) {
   const { user, logout } = useAuth();
+  const { can, canMenu } = useAccess();
   const nav = useNavigate();
   const online = useOnline();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,7 +105,7 @@ export function Header({ active, sub, attention, sidebarCollapsed, onExpandSideb
 
 
       {/* Ajout d'une Page Facebook / d'un compte Instagram : ouvre directement la connexion Meta */}
-      <button
+      {can("connections", "write") && <button
         onClick={() => setConnectOpen(true)}
         className="mr-1.5 flex h-8 w-8 items-center justify-center rounded-full transition-[filter,transform] hover:brightness-95 active:scale-95"
         style={{ background: theme.gold, color: theme.onAccent, boxShadow: "0 1px 3px rgba(0,0,0,0.18)" }}
@@ -110,8 +113,8 @@ export function Header({ active, sub, attention, sidebarCollapsed, onExpandSideb
         aria-label="Connecter une Page Facebook ou un compte Instagram"
       >
         <Plus size={18} strokeWidth={2.6} />
-      </button>
-      <UsageBadge />
+      </button>}
+      {can("billing") && <UsageBadge />}
       {connectOpen && <ReconnectDialog connect onClose={() => setConnectOpen(false)} />}
 
       <div ref={menuRef} className="relative">
@@ -136,7 +139,7 @@ export function Header({ active, sub, attention, sidebarCollapsed, onExpandSideb
               {user.subscription && <PlanBadge sub={user.subscription} />}
             </div>
             <div className="mx-1 my-1" style={{ borderTop: `1px solid ${theme.border}` }} />
-            {ACCOUNT_ITEMS.map((it) => (
+            {ACCOUNT_ITEMS.filter((it) => canMenu("set", it.sub)).map((it) => (
               <button
                 key={it.label}
                 onClick={() => {

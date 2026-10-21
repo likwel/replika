@@ -12,6 +12,7 @@ import { RegisterPage } from "@/components/auth/RegisterPage";
 import { ForgotPasswordPage } from "@/components/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/auth/ResetPasswordPage";
 import { PaymentReturnPage } from "@/pages/PaymentReturnPage";
+import { InvitationPage } from "@/pages/InvitationPage";
 import { AdminPage } from "@/pages/app/AdminPage";
 import { ContactPage } from "@/pages/marketing/ContactPage";
 import { LegalNoticePage } from "@/pages/marketing/LegalNoticePage";
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
   { path: "/guide", element: <GuidePage /> },
   { path: "/register", element: <RegisterPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/invitation/:token", element: <InvitationPage /> },
   { path: "/reset-password", element: <ResetPasswordPage /> },
   { path: "/paiement/retour", element: <PaymentReturnPage /> },
   {

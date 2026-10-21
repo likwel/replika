@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowRight, Bot, Facebook, Hash, Loader2, MessageSquareDashed, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bot, Coins, Facebook, Hash, Loader2, MessageSquareDashed, RefreshCw, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,10 @@ import { automationApi, type AutomationRule, type AutomationSettings } from "@/l
 import { aiApi, type AiOverview } from "@/lib/ai.api";
 import { facebookApi } from "@/lib/facebook.api";
 import { isPermissionError } from "@/lib/meta";
+import { billingApi, repliesLeft, type BillingOverview } from "@/lib/billing.api";
+import { BILLING_UPDATED } from "@/lib/payment";
+import { replyCredits } from "@/lib/replyCredits";
+import { fmtNum } from "@/hooks/usePlan";
 
 const LANG_LABEL = { AUTO: "langue du client", MG: "malagasy", FR: "français" } as const;
 
@@ -118,6 +122,8 @@ export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: P
         </div>
       </div>
 
+      <ReplyBalance />
+
       {/* Activité du jour */}
       <div className="grid grid-cols-2 border-t sm:grid-cols-4" style={{ borderColor: theme.border }}>
         <Kpi i={0} label="Réponses envoyées aujourd'hui" value={stats?.autoRepliedToday} />
@@ -180,6 +186,51 @@ export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: P
         </div>
       )}
     </section>
+  );
+}
+
+// Réponses IA encore disponibles (quota du mois + crédits achetés), avec la recharge à portée de main
+function ReplyBalance() {
+  const [data, setData] = useState<BillingOverview | null>(null);
+  useEffect(() => {
+    const load = () => billingApi.overview().then(setData).catch(() => {});
+    void load();
+    window.addEventListener(BILLING_UPDATED, load); // recharge confirmée : solde à jour tout de suite
+    return () => window.removeEventListener(BILLING_UPDATED, load);
+  }, []);
+  if (!data || data.subscription.admin) return null;
+
+  const s = data.subscription;
+  const { quota, credit } = repliesLeft(data);
+  const limit = s.limits.aiReplies;
+  const empty = quota === 0 && credit === 0;
+  const low = !empty && quota !== null && limit !== null && quota <= limit * 0.1 && credit === 0;
+  const tone = empty ? theme.red : low ? theme.amber : theme.goldDark;
+  const bg = empty ? theme.dangerBg : low ? theme.amberSoft : theme.goldSoft;
+
+  const text = !s.active
+    ? credit > 0
+      ? `Abonnement terminé : vos ${fmtNum(credit)} crédits de réponses prennent le relais (1 crédit par réponse envoyée).`
+      : "Abonnement terminé et aucun crédit de réponses : plus rien ne part automatiquement."
+    : empty
+      ? "Quota de réponses IA du mois atteint : les messages pour l'IA attendent dans « À traiter »."
+      : [
+          quota === null ? "Réponses IA illimitées" : `${fmtNum(quota)} réponse${quota > 1 ? "s" : ""} IA restante${quota > 1 ? "s" : ""} ce mois-ci`,
+          credit > 0 ? `+ ${fmtNum(credit)} crédit${credit > 1 ? "s" : ""} achetés` : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-5 py-2.5" style={{ borderColor: theme.border, background: bg }}>
+      <Coins size={16} className="flex-shrink-0" style={{ color: tone }} />
+      <p className="min-w-0 flex-1 basis-60 text-[13px] font-medium" style={{ color: empty ? theme.red : theme.text }}>{text}</p>
+      {quota !== null && (
+        <Button size="sm" variant={empty || low || !s.active ? "primary" : "ghost"} icon={Coins} onClick={() => replyCredits.open()}>
+          Recharger des réponses
+        </Button>
+      )}
+    </div>
   );
 }
 

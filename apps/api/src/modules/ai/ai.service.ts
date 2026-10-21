@@ -143,8 +143,8 @@ export function parseAiOutput(raw: string): AiReply {
   return { reply: raw.trim().slice(0, MAX_REPLY_CHARS), intent: "autre", needsHuman: true };
 }
 
-// Point de passage unique de toute réponse IA : abonnement actif et quota du mois vérifiés ici
-// (AppError 402 SUBSCRIPTION_INACTIVE / QUOTA_EXCEEDED, à laisser remonter telle quelle)
+// Point de passage unique de toute réponse IA : quota du mois puis crédits de réponses vérifiés ici
+// (AppError 402 QUOTA_EXCEEDED / REPLY_CREDITS_REQUIRED, à laisser remonter telle quelle)
 export async function generateReply(account: AiProfile, input: AiReplyInput): Promise<AiReply> {
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(account, input.kind) },
@@ -153,11 +153,11 @@ export async function generateReply(account: AiProfile, input: AiReplyInput): Pr
       content: LANGUAGE_REMINDER[account.aiLanguage] ? `${userPrompt(input)}\n\n${LANGUAGE_REMINDER[account.aiLanguage]}` : userPrompt(input),
     },
   ];
-  const month = await consumeAiReply(account.userId);
+  const charge = await consumeAiReply(account.userId);
   try {
     return parseAiOutput(await chatCompletion(messages));
   } catch (e) {
-    await refundAiReply(account.userId, month); // le modèle n'a pas répondu : non décompté
+    await refundAiReply(account.userId, charge); // le modèle n'a pas répondu : non décompté
     throw e;
   }
 }

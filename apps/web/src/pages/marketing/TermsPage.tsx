@@ -120,8 +120,7 @@ export function TermsPage() {
           volumes mensuels de réponses générées par l'intelligence artificielle et d'heures de sessions live, remis à
           zéro le 1er de chaque mois et non reportables. Une fois un volume atteint, la fonctionnalité concernée est
           suspendue jusqu'au mois suivant ou jusqu'au passage à une formule supérieure ; les messages reçus restent
-          dans votre file « À traiter ». Les réponses par mots-clés ne sont pas décomptées du volume d'IA. Des packs de
-          réponses supplémentaires seront proposés prochainement.
+          dans votre file « À traiter ». Les réponses par mots-clés ne sont pas décomptées du volume d'IA.
         </p>
         <p>
           En cas de changement de formule en cours de période, la valeur des jours restants de votre formule actuelle
@@ -135,8 +134,16 @@ export function TermsPage() {
           associés ; elles ne réactivent pas les autres automatisations et ne sont pas remboursables.
         </p>
         <p>
+          Des crédits de réponses automatiques peuvent être achetés par packs, au prix affiché dans Paramètres →
+          Facturation. Ils sont utilisés après le volume de réponses IA de votre formule, ou lorsque votre abonnement est
+          terminé, et n'expirent pas. Abonnement terminé, ils permettent aux règles et à l'assistant IA de continuer à
+          répondre, à raison d'un crédit par réponse envoyée ; ils ne réactivent pas les autres automatisations et ne
+          sont pas remboursables.
+        </p>
+        <p>
           À l'échéance de l'essai ou de la période payée, les automatisations (réponses automatiques, assistant IA,
-          capture des lives, publications programmées) sont mises en pause. Votre compte, vos données et vos Pages
+          capture des lives, publications programmées) sont mises en pause, sauf dans la limite des crédits et heures
+          achetés. Votre compte, vos données et vos Pages
           restent accessibles, les nouveaux messages continuent d'arriver dans votre file et vous pouvez y répondre
           manuellement ; tout reprend dès le paiement d'une nouvelle période. Une période commencée n'est pas
           remboursable, sauf disposition légale contraire ou erreur de notre part.

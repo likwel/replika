@@ -20,7 +20,9 @@ export function LoginPage() {
   const { login } = useAuth();
   // Page demandée avant la redirection vers la connexion (session expirée)
   const from = (loc.state as { from?: string } | null)?.from;
-  const [email, setEmail] = useState("");
+  // Venu d'une invitation d'équipe : adresse invitée pré-remplie, retour sur l'invitation une fois connecté
+  const [invitation] = useState(() => params.get("invitation"));
+  const [email, setEmail] = useState(() => params.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   // Retour de Facebook / Google avec un message (connexion annulée, e-mail non partagé…)
@@ -41,7 +43,7 @@ export function LoginPage() {
     if (params.has("oauth_error") || params.has("challenge")) setParams({}, { replace: true });
   }, []);
 
-  const goIn = () => nav(from?.startsWith("/app") ? from : "/app", { replace: true });
+  const goIn = () => nav(invitation ? `/invitation/${invitation}` : from?.startsWith("/app") ? from : "/app", { replace: true });
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useOutletContext } from "react-router-dom";
 import {
-  AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, CreditCard, Gift, Hourglass, Languages, Loader2,
+  AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, Coins, CreditCard, Gift, Hourglass, Languages, Loader2,
   Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus,
   Users, Wallet, XCircle,
 } from "lucide-react";
@@ -232,6 +232,7 @@ function OverviewView() {
                 rows={[
                   ...data.revenue.byPlan.map((p) => ({ key: p.plan, label: p.name, value: p.amount, detail: `${p.count}×` })),
                   ...data.revenue.byKind.filter((k) => k.kind === "LIVE_HOURS").map((k) => ({ key: "live", label: "Heures de live", value: k.amount, icon: Radio, detail: `${k.count}×` })),
+                  ...data.revenue.byKind.filter((k) => k.kind === "REPLY_CREDITS").map((k) => ({ key: "credits", label: "Crédits de réponses", value: k.amount, icon: Coins, detail: `${k.count}×` })),
                 ].sort((a, b) => b.value - a.value)}
               />
             </Panel>
@@ -330,7 +331,7 @@ function UsersView() {
   const [data, setData] = useState<{ users: AdminUser[]; total: number; pageSize: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<AdminUser | null>(null);
-  const [gifting, setGifting] = useState<AdminUser | null>(null);
+  const [gifting, setGifting] = useState<{ user: AdminUser; kind: GiftKind } | null>(null);
 
   // Recherche différée : pas une requête par touche
   useEffect(() => {
@@ -431,8 +432,9 @@ function UsersView() {
                   </td>
                   <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>{u.periodEnd ? fmtDate(u.periodEnd) : "—"}</td>
                   <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.text }}>{u.pages}{u.pagesLimit !== null && <span style={{ color: theme.textMuted }}> / {u.pagesLimit}</span>}</td>
-                  <td className="px-3 py-2.5 tabular-nums" style={{ color: u.aiLimit !== null && u.aiReplies >= u.aiLimit ? theme.red : theme.text }}>
+                  <td className="px-3 py-2.5 tabular-nums" style={{ color: u.aiLimit !== null && u.aiReplies >= u.aiLimit && !u.replyCredits ? theme.red : theme.text }}>
                     {fmtNum(u.aiReplies)}{u.aiLimit !== null && <span style={{ color: theme.textMuted }}> / {fmtNum(u.aiLimit)}</span>}
+                    {u.replyCredits > 0 && <span className="block text-[11px]" style={{ color: theme.textMuted }}>+{fmtNum(u.replyCredits)} crédits</span>}
                   </td>
                   <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>
                     {fmtHours(u.liveSeconds)}
@@ -445,7 +447,7 @@ function UsersView() {
                       user={u}
                       self={u.id === me}
                       onEdit={() => setEditing(u)}
-                      onGift={() => setGifting(u)}
+                      onGift={(kind) => setGifting({ user: u, kind })}
                       onModerate={(action) => setModerating({ user: u, action })}
                     />
                   </td>
@@ -471,7 +473,7 @@ function UsersView() {
       )}
 
       {editing && <EditPlanModal user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
-      {gifting && <GiftHoursModal user={gifting} onClose={() => setGifting(null)} onSaved={() => { setGifting(null); load(); }} />}
+      {gifting && <GiftModal user={gifting.user} kind={gifting.kind} onClose={() => setGifting(null)} onSaved={() => { setGifting(null); load(); }} />}
       {moderating && (
         <ModerationModal user={moderating.user} action={moderating.action} onClose={() => setModerating(null)} onDone={() => { setModerating(null); load(); }} />
       )}
@@ -486,7 +488,7 @@ function UserMenu({
   user: AdminUser;
   self: boolean;
   onEdit: () => void;
-  onGift: () => void;
+  onGift: (kind: GiftKind) => void;
   onModerate: (a: ModerationAction) => void;
 }) {
   const deleted = u.account === "DELETED";
@@ -496,7 +498,8 @@ function UserMenu({
     ? [{ icon: RotateCcw, label: "Restaurer le compte", fn: () => onModerate("restore") }]
     : [
         { icon: CalendarClock, label: "Modifier la formule", fn: onEdit },
-        { icon: Gift, label: "Offrir des heures de live", fn: onGift },
+        { icon: Coins, label: "Offrir des crédits de réponses", fn: () => onGift("credits") },
+        { icon: Gift, label: "Offrir des heures de live", fn: () => onGift("hours") },
         ...(!self ? [{ icon: LogOut, label: "Déconnecter partout", fn: () => onModerate("logout") } as Item] : []),
         ...(!self && u.twoFactorMethod ? [{ icon: ShieldOff, label: "Réinitialiser la 2FA", fn: () => onModerate("reset2fa") } as Item] : []),
         ...(!protectedAccount
@@ -622,16 +625,40 @@ function EditPlanModal({ user, onClose, onSaved }: { user: AdminUser; onClose: (
   );
 }
 
-function GiftHoursModal({ user, onClose, onSaved }: { user: AdminUser; onClose: () => void; onSaved: () => void }) {
-  const [hours, setHours] = useState(5);
+type GiftKind = "hours" | "credits";
+
+const GIFTS: Record<GiftKind, { title: string; field: string; max: number; initial: number; unit: (n: number) => string; note: string }> = {
+  hours: {
+    title: "Offrir des heures de live",
+    field: "Nombre d'heures",
+    max: 500,
+    initial: 5,
+    unit: (n) => `${n} h`,
+    note: "Ajoutées au crédit d'heures de Live Manager du client, sans paiement. L'opération est tracée dans son historique.",
+  },
+  credits: {
+    title: "Offrir des crédits de réponses",
+    field: "Nombre de réponses",
+    max: 100_000,
+    initial: 500,
+    unit: (n) => `${fmtNum(n)} réponses`,
+    note: "Ajoutés aux crédits de réponses automatiques du client, sans paiement. L'opération est tracée dans son historique.",
+  },
+};
+
+// Geste commercial : heures de live ou crédits de réponses ajoutés sans paiement
+function GiftModal({ user, kind, onClose, onSaved }: { user: AdminUser; kind: GiftKind; onClose: () => void; onSaved: () => void }) {
+  const g = GIFTS[kind];
+  const [amount, setAmount] = useState(g.initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const save = async () => {
     setSaving(true);
     setError(null);
     try {
-      await adminApi.addLiveHours(user.id, hours);
-      swal.toast({ title: "Heures offertes", text: `${hours} h de live ajoutées à ${user.name}.` });
+      if (kind === "hours") await adminApi.addLiveHours(user.id, amount);
+      else await adminApi.addReplyCredits(user.id, amount);
+      swal.toast({ title: kind === "hours" ? "Heures offertes" : "Crédits offerts", text: `${g.unit(amount)} ajoutées à ${user.name}.` });
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -640,21 +667,21 @@ function GiftHoursModal({ user, onClose, onSaved }: { user: AdminUser; onClose: 
   };
   return (
     <Modal
-      title="Offrir des heures de live"
-      subtitle={`${user.name} · crédit actuel : ${fmtHours(user.liveCreditSeconds)}`}
+      title={g.title}
+      subtitle={`${user.name} · crédit actuel : ${kind === "hours" ? fmtHours(user.liveCreditSeconds) : `${fmtNum(user.replyCredits)} réponses`}`}
       onClose={onClose}
       footer={
         <>
           <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" icon={Gift} onClick={save} disabled={saving || hours < 1}>Offrir {hours} h</Button>
+          <Button size="sm" icon={kind === "hours" ? Gift : Coins} onClick={save} disabled={saving || amount < 1}>Offrir {g.unit(amount)}</Button>
         </>
       }
     >
       <label className="block">
-        <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Nombre d'heures</span>
-        <input type="number" min={1} max={500} value={hours} onChange={(e) => setHours(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} className={`${inputClass} max-w-[140px]`} style={inputStyle} />
+        <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>{g.field}</span>
+        <input type="number" min={1} max={g.max} value={amount} onChange={(e) => setAmount(Math.max(1, Math.min(g.max, Number(e.target.value) || 1)))} className={`${inputClass} max-w-[160px]`} style={inputStyle} />
       </label>
-      <p className="mt-2 text-[12px]" style={{ color: theme.textMuted }}>Ajoutées au crédit d'heures de Live Manager du client, sans paiement. L'opération est tracée dans son historique.</p>
+      <p className="mt-2 text-[12px]" style={{ color: theme.textMuted }}>{g.note}</p>
       {error && <Alert variant="error" className="mt-3">{error}</Alert>}
     </Modal>
   );
@@ -732,7 +759,11 @@ function PaymentsView() {
                       <p className="text-[11.5px]" style={{ color: theme.textMuted }}>{p.user.email}</p>
                     </td>
                     <td className="px-3 py-2.5" style={{ color: theme.text }}>
-                      {p.kind === "LIVE_HOURS" ? `${p.liveHours} h de live` : `${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`}
+                      {p.kind === "LIVE_HOURS"
+                        ? `${p.liveHours} h de live`
+                        : p.kind === "REPLY_CREDITS"
+                          ? `${fmtNum(p.replyCredits ?? 0)} réponses`
+                          : `${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</td>
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.textMuted }} title={p.feeEstimated ? "Estimée d'après les tarifs Papi" : "Transmise par Papi"}>
@@ -951,6 +982,11 @@ function AiView() {
           <ServiceRow label="Webhooks Meta" ok={sys.webhookConfigured} value={sys.webhookConfigured ? "Jeton défini" : "Non configurés"} warn={!sys.webhookConfigured} />
           <ServiceRow label="Relève automatique" ok={sys.pollSeconds > 0} value={sys.pollSeconds > 0 ? `Toutes les ${sys.pollSeconds} s` : "Désactivée"} />
           <ServiceRow label="Heures de live à l'unité" ok value={`${fmtAr(sys.liveHourPrice)} l'heure · ${fmtHours(data.usage.liveCreditLeft)} en circulation`} />
+          <ServiceRow
+            label="Crédits de réponses"
+            ok
+            value={`${fmtAr(sys.replyPack.price)} les ${fmtNum(sys.replyPack.size)} · ${fmtNum(data.usage.replyCreditLeft)} en circulation · ${fmtNum(data.usage.replyCreditUsed)} utilisés ce mois-ci`}
+          />
           <ServiceRow label="Adresse publique de l'API" ok value={sys.publicApiUrl} />
         </ul>
       </Panel>

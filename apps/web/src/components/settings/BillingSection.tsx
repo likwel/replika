@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Check, Clock, CreditCard, ExternalLink, Loader2, Minus, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles,
+  Check, Clock, Coins, CreditCard, ExternalLink, Loader2, Minus, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -12,12 +12,13 @@ import { Segmented } from "@/components/ui/Segmented";
 import { SettingsCard } from "@/components/settings/SettingsUi";
 import { swal } from "@/lib/swal";
 import {
-  billingApi, fmtHours, paidText, PAYMENT_METHOD_LABEL,
+  billingApi, fmtHours, paidText, purchaseLabel, PAYMENT_METHOD_LABEL,
   type BillingOverview, type BillingPeriod, type Quote, type Feature, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
 } from "@/lib/billing.api";
 import { MOBILE_MONEY } from "@/data/plans";
 import { ContactDialog } from "@/components/marketing/ContactDialog";
 import { liveHours } from "@/lib/liveHours";
+import { replyCredits } from "@/lib/replyCredits";
 import { BILLING_UPDATED, payment } from "@/lib/payment";
 import { paymentSuccess } from "@/lib/paymentSuccess";
 import { CheckoutDialog } from "@/components/billing/CheckoutDialog";
@@ -49,7 +50,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const resumePayment = (p: PaymentRow) =>
   payment
     .resume(p.reference, p.paymentLink!, {
-      label: p.kind === "LIVE_HOURS" ? `${p.liveHours} h de Live Manager` : `Formule ${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`,
+      label: purchaseLabel(p),
       amount: p.amount,
     })
     .catch((e: Error) => swal.alert({ variant: "error", title: "Paiement impossible", text: e.message }));
@@ -356,9 +357,10 @@ function CurrentPlan({ data, onChoose }: { data: BillingOverview; onChoose: () =
           format={(n) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h`}
         />
       </div>
+      <ReplyCreditRow credit={s.replyCredits ?? 0} used={u.replyCreditUsed ?? 0} pack={data.replyPack} />
       <LiveCreditRow credit={s.liveCreditSeconds ?? 0} used={u.liveCreditUsed ?? 0} price={data.liveHourPrice} />
       <p className="mt-2 text-[11.5px]" style={{ color: theme.textMuted }}>
-        Les volumes repartent à zéro le 1er de chaque mois. Les réponses par mots-clés sont illimitées.
+        Les volumes repartent à zéro le 1er de chaque mois. Les réponses par mots-clés sont illimitées tant que la formule est active.
       </p>
     </>
   );
@@ -382,6 +384,29 @@ function Meter({ icon: Icon, label, used, limit, format }: { icon: LucideIcon; l
           style={{ width: limit === null ? "100%" : `${Math.max(pct, used > 0 ? 3 : 0)}%`, background: color, opacity: limit === null ? 0.35 : 1 }}
         />
       </div>
+    </div>
+  );
+}
+
+// Crédits de réponses automatiques : solde et recharge
+function ReplyCreditRow({ credit, used, pack }: { credit: number; used: number; pack: BillingOverview["replyPack"] }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl px-3.5 py-3" style={{ background: theme.goldSoft }}>
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: theme.bgCard }}>
+        <Coins size={17} style={{ color: theme.goldDark }} />
+      </span>
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="text-sm font-semibold" style={{ color: theme.text }}>
+          Crédits de réponses : {fmtNum(credit)}
+        </p>
+        <p className="text-[12px]" style={{ color: theme.textMuted }}>
+          {fmtAr(pack.price)} les {fmtNum(pack.size)} réponses, sans expiration. Utilisés après le quota IA du mois, ou si l'abonnement est terminé
+          {used > 0 ? ` · ${fmtNum(used)} utilisés ce mois-ci` : ""}.
+        </p>
+      </div>
+      <Button size="sm" icon={Coins} onClick={() => replyCredits.open()} className="w-full justify-center sm:w-auto">
+        Recharger
+      </Button>
     </div>
   );
 }
@@ -471,6 +496,7 @@ function PlanCard({
         {FEATURE_LABELS.map(([f, l]) => (
           <Line key={f} ok={plan.features[f]}>{l}</Line>
         ))}
+        <Line ok={plan.teamSeats !== 0}>{plan.teamSeats ? `Équipe : ${plan.teamSeats} membres avec droits` : "Équipe et droits par membre"}</Line>
         {EXTRAS[plan.id]?.map((x) => <Line key={x} ok>{x}</Line>)}
       </ul>
 
@@ -546,7 +572,11 @@ function PaymentHistory({ payments, onVerify }: { payments: PaymentRow[]; onVeri
           >
             <div className="min-w-0 flex-1 basis-48">
               <p className="text-sm font-medium" style={{ color: theme.text }}>
-                {p.kind === "LIVE_HOURS" ? `Live Manager · ${p.liveHours} h` : `${p.planName} · ${p.period ? PERIOD_LABEL[p.period] : ""}`}
+                {p.kind === "LIVE_HOURS"
+                  ? `Live Manager · ${p.liveHours} h`
+                  : p.kind === "REPLY_CREDITS"
+                    ? `Réponses automatiques · ${fmtNum(p.replyCredits ?? 0)}`
+                    : `${p.planName} · ${p.period ? PERIOD_LABEL[p.period] : ""}`}
               </p>
               <p className="truncate text-xs" style={{ color: theme.textMuted }}>
                 {fmtDate(p.paidAt ?? p.createdAt)}

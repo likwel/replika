@@ -23,6 +23,10 @@ const CATEGORY_OF: Record<string, HistoryCategory> = {
   LEAD_CONTACTED: "message",
 };
 
+// Événements personnels du propriétaire (connexions, sécurité, profil) : jamais montrés aux membres de son équipe
+const PRIVATE_ACTIONS = ["REGISTER", "LOGIN", "LOGOUT_ALL", "PASSWORD_CHANGED", "PASSWORD_RESET", "EMAIL_CHANGED", "PROFILE_UPDATED"];
+const privateFilter = (hide: boolean) => (hide ? { NOT: [{ action: { in: PRIVATE_ACTIONS } }, { action: { startsWith: "TWO_FACTOR" } }] } : {});
+
 const ACTIONS_BY_CATEGORY: Record<HistoryCategory, string[]> = {
   message: Object.keys(CATEGORY_OF).filter((a) => CATEGORY_OF[a] === "message"),
   connexion: Object.keys(CATEGORY_OF).filter((a) => CATEGORY_OF[a] === "connexion"),
@@ -44,6 +48,7 @@ export interface HistoryEntry {
   account: HistoryAccount | null;
   // extrait utile : contenu du message, nom du lead, titre du live, texte programmé…
   context: string | null;
+  actorName: string | null; // membre de l'équipe à l'origine de l'action
 }
 
 const asMeta = (m: unknown) => (m && typeof m === "object" ? (m as Record<string, unknown>) : null);
@@ -52,7 +57,7 @@ const snippet = (s: string, max = 100) => (s.length > max ? `${s.slice(0, max - 
 
 // Enrichit un lot de journaux : résout le compte (Page/Instagram) et un court extrait de contexte,
 // à partir des identifiants portés par chaque type d'action (messageId, leadId, sessionId, accountId direct).
-async function enrich(rows: Array<{ id: string; action: string; meta: unknown; createdAt: Date }>): Promise<HistoryEntry[]> {
+async function enrich(rows: Array<{ id: string; action: string; meta: unknown; createdAt: Date; actorName: string | null }>): Promise<HistoryEntry[]> {
   const metas = new Map(rows.map((r) => [r.id, asMeta(r.meta)]));
   const directAccountIds = new Set<string>();
   const messageIds = new Set<string>();
@@ -131,15 +136,18 @@ async function enrich(rows: Array<{ id: string; action: string; meta: unknown; c
       meta: m ?? null,
       account,
       context,
+      actorName: r.actorName,
     };
   });
 }
 
 export const historyService = {
-  async list(userId: string, q: ListQuery): Promise<{ items: HistoryEntry[]; nextCursor: string | null }> {
+  // hidePrivate : consultation par un membre de l'équipe
+  async list(userId: string, q: ListQuery, hidePrivate = false): Promise<{ items: HistoryEntry[]; nextCursor: string | null }> {
     const rows = await prisma.activityLog.findMany({
       where: {
         userId,
+        ...privateFilter(hidePrivate),
         ...(q.category ? { action: { in: ACTIONS_BY_CATEGORY[q.category] } } : {}),
         ...(q.before ? { createdAt: { lt: new Date(q.before) } } : {}),
       },
@@ -153,11 +161,12 @@ export const historyService = {
   },
 
   // Nombre d'entrées par catégorie, pour les compteurs des onglets (sans tout charger)
-  async counts(userId: string) {
+  async counts(userId: string, hidePrivate = false) {
+    const hide = privateFilter(hidePrivate);
     const [total, message, connexion] = await Promise.all([
-      prisma.activityLog.count({ where: { userId } }),
+      prisma.activityLog.count({ where: { userId, ...hide } }),
       prisma.activityLog.count({ where: { userId, action: { in: ACTIONS_BY_CATEGORY.message } } }),
-      prisma.activityLog.count({ where: { userId, action: { in: ACTIONS_BY_CATEGORY.connexion } } }),
+      prisma.activityLog.count({ where: { userId, ...hide, action: { in: ACTIONS_BY_CATEGORY.connexion } } }),
     ]);
     return { total, message, connexion };
   },

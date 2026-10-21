@@ -1,3 +1,4 @@
+import type { Permissions } from "./team.api";
 import { api, BASE_URL } from "./api";
 import type { SubscriptionSummary } from "./billing.api";
 
@@ -15,6 +16,15 @@ export interface User {
   accentTheme: string; // "whatsapp" | "classic"
   subscription: SubscriptionSummary; // formule, échéance, limites
   twoFactorMethod: TwoFactorMethod | null; // validation en deux étapes (null : désactivée)
+  workspace?: WorkspaceInfo;
+}
+
+// Espace de travail : le sien, ou celui d'une équipe rejointe (current), avec les droits du membre
+export interface WorkspaceInfo {
+  current: { ownerId: string; space: string; role: string; roleLabel: string; permissions: Permissions } | null;
+  unavailable: string | null; // espace ouvert devenu inaccessible (accès retiré, formule sans équipe…)
+  spaces: Array<{ ownerId: string; space: string; roleLabel: string }>;
+  invitations: number; // invitations en attente
 }
 
 export type TwoFactorMethod = "EMAIL" | "TOTP";

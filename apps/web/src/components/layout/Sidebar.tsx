@@ -8,6 +8,8 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { MENUS } from "@/data/menus";
 import { getRenderedSub } from "@/lib/menu";
 import { useOnline } from "@/hooks/useOnline";
+import { useAccess } from "@/hooks/useAccess";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import type { Menu } from "@/types";
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -31,6 +33,7 @@ interface Props {
 export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCollapse }: Props) {
   const online = useOnline();
   const isAdmin = useAuth().user?.role === "ADMIN";
+  const { can, canMenu } = useAccess(); // membre d'équipe : seuls les modules autorisés apparaissent
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([active]));
 
   // Le menu ouvert est toujours déplié
@@ -45,13 +48,13 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
       return next;
     });
 
-  const byId = (id: string) => MENUS.find((m) => m.id === id && !m.hidden);
+  const byId = (id: string) => MENUS.find((m) => m.id === id && !m.hidden && canMenu(m.id));
   const listed = new Set(SECTIONS.flatMap((s) => s.ids));
-  const others = MENUS.filter((m) => !m.hidden && !listed.has(m.id));
+  const others = MENUS.filter((m) => !m.hidden && !listed.has(m.id) && canMenu(m.id));
   const sections = [
     ...SECTIONS.map((s) => ({ label: s.label, menus: s.ids.map(byId).filter((m): m is Menu => Boolean(m)) })),
     ...(others.length ? [{ label: "Autres", menus: others }] : []),
-  ];
+  ].filter((s) => s.menus.length);
 
   return (
     <aside className="group flex h-full w-[248px] flex-col" style={{ background: theme.sidebar, borderRight: `1px solid ${theme.border}` }}>
@@ -71,10 +74,12 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
         </button>
       </div>
 
+      <WorkspaceSwitcher onOpenTeam={() => onNavigate("set", 3)} />
+
       {/* Accès rapides */}
       <div className="flex flex-col gap-px px-2">
         <Row icon={Search} label="Rechercher" onClick={onOpenSearch} trailing={<Kbd>{IS_MAC ? "⌘K" : "Ctrl K"}</Kbd>} />
-        <Row
+        {can("inbox") && <Row
           icon={Inbox}
           label="À traiter"
           active={active === "hub" && sub === 2}
@@ -86,8 +91,8 @@ export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCo
               </span>
             )
           }
-        />
-        <Row icon={History} label="Historique" active={active === "hist"} onClick={() => onNavigate("hist", 0)} />
+        />}
+        {can("history") && <Row icon={History} label="Historique" active={active === "hist"} onClick={() => onNavigate("hist", 0)} />}
       </div>
 
       {/* Arborescence */}

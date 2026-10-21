@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CornerDownLeft, Search } from "lucide-react";
 import { theme } from "@/theme";
 import { MENUS } from "@/data/menus";
+import { useAccess } from "@/hooks/useAccess";
 import { searchMenus, type MenuSearchHit } from "@/lib/menu";
 
 interface Props {
@@ -19,7 +20,9 @@ export function CommandPalette({ open, onClose, onNavigate }: Props) {
   const [index, setIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const results = useMemo(() => (query.trim() ? searchMenus(query) : ALL_PAGES), [query]);
+  const { canMenu } = useAccess();
+  // Membre d'équipe : seuls les modules autorisés sont proposés
+  const results = useMemo(() => (query.trim() ? searchMenus(query) : ALL_PAGES).filter((h) => canMenu(h.menuId, h.index)), [query, canMenu]);
 
   useEffect(() => {
     if (open) {

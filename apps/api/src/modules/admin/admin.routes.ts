@@ -138,6 +138,11 @@ router.patch(
 );
 
 router.post(
+  "/users/:id/reply-credits",
+  validate(z.object({ credits: z.number().int().min(1, "1 crédit minimum").max(100_000, "100 000 crédits maximum") })),
+  catchAsync(async (req: Request, res) => ok(res, await adminService.addReplyCredits(req.user!.userId, req.params.id, req.body.credits))),
+);
+router.post(
   "/users/:id/live-hours",
   validate(z.object({ hours: z.number().int().min(1, "1 heure minimum").max(500, "500 heures maximum") })),
   catchAsync(async (req: Request, res) => ok(res, await adminService.addLiveHours(req.user!.userId, req.params.id, req.body.hours))),

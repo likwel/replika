@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { BRAND_GRADIENT } from "@/components/ui/Logo";
 import { useAuth } from "@/context/AuthContext";
-import { fmtHours, PAYMENT_METHOD_LABEL, type PaymentRow, type SubscriptionSummary } from "@/lib/billing.api";
+import { fmtHours, purchaseLabel, PAYMENT_METHOD_LABEL, type PaymentRow, type SubscriptionSummary } from "@/lib/billing.api";
 import { paymentSuccess, usePaymentSuccess } from "@/lib/paymentSuccess";
 import { fmtAr, fmtDate, fmtNum } from "@/hooks/usePlan";
 
@@ -32,6 +32,9 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
   const primary = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const hours = p.kind === "LIVE_HOURS";
+  const credits = p.kind === "REPLY_CREDITS";
+  const pack = hours || credits; // achat à l'unité : la formule ne change pas
+  const next = hours ? { path: "/app/lives", label: "Aller au Live Manager" } : credits ? { path: "/app/automatisation", label: "Aller à l'automatisation" } : null;
   const firstName = user?.name.split(" ")[0] ?? "";
   const method = p.paymentMethod ? PAYMENT_METHOD_LABEL[p.paymentMethod] ?? p.paymentMethod : null;
   const periodEnd = p.appliedPeriodEnd ?? s.periodEnd;
@@ -111,7 +114,11 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
           </h2>
           <p className="animate-success-rise mt-1 text-[14px]" style={{ ...rise(1), color: theme.textMuted }}>
             {firstName ? `Merci ${firstName} ! ` : "Merci ! "}
-            {hours ? `Vos ${p.liveHours} h de Live Manager sont disponibles.` : `Votre formule ${p.planName} est active.`}
+            {hours
+              ? `Vos ${p.liveHours} h de Live Manager sont disponibles.`
+              : credits
+                ? `Vos ${fmtNum(p.replyCredits ?? 0)} réponses automatiques sont disponibles.`
+                : `Votre formule ${p.planName} est active.`}
           </p>
 
           {/* Montant */}
@@ -129,9 +136,11 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
             className="animate-success-rise mt-5 rounded-2xl px-4 py-1 text-left text-[13px]"
             style={{ ...rise(3), background: theme.bg, border: `1px solid ${theme.border}` }}
           >
-            <Row label="Achat">{hours ? `${p.liveHours} h de Live Manager` : `Formule ${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`}</Row>
+            <Row label="Achat">{purchaseLabel(p)}</Row>
             {hours ? (
               <Row label="Crédit d'heures">{fmtHours(s.liveCreditSeconds ?? 0)} disponibles</Row>
+            ) : credits ? (
+              <Row label="Crédits de réponses">{fmtNum(s.replyCredits ?? 0)} disponibles</Row>
             ) : (
               periodEnd && (
                 <Row label="Valable jusqu'au">
@@ -152,7 +161,7 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
           </dl>
 
           {/* Ce que la formule débloque */}
-          {!hours && (
+          {!pack && (
             <div className="animate-success-rise mt-4 grid grid-cols-3 gap-2" style={rise(4)}>
               <Perk icon={Plug} value={s.limits.pages === null ? "∞" : String(s.limits.pages)} label="Pages" />
               <Perk icon={Sparkles} value={s.limits.aiReplies === null ? "∞" : fmtNum(s.limits.aiReplies)} label="réponses IA / mois" />
@@ -165,12 +174,12 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
               ref={primary}
               onClick={() => {
                 paymentSuccess.close();
-                if (hours && !pathname.startsWith("/app/lives")) nav("/app/lives");
+                if (next && !pathname.startsWith(next.path)) nav(next.path);
               }}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
               style={{ background: BRAND_GRADIENT, color: "#fff", boxShadow: "0 6px 18px rgba(0,128,105,0.3)" }}
             >
-              {hours ? "Aller au Live Manager" : "C'est parti"} <ArrowRight size={16} />
+              {next ? next.label : "C'est parti"} <ArrowRight size={16} />
             </button>
             {!pathname.startsWith("/app/parametres") && (
               <button
@@ -184,7 +193,7 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
                 Voir la facturation
               </button>
             )}
-            {hours && pathname.startsWith("/app/parametres") && (
+            {pack && pathname.startsWith("/app/parametres") && (
               <button onClick={() => paymentSuccess.close()} className="h-9 rounded-xl text-[13px] font-medium hover:bg-black/5" style={{ color: theme.textMuted }}>
                 Fermer
               </button>

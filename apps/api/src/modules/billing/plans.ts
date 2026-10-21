@@ -18,6 +18,7 @@ export interface PlanDef {
   monthly: number | null; // Ar ; null = sur devis
   limits: Limits;
   features: Record<Feature, boolean>;
+  teamSeats: number | null; // membres d'équipe invitables (0 = pas d'équipe, null = illimité)
   purchasable: boolean; // payable en ligne
 }
 
@@ -30,6 +31,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     monthly: 49_000,
     limits: { pages: 2, aiReplies: 1_000, liveHours: 30 },
     features: { postAiRules: false, leads: false, marketplace: false, advancedStats: false },
+    teamSeats: 0,
     purchasable: true,
   },
   PRO: {
@@ -38,6 +40,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     monthly: 129_000,
     limits: { pages: 5, aiReplies: 5_000, liveHours: 90 },
     features: PRO_FEATURES,
+    teamSeats: 0,
     purchasable: true,
   },
   BUSINESS: {
@@ -46,6 +49,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     monthly: 249_000,
     limits: { pages: 15, aiReplies: 15_000, liveHours: 300 },
     features: PRO_FEATURES,
+    teamSeats: 5,
     purchasable: true,
   },
   AGENCY: {
@@ -54,6 +58,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     monthly: null,
     limits: { pages: null, aiReplies: null, liveHours: null },
     features: PRO_FEATURES,
+    teamSeats: null,
     purchasable: false,
   },
 };
@@ -95,6 +100,7 @@ export function publicPlans() {
       annualMonthly: p.monthly !== null ? annualMonthly(p.monthly) : null,
       limits: p.limits,
       features: p.features,
+      teamSeats: p.teamSeats,
       purchasable: p.purchasable,
     };
   });

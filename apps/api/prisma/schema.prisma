@@ -59,8 +59,37 @@ model User {
   subscription         Subscription?
   payments             Payment[]
   usages               Usage[]
+  // Équipe : membres invités dans cet espace, espaces rejoints, et espace ouvert en ce moment (null = le sien)
+  teamMembers          TeamMember[]         @relation("TeamOwner")
+  memberships          TeamMember[]         @relation("TeamMembership")
+  activeOwnerId        String?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
+}
+
+// Membre d'une équipe : collaborateur invité par le propriétaire d'un espace, avec ses droits module par module
+model TeamMember {
+  id              String    @id @default(cuid())
+  owner           User      @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId         String
+  user            User?     @relation("TeamMembership", fields: [userId], references: [id], onDelete: Cascade)
+  userId          String? // compte du membre, relié quand il accepte l'invitation
+  email           String // adresse invitée (minuscules)
+  name            String? // nom indiqué à l'invitation
+  role            String    @default("CUSTOM") // préréglage affiché : MANAGER, AGENT, LIVE, VIEWER, CUSTOM
+  permissions     Json // { module: "read" | "write" } ; module absent = aucun accès
+  status          String    @default("INVITED") // INVITED, ACTIVE, DISABLED
+  inviteTokenHash String?   @unique // empreinte SHA-256 du lien d'invitation (le lien lui-même n'est jamais stocké)
+  inviteExpiresAt DateTime?
+  joinedAt        DateTime?
+  lastActiveAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([ownerId, email])
+  @@unique([ownerId, userId])
+  @@index([userId])
+  @@index([email])
 }
 
 model SocialAccount {
@@ -75,6 +104,11 @@ model SocialAccount {
   lastSyncedAt        DateTime? // curseur du polling des commentaires : seuls les éléments plus récents sont traités
   dmSyncedAt          DateTime? // curseur du polling des messages privés (avance indépendamment)
   syncError           String? // dernière erreur de relève (ex. permission manquante), null si tout va bien
+  // Dernière lecture du jeton (debug_token, ou autorisations accordées à la connexion) : gardée 24 h pour
+  // ménager le plafond d'appels de l'app Facebook. tokenCheckedAt null = à vérifier.
+  tokenScopes         String[]             @default([])
+  tokenValid          Boolean?
+  tokenCheckedAt      DateTime?
   // Assistant IA (propre à chaque compte : chaque Page est une activité différente)
   aiEnabled           Boolean              @default(false)
   aiAutoSend          Boolean              @default(false) // sinon : suggestion à valider
@@ -157,7 +191,9 @@ model ActivityLog {
   action    String
   meta      Json?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  userId    String // espace concerné (propriétaire)
+  actorId   String? // membre de l'équipe à l'origine de l'action (null = le propriétaire ou un automatisme)
+  actorName String? // son nom au moment de l'action
   createdAt DateTime @default(now())
 }
 
@@ -523,6 +559,7 @@ model Subscription {
   trialEndsAt       DateTime? // posé une fois à l'inscription
   customLimits      Json? // Agence : { pages, aiReplies, liveHours } ; null = illimité
   liveCreditSeconds Int              @default(0) // heures de live achetées à l'unité, utilisées après le quota ou sans abonnement
+  replyCredits      Int              @default(0) // réponses automatiques achetées en packs, utilisées après le quota IA ou sans abonnement
   note              String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
@@ -538,6 +575,7 @@ model Payment {
   plan              PlanId? // SUBSCRIPTION uniquement
   period            BillingPeriod? // SUBSCRIPTION uniquement
   liveHours         Int? // LIVE_HOURS : heures achetées
+  replyCredits      Int? // REPLY_CREDITS : réponses achetées
   amount            Int // Ar, calculé par le serveur
   status            PaymentStatus  @default(PENDING)
   paymentLink       String?
@@ -564,16 +602,17 @@ model Payment {
 
 // Consommation mensuelle (mois calendaire, heure de Madagascar : "2026-10")
 model Usage {
-  id             String    @id @default(cuid())
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  month          String
-  aiReplies      Int       @default(0)
-  liveSeconds    Int       @default(0)
-  liveCreditUsed Int       @default(0) // secondes prises sur les heures achetées
-  aiQuotaHitAt   DateTime? // journalise « quota atteint » une seule fois par mois
-  liveQuotaHitAt DateTime?
-  updatedAt      DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  month           String
+  aiReplies       Int       @default(0)
+  liveSeconds     Int       @default(0)
+  liveCreditUsed  Int       @default(0) // secondes prises sur les heures achetées
+  replyCreditUsed Int       @default(0) // réponses prises sur les crédits achetés
+  aiQuotaHitAt    DateTime? // journalise « quota atteint » une seule fois par mois
+  liveQuotaHitAt  DateTime?
+  updatedAt       DateTime  @updatedAt
 
   @@unique([userId, month])
 }
@@ -599,6 +638,7 @@ enum SubscriptionKind {
 enum PaymentKind {
   SUBSCRIPTION // période d'une formule
   LIVE_HOURS // heures de Live Manager à l'unité
+  REPLY_CREDITS // packs de réponses automatiques
 }
 
 enum PaymentStatus {

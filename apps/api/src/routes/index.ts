@@ -18,6 +18,7 @@ import marketplaceRoutes from "../modules/marketplace/marketplace.routes.js";
 import billingRoutes from "../modules/billing/billing.routes.js";
 import adminRoutes from "../modules/admin/admin.routes.js";
 import contactRoutes from "../modules/contact/contact.routes.js";
+import teamRoutes from "../modules/team/team.routes.js";
 
 const router = Router();
 
@@ -41,5 +42,6 @@ router.use("/marketplace", marketplaceRoutes);
 router.use("/billing", billingRoutes);
 router.use("/admin", adminRoutes);
 router.use("/contact", contactRoutes);
+router.use("/team", teamRoutes);
 
 export default router;

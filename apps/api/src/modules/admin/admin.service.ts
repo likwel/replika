@@ -169,8 +169,8 @@ export const adminService = {
       prisma.payment.groupBy({ by: ["paymentMethod"], where: { status: "PAID", paidAt: { gte: since } }, _sum: { amount: true }, _count: true }),
       prisma.payment.aggregate({ where: { status: "PENDING" }, _sum: { amount: true }, _count: true }),
       prisma.payment.count({ where: { status: { in: ["FAILED", "EXPIRED"] }, createdAt: { gte: since } } }),
-      prisma.usage.aggregate({ where: { month }, _sum: { aiReplies: true, liveSeconds: true, liveCreditUsed: true } }),
-      prisma.subscription.aggregate({ _sum: { liveCreditSeconds: true } }),
+      prisma.usage.aggregate({ where: { month }, _sum: { aiReplies: true, liveSeconds: true, liveCreditUsed: true, replyCreditUsed: true } }),
+      prisma.subscription.aggregate({ _sum: { liveCreditSeconds: true, replyCredits: true } }),
       prisma.socialAccount.groupBy({ by: ["platform", "isActive"], _count: true }),
       prisma.socialAccount.count({ where: { aiEnabled: true, isActive: true } }),
       prisma.socialAccount.groupBy({ by: ["aiLanguage"], where: { aiEnabled: true }, _count: true }),
@@ -256,6 +256,8 @@ export const adminService = {
         liveSeconds: usage._sum.liveSeconds ?? 0,
         liveCreditUsed: usage._sum.liveCreditUsed ?? 0,
         liveCreditLeft: creditLeft._sum.liveCreditSeconds ?? 0,
+        replyCreditUsed: usage._sum.replyCreditUsed ?? 0,
+        replyCreditLeft: creditLeft._sum.replyCredits ?? 0,
         liveActive,
         pages: { active: count("FACEBOOK", true), total: count("FACEBOOK") },
         instagram: { active: count("INSTAGRAM", true), total: count("INSTAGRAM") },
@@ -280,6 +282,7 @@ export const adminService = {
       system: {
         papi: { configured: isPapiConfigured(), testMode: env.papi.testMode, notifications: Boolean(notificationUrl()) },
         liveHourPrice: env.liveHourPrice,
+        replyPack: env.replyPack,
         mail: mailStatus(),
         pollSeconds: env.autoReply.pollSeconds,
         webhookConfigured: Boolean(env.fb.webhookVerifyToken),
@@ -359,6 +362,7 @@ export const adminService = {
           aiLimit: ent.limits.aiReplies,
           liveSeconds: use?.liveSeconds ?? 0,
           liveCreditSeconds: u.subscription?.liveCreditSeconds ?? 0,
+          replyCredits: u.subscription?.replyCredits ?? 0,
           totalPaid: paid.find((p) => p.userId === u.id)?._sum.amount ?? 0,
           lastActivity: lastSeen.find((l) => l.userId === u.id)?._max.createdAt ?? null,
         };
@@ -390,6 +394,7 @@ export const adminService = {
         planName: p.plan ? PLANS[p.plan].name : null,
         period: p.period,
         liveHours: p.liveHours,
+        replyCredits: p.replyCredits,
         amount: p.amount,
         fee: p.status === "PAID" ? feeOf(rates, p) : null,
         feeEstimated: p.status === "PAID" && (p.fee === null || p.feeEstimated),
@@ -465,5 +470,15 @@ export const adminService = {
     await prisma.activityLog.create({ data: { userId, action: "LIVE_HOURS_GIFTED", meta: { by: adminId, hours } } });
     invalidateEntitlements(userId);
     return { liveCreditSeconds: sub.liveCreditSeconds + hours * 3600 };
+  },
+
+  // Crédits de réponses offerts (geste commercial, compensation)
+  async addReplyCredits(adminId: string, userId: string, credits: number) {
+    const sub = await prisma.subscription.findUnique({ where: { userId } });
+    if (!sub) throw new AppError("Utilisateur sans abonnement", 404);
+    await prisma.subscription.update({ where: { userId }, data: { replyCredits: { increment: credits } } });
+    await prisma.activityLog.create({ data: { userId, action: "REPLY_CREDITS_GIFTED", meta: { by: adminId, credits } } });
+    invalidateEntitlements(userId);
+    return { replyCredits: sub.replyCredits + credits };
   },
 };

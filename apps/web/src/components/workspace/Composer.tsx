@@ -4,6 +4,7 @@ import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ApiError } from "@/lib/api";
+import { offerReplyCredits } from "@/lib/replyCredits";
 import type { AiReply } from "@/lib/ai.api";
 
 const MENTION_LIMIT = 6;
@@ -124,6 +125,7 @@ export function Composer({
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Suggestion impossible.");
+      offerReplyCredits(e);
     } finally {
       setBusy(null);
     }

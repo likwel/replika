@@ -54,7 +54,7 @@ export const PLAN_DEFS = [
       "Tout Pro, plus :",
       "Mise en place accompagnée : règles et assistant IA configurés avec vous",
       "Support prioritaire",
-      "Équipe et rôles (bientôt)",
+      "Équipe : 5 membres, droits par module",
     ],
     hl: false,
   },
@@ -65,7 +65,7 @@ export const PLAN_DEFS = [
     tagline: "Pour les agences qui gèrent plusieurs marques",
     quota: { pages: null, aiReplies: null, liveHours: null },
     limits: { pages: "Pages illimitées", ai: "Volume IA sur mesure", live: "Lives illimités" },
-    feats: ["Tout Business, plus :", "Tarif dégressif par marque gérée", "Accompagnement dédié"],
+    feats: ["Tout Business, plus :", "Membres d'équipe illimités", "Tarif dégressif par marque gérée", "Accompagnement dédié"],
     hl: false,
   },
 ] as const;

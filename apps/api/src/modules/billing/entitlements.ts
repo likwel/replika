@@ -21,6 +21,8 @@ export interface Entitlements {
   limits: Limits;
   features: Record<Feature, boolean>; // modules de la formule, consultables même expirée
   liveCreditSeconds: number; // heures de live achetées à l'unité
+  replyCredits: number; // réponses automatiques achetées en packs
+  teamSeats: number | null; // membres d'équipe permis (0 = pas d'équipe, null = illimité)
   admin: boolean;
   blocked: boolean; // compte suspendu, banni ou supprimé par un administrateur : plus aucune automatisation
 }
@@ -46,7 +48,7 @@ function customLimits(raw: unknown): Partial<Limits> {
 export function computeEntitlements(sub: Subscription | null, role: string, now = new Date(), moderation?: Moderation | null): Entitlements {
   const ent = baseEntitlements(sub, role, now);
   // Compte bloqué par un administrateur : formule conservée (affichage) mais rien ne tourne
-  if (moderation && isBlocked(moderation, now)) return { ...ent, active: false, liveCreditSeconds: 0, blocked: true };
+  if (moderation && isBlocked(moderation, now)) return { ...ent, active: false, liveCreditSeconds: 0, replyCredits: 0, blocked: true };
   return ent;
 }
 
@@ -65,6 +67,8 @@ function baseEntitlements(sub: Subscription | null, role: string, now: Date): En
       limits: agency.limits,
       features: agency.features,
       liveCreditSeconds: sub?.liveCreditSeconds ?? 0,
+      replyCredits: sub?.replyCredits ?? 0,
+      teamSeats: agency.teamSeats,
       admin: true,
       blocked: false,
     };
@@ -84,6 +88,8 @@ function baseEntitlements(sub: Subscription | null, role: string, now: Date): En
     limits: { ...plan.limits, ...customLimits(sub?.customLimits) },
     features: plan.features,
     liveCreditSeconds: sub?.liveCreditSeconds ?? 0,
+    replyCredits: sub?.replyCredits ?? 0,
+    teamSeats: plan.teamSeats,
     admin: false,
     blocked: false,
   };
@@ -122,6 +128,8 @@ export function summarize(ent: Entitlements) {
     limits: ent.limits,
     features: ent.features,
     liveCreditSeconds: ent.liveCreditSeconds,
+    replyCredits: ent.replyCredits,
+    teamSeats: ent.teamSeats,
     admin: ent.admin,
   };
 }

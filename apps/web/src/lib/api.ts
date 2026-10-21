@@ -2,6 +2,8 @@ import axios, { AxiosError } from "axios";
 
 export const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
+export const WORKSPACE_UNAVAILABLE = "suiteflow:workspace-unavailable";
+
 export class ApiError extends Error {
   status: number;
   code?: string; // identifiant stable renvoyé par l'API (ex. NO_CATALOG)
@@ -24,6 +26,8 @@ client.interceptors.response.use(
   (error: AxiosError<{ message?: string; code?: string }>) => {
     const status = error.response?.status ?? 0;
     const message = error.response?.data?.message ?? "Une erreur est survenue";
+    // Espace d'équipe devenu inaccessible (membre retiré ou suspendu) : l'application relit la session
+    if (error.response?.data?.code === "WORKSPACE_UNAVAILABLE") window.dispatchEvent(new CustomEvent(WORKSPACE_UNAVAILABLE));
     return Promise.reject(new ApiError(message, status, error.response?.data?.code));
   }
 );

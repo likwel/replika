@@ -6,6 +6,8 @@ import { generateReplyForMessage, type AiReply } from "../ai/ai.service.js";
 import { findActiveSessionForPost, handleLiveDirectMessage, ingestLiveComment } from "../lives/live.service.js";
 import { detectLeadFromMessage } from "../leads/lead.service.js";
 import { getEntitlements, type Entitlements } from "../billing/entitlements.js";
+import { consumeReplyCredit, returnReplyCredit } from "../billing/usage.js";
+import { usageMonth } from "../billing/billing.logic.js";
 import { AppError } from "../../utils/AppError.js";
 import {
   candidateRules,
@@ -94,6 +96,9 @@ interface Delivery {
   intent?: string | null;
 }
 
+const NO_CREDIT =
+  "Abonnement terminé et crédits de réponses épuisés : rechargez des crédits ou renouvelez votre formule pour reprendre les réponses automatiques.";
+
 // Enregistre la réponse, et la publie si l'envoi automatique est actif
 async function deliver(account: SocialAccount, msg: SocialMessage, d: Delivery) {
   const base = {
@@ -106,9 +111,19 @@ async function deliver(account: SocialAccount, msg: SocialMessage, d: Delivery) 
   // Validation manuelle : la réponse attend dans la file
   if (!d.autoSend) return prisma.socialMessage.update({ where: { id: msg.id }, data: base });
 
+  // Abonnement terminé : chaque réponse par mots-clés envoyée prend un crédit de réponse
+  // (une réponse IA a déjà été décomptée à sa rédaction)
+  const month = usageMonth();
+  let charged = false;
+  if (!d.aiGenerated && !(await getEntitlements(account.userId)).active) {
+    charged = await consumeReplyCredit(account.userId, month);
+    if (!charged) return prisma.socialMessage.update({ where: { id: msg.id }, data: { ...base, error: NO_CREDIT } });
+  }
+
   try {
     await sendReply(account, msg, d.reply);
   } catch (e) {
+    if (charged) await returnReplyCredit(account.userId, month); // rien n'est parti : crédit rendu
     const error = `Envoi échoué : ${graphErrorMessage(e)}`;
     await prisma.activityLog.create({
       data: { userId: account.userId, action: "AUTO_REPLY_FAILED", meta: { messageId: msg.id, error } },
@@ -246,7 +261,8 @@ export async function handleIncoming(account: SocialAccount, ev: IncomingEvent) 
 }
 
 // Réponse, dans cet ordre : règles à mots-clés → assistant IA du compte → réponse par défaut (« tout message »).
-// Abonnement expiré : le message est enregistré (il arrive dans « À traiter ») mais rien n'est automatisé.
+// Abonnement expiré : les réponses continuent tant qu'il reste des crédits de réponses (une réponse = un crédit) ;
+// sinon le message est enregistré (il arrive dans « À traiter ») mais rien n'est automatisé.
 async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: Entitlements) {
   if (!ev.content.trim()) return null;
 
@@ -313,7 +329,8 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
     where: { id: account.userId },
     select: { autoReplyEnabled: true },
   });
-  if (!ent.active || !user?.autoReplyEnabled) return msg;
+  const repliesOk = ent.active || ent.replyCredits > 0;
+  if (!repliesOk || !user?.autoReplyEnabled) return msg;
 
   const rules = await prisma.automationRule.findMany({
     where: { userId: account.userId, isActive: true },

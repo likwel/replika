@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, Clock, Plug, Radio, Sparkles, Zap } from "lucide-react";
+import { ChevronDown, Clock, Coins, Plug, Radio, Sparkles, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { usePlan, fmtNum } from "@/hooks/usePlan";
 import { billingApi, fmtHours, type BillingOverview } from "@/lib/billing.api";
 import { liveHours } from "@/lib/liveHours";
+import { replyCredits } from "@/lib/replyCredits";
 import { BILLING_UPDATED } from "@/lib/payment";
 
 interface Row {
@@ -16,11 +17,13 @@ interface Row {
   limit: number | null;
   format: (n: number) => string;
   consumable: boolean; // compte dans le pourcentage restant (les Pages ne se consomment pas)
+  credit?: number; // acheté à l'unité, dans la même unité : prolonge le volume restant
 }
 
 const hours = (n: number) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h`;
 
-// Badge d'en-tête : part restante de la formule (la plus entamée des deux quotas mensuels), détail au clic
+// Badge d'en-tête : part restante de la formule (la plus entamée des deux quotas mensuels, crédits achetés
+// compris : 0 % veut dire que plus rien ne peut partir), détail au clic
 export function UsageBadge() {
   const { subscription: sub } = usePlan();
   const nav = useNavigate();
@@ -57,12 +60,12 @@ export function UsageBadge() {
   const u = data.usage;
   const rows: Row[] = [
     { icon: Plug, label: "Pages actives", used: u.pages, limit: sub.limits.pages, format: fmtNum, consumable: false },
-    { icon: Sparkles, label: "Réponses IA ce mois-ci", used: u.aiReplies, limit: sub.limits.aiReplies, format: fmtNum, consumable: true },
-    { icon: Radio, label: "Heures de live ce mois-ci", used: u.liveSeconds / 3600, limit: sub.limits.liveHours, format: hours, consumable: true },
+    { icon: Sparkles, label: "Réponses IA ce mois-ci", used: u.aiReplies, limit: sub.limits.aiReplies, format: fmtNum, consumable: true, credit: sub.replyCredits ?? 0 },
+    { icon: Radio, label: "Heures de live ce mois-ci", used: u.liveSeconds / 3600, limit: sub.limits.liveHours, format: hours, consumable: true, credit: (sub.liveCreditSeconds ?? 0) / 3600 },
   ];
   const left = rows
     .filter((r) => r.consumable && r.limit)
-    .map((r) => Math.max(0, 1 - r.used / r.limit!));
+    .map((r) => Math.min(1, Math.max(0, r.limit! - r.used + (r.credit ?? 0)) / r.limit!));
   const unlimited = left.length === 0;
   const pct = unlimited ? 100 : Math.round(Math.min(...left) * 100);
   const expired = sub.status === "EXPIRED";
@@ -122,14 +125,22 @@ export function UsageBadge() {
               );
             })}
           </ul>
-          <div className="mt-3 flex items-center justify-between gap-2 rounded-lg px-2.5 py-2" style={{ background: theme.bg }}>
-            <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }}>
-              <Clock size={13} /> Heures de live achetées
-            </span>
-            <span className="text-[12.5px] font-semibold" style={{ color: theme.text }}>{fmtHours(sub.liveCreditSeconds ?? 0)}</span>
+          <div className="mt-3 flex flex-col gap-0.5 rounded-lg px-2.5 py-1.5" style={{ background: theme.bg }}>
+            <div className="flex items-center justify-between gap-2 py-0.5">
+              <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }}>
+                <Coins size={13} /> Crédits de réponses
+              </span>
+              <span className="text-[12.5px] font-semibold tabular-nums" style={{ color: theme.text }}>{fmtNum(sub.replyCredits ?? 0)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-2 py-0.5">
+              <span className="flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }}>
+                <Clock size={13} /> Heures de live achetées
+              </span>
+              <span className="text-[12.5px] font-semibold tabular-nums" style={{ color: theme.text }}>{fmtHours(sub.liveCreditSeconds ?? 0)}</span>
+            </div>
           </div>
           <p className="mt-3 text-[11.5px]" style={{ color: theme.textMuted }}>
-            Les volumes repartent à zéro le 1er du mois. Les réponses par mots-clés sont illimitées.
+            Les volumes repartent à zéro le 1er du mois. Les crédits achetés n'expirent pas.
           </p>
 
           <Button
@@ -143,17 +154,32 @@ export function UsageBadge() {
           >
             {expired ? "Renouveler" : "Recharger ou changer de formule"}
           </Button>
-          <Button
-            className="mt-2 w-full justify-center"
-            icon={Radio}
-            variant="ghost"
-            onClick={() => {
-              setOpen(false);
-              liveHours.open();
-            }}
-          >
-            Acheter des heures de live
-          </Button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Button
+              className="w-full justify-center"
+              icon={Coins}
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                replyCredits.open();
+              }}
+            >
+              Réponses
+            </Button>
+            <Button
+              className="w-full justify-center"
+              icon={Radio}
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                liveHours.open();
+              }}
+            >
+              Heures de live
+            </Button>
+          </div>
         </div>
       )}
     </div>

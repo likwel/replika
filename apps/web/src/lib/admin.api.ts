@@ -1,6 +1,6 @@
 import { api } from "./api";
 import type { PlanId } from "@/data/plans";
-import type { PaymentStatus } from "./billing.api";
+import type { PaymentKind, PaymentStatus } from "./billing.api";
 
 export type AdminStatus = "TRIAL" | "ACTIVE" | "EXPIRED";
 export interface DayPoint { date: string; value: number }
@@ -28,7 +28,7 @@ export interface AdminOverview {
     period: number;
     periodCount: number;
     daily: DayPoint[];
-    byKind: Array<{ kind: "SUBSCRIPTION" | "LIVE_HOURS"; amount: number; count: number }>;
+    byKind: Array<{ kind: PaymentKind; amount: number; count: number }>;
     byPlan: Array<{ plan: PlanId; name: string; amount: number; count: number }>;
     byMethod: Array<{ method: string; amount: number; count: number }>;
     pending: { amount: number; count: number };
@@ -40,6 +40,8 @@ export interface AdminOverview {
     liveSeconds: number;
     liveCreditUsed: number;
     liveCreditLeft: number;
+    replyCreditUsed: number;
+    replyCreditLeft: number;
     liveActive: number;
     pages: { active: number; total: number };
     instagram: { active: number; total: number };
@@ -64,6 +66,7 @@ export interface AdminOverview {
   system: {
     papi: { configured: boolean; testMode: boolean; notifications: boolean };
     liveHourPrice: number;
+    replyPack: { size: number; price: number };
     mail: { configured: boolean; host: string | null; from: string; user: string | null };
     pollSeconds: number;
     webhookConfigured: boolean;
@@ -95,16 +98,18 @@ export interface AdminUser {
   aiLimit: number | null;
   liveSeconds: number;
   liveCreditSeconds: number;
+  replyCredits: number;
   totalPaid: number;
   lastActivity: string | null;
 }
 
 export interface AdminPayment {
   reference: string;
-  kind: "SUBSCRIPTION" | "LIVE_HOURS";
+  kind: PaymentKind;
   planName: string | null;
   period: "MONTHLY" | "ANNUAL" | null;
   liveHours: number | null;
+  replyCredits: number | null;
   amount: number;
   fee: number | null; // commission Papi (payés)
   feeEstimated: boolean;
@@ -175,6 +180,8 @@ export const adminApi = {
   mailTest: () => api.post<Res<{ to: string; delivered: boolean; error: string | null }>>("/admin/settings/mail-test").then((r) => r.data),
   feeSettings: () => api.get<Res<FeeSettings>>("/admin/settings/fees").then((r) => r.data),
   saveFeeRates: (rates: FeeRates | null) => api.put<Res<FeeSettings>>("/admin/settings/fees", { rates }).then((r) => r.data),
+  addReplyCredits: (userId: string, credits: number) =>
+    api.post<Res<{ replyCredits: number }>>(`/admin/users/${userId}/reply-credits`, { credits }).then((r) => r.data),
   addLiveHours: (userId: string, hours: number) =>
     api.post<Res<{ liveCreditSeconds: number }>>(`/admin/users/${userId}/live-hours`, { hours }).then((r) => r.data),
   // Formule posée à la main (Agence, prolongation, geste commercial)

@@ -21,35 +21,67 @@ export function getUsage(userId: string, month = usageMonth()) {
 
 // ─── Réponses IA ─────────────────────────────────────────────────────────────
 
-// Décompte une réponse IA ; refuse si l'abonnement a expiré ou si le quota du mois est atteint.
-// Retourne le mois décompté (à passer à refundAiReply si le modèle échoue).
-export async function consumeAiReply(userId: string): Promise<string> {
+// Réponse IA décomptée : sur le quota du mois de la formule, ou sur les crédits achetés
+export interface AiCharge {
+  month: string;
+  source: "quota" | "credit";
+}
+
+// Décompte une réponse IA : quota du mois d'abord, puis crédits de réponses achetés.
+// Refuse si les deux sont épuisés (ou l'abonnement terminé sans crédit). Le résultat est à passer
+// à refundAiReply si le modèle échoue.
+export async function consumeAiReply(userId: string): Promise<AiCharge> {
   const ent = await getEntitlements(userId);
-  if (!ent.active) throw inactiveError(ent);
+  if (ent.blocked) throw inactiveError(ent);
   const month = usageMonth();
   await ensureUsage(userId, month);
   const limit = ent.limits.aiReplies;
-  if (limit === null) {
-    await prisma.usage.update({ where: { userId_month: { userId, month } }, data: { aiReplies: { increment: 1 } } });
-    await countAiDay(1);
-    return month;
-  }
-  // Une seule requête conditionnelle : deux réponses simultanées ne peuvent pas dépasser le quota
-  const { count } = await prisma.usage.updateMany({
-    where: { userId, month, aiReplies: { lt: limit } },
-    data: { aiReplies: { increment: 1 } },
-  });
-  if (count === 0) {
+  if (ent.active) {
+    if (limit === null) {
+      await prisma.usage.update({ where: { userId_month: { userId, month } }, data: { aiReplies: { increment: 1 } } });
+      await countAiDay(1);
+      return { month, source: "quota" };
+    }
+    // Une seule requête conditionnelle : deux réponses simultanées ne peuvent pas dépasser le quota
+    const { count } = await prisma.usage.updateMany({
+      where: { userId, month, aiReplies: { lt: limit } },
+      data: { aiReplies: { increment: 1 } },
+    });
+    if (count) {
+      await countAiDay(1);
+      return { month, source: "quota" };
+    }
     const first = await prisma.usage.updateMany({ where: { userId, month, aiQuotaHitAt: null }, data: { aiQuotaHitAt: new Date() } });
     if (first.count) await prisma.activityLog.create({ data: { userId, action: "AI_QUOTA_REACHED", meta: { month, limit } } });
-    throw new AppError(
-      `Quota de ${limit.toLocaleString("fr-FR")} réponses IA du mois atteint : le message reste dans « À traiter ». Passez à une formule supérieure pour en avoir plus.`,
-      402,
-      "QUOTA_EXCEEDED",
-    );
   }
-  await countAiDay(1);
-  return month;
+  if (await consumeReplyCredit(userId, month)) {
+    await countAiDay(1);
+    return { month, source: "credit" };
+  }
+  throw creditsError(ent, limit);
+}
+
+// Plus rien pour répondre : message adapté (abonnement terminé, ou quota du mois atteint)
+function creditsError(ent: Awaited<ReturnType<typeof getEntitlements>>, limit: number | null): AppError {
+  if (!ent.active) {
+    const what = ent.kind === "TRIAL" ? "Votre essai gratuit est terminé" : "Votre abonnement a expiré";
+    return new AppError(`${what} : rechargez des crédits de réponses ou renouvelez votre formule.`, 402, "REPLY_CREDITS_REQUIRED");
+  }
+  return new AppError(
+    `Quota de ${(limit ?? 0).toLocaleString("fr-FR")} réponses IA du mois atteint : le message reste dans « À traiter ». Rechargez des crédits de réponses ou passez à une formule supérieure.`,
+    402,
+    "QUOTA_EXCEEDED",
+  );
+}
+
+// Retire un crédit de réponse (requête conditionnelle : jamais en dessous de zéro)
+export async function consumeReplyCredit(userId: string, month = usageMonth()): Promise<boolean> {
+  const { count } = await prisma.subscription.updateMany({ where: { userId, replyCredits: { gt: 0 } }, data: { replyCredits: { decrement: 1 } } });
+  if (!count) return false;
+  invalidateEntitlements(userId); // le solde sert à décider si les réponses automatiques continuent
+  await ensureUsage(userId, month);
+  await prisma.usage.update({ where: { userId_month: { userId, month } }, data: { replyCreditUsed: { increment: 1 } } });
+  return true;
 }
 
 // Compteur quotidien de la plateforme (coût IA d'une période, tableau de bord administrateur)
@@ -60,12 +92,26 @@ async function countAiDay(delta: 1 | -1) {
     .catch(() => {}); // une statistique ne bloque jamais une réponse
 }
 
-// Le modèle n'a pas répondu : la réponse n'est pas décomptée
-export async function refundAiReply(userId: string, month: string) {
-  await prisma.usage
-    .updateMany({ where: { userId, month, aiReplies: { gt: 0 } }, data: { aiReplies: { decrement: 1 } } })
-    .catch(() => {});
+// Le modèle n'a pas répondu : la réponse n'est pas décomptée (quota ou crédit rendu)
+export async function refundAiReply(userId: string, charge: AiCharge) {
+  const { month } = charge;
+  if (charge.source === "credit") {
+    await returnReplyCredit(userId, month);
+  } else {
+    await prisma.usage
+      .updateMany({ where: { userId, month, aiReplies: { gt: 0 } }, data: { aiReplies: { decrement: 1 } } })
+      .catch(() => {});
+  }
   await countAiDay(-1);
+}
+
+// Rend un crédit retiré pour une réponse finalement non produite ou non envoyée
+export async function returnReplyCredit(userId: string, month: string) {
+  await prisma.subscription.updateMany({ where: { userId }, data: { replyCredits: { increment: 1 } } }).catch(() => {});
+  await prisma.usage
+    .updateMany({ where: { userId, month, replyCreditUsed: { gt: 0 } }, data: { replyCreditUsed: { decrement: 1 } } })
+    .catch(() => {});
+  invalidateEntitlements(userId);
 }
 
 // ─── Heures de live ──────────────────────────────────────────────────────────

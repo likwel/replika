@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ChevronDown, History, Loader2 } from "lucide-react";
+import { ChevronDown, History, Loader2, Users } from "lucide-react";
 import { theme } from "@/theme";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
@@ -89,6 +89,11 @@ export function HistoryPage() {
                         <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium" style={{ color: theme.text }}>
                           {meta.label}
                           <span className="font-normal" style={{ color: theme.textMuted }}>· {timeAgo(e.createdAt)}</span>
+                          {e.actorName && (
+                            <span className="inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px] font-medium" style={{ background: theme.goldSoft, color: theme.goldDark }} title="Membre de l'équipe">
+                              <Users size={10} /> {e.actorName}
+                            </span>
+                          )}
                         </p>
                         {detail && <p className="mt-0.5 truncate text-xs" style={{ color: theme.textMuted }}>{detail}</p>}
                       </div>

@@ -1,6 +1,7 @@
 import type { SocialAccount } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { graphClient, graphErrorMessage, isNetworkError } from "../facebook/graph.client.js";
+import { tokenInfo } from "../facebook/tokenInfo.js";
 
 // Fonctions de SuiteFlow et autorisations Facebook dont elles dépendent
 const FEATURES: Record<"FACEBOOK" | "INSTAGRAM", Array<{ label: string; scopes: string[] }>> = {
@@ -27,6 +28,9 @@ export interface AccountCheck {
   checkedAt: string;
 }
 
+// Bouton « Vérifier » : relit le jeton chez Facebook, sauf s'il vient de l'être
+const MANUAL_CHECK_MAX_AGE_MS = 2 * 60 * 1000;
+
 // Vérifie le jeton du compte, son accès à la Page et les autorisations de chaque fonction
 export async function checkAccount(acc: SocialAccount): Promise<AccountCheck> {
   const checkedAt = new Date().toISOString();
@@ -34,9 +38,9 @@ export async function checkAccount(acc: SocialAccount): Promise<AccountCheck> {
 
   const result = (status: CheckStatus, message: string, features: AccountCheck["features"] = []) => ({ status, message, features, checkedAt });
 
-  let info: Awaited<ReturnType<typeof graphClient.getTokenInfo>>;
+  let info: Awaited<ReturnType<typeof tokenInfo>>;
   try {
-    info = await graphClient.getTokenInfo(acc.accessToken);
+    info = await tokenInfo(acc, MANUAL_CHECK_MAX_AGE_MS);
   } catch (e) {
     return result("error", `Vérification impossible pour le moment : ${graphErrorMessage(e)}`);
   }

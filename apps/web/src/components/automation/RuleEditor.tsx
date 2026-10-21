@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Segmented } from "@/components/ui/Segmented";
 import { ApiError } from "@/lib/api";
+import { offerReplyCredits } from "@/lib/replyCredits";
 import type { SocialAccount } from "@/lib/account.api";
 import { workspaceApi, type WsPost } from "@/lib/workspace.api";
 import {
@@ -561,6 +562,7 @@ function RuleAiPreview({
       );
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Test impossible.");
+      offerReplyCredits(e);
     } finally {
       setLoading(false);
     }

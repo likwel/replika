@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { AlertTriangle, Clock, Radio, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Clock, Coins, Radio, Sparkles, X } from "lucide-react";
 import { liveHours } from "@/lib/liveHours";
+import { replyCredits } from "@/lib/replyCredits";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
-import { fmtDate, usePlan } from "@/hooks/usePlan";
+import { fmtDate, fmtNum, usePlan } from "@/hooks/usePlan";
+import { useAccess } from "@/hooks/useAccess";
 
 const DISMISS_KEY = "suiteflow:trialBanner";
 
@@ -20,8 +22,24 @@ function dismissedToday() {
 // Bandeau sous l'en-tête : essai en cours, échéance proche, ou abonnement expiré (automatisations en pause)
 export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => void }) {
   const { subscription: s } = usePlan();
+  const { current, can } = useAccess();
   const [hidden, setHidden] = useState(dismissedToday);
   if (!s || s.admin) return null;
+
+  // Membre d'une équipe : la formule est celle du propriétaire ; seule son expiration est signalée
+  if (current) {
+    if (s.status !== "EXPIRED") return null;
+    return (
+      <Bar tone="danger">
+        <AlertTriangle size={16} className="flex-shrink-0" />
+        <p className="min-w-0 flex-1">
+          <strong>La formule de l'espace {current.space} a expiré</strong>
+          <span className="hidden md:inline"> : réponses automatiques, lives et publications programmées sont en pause jusqu'au renouvellement par son propriétaire.</span>
+        </p>
+        {can("billing", "write") && <Button size="sm" variant="danger" onClick={onOpenBilling}>Renouveler</Button>}
+      </Bar>
+    );
+  }
 
   const days = s.daysLeft ?? 0;
   const dayLabel = `${days} jour${days > 1 ? "s" : ""}`;
@@ -32,9 +50,16 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
         <AlertTriangle size={16} className="flex-shrink-0" />
         <p className="min-w-0 flex-1">
           <strong>{s.kind === "TRIAL" ? "Votre essai gratuit est terminé" : `Votre formule ${s.planName} a expiré`}</strong>
-          <span className="hidden md:inline"> : réponses automatiques, IA, lives et publications programmées sont en pause. Les nouveaux messages arrivent toujours dans « À traiter ».</span>
+          <span className="hidden md:inline">
+            {(s.replyCredits ?? 0) > 0
+              ? ` : vos ${fmtNum(s.replyCredits)} crédits de réponses prennent le relais ; lives et publications programmées sont en pause.`
+              : " : réponses automatiques, IA, lives et publications programmées sont en pause. Les nouveaux messages arrivent toujours dans « À traiter »."}
+          </span>
         </p>
-        <Button size="sm" variant="ghost" icon={Radio} onClick={() => liveHours.open()} className="hidden sm:inline-flex">
+        <Button size="sm" variant="ghost" icon={Coins} onClick={() => replyCredits.open()} className="hidden sm:inline-flex">
+          Réponses
+        </Button>
+        <Button size="sm" variant="ghost" icon={Radio} onClick={() => liveHours.open()} className="hidden lg:inline-flex">
           Heures de live
         </Button>
         <Button size="sm" variant="danger" onClick={onOpenBilling}>

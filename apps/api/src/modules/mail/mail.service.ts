@@ -96,3 +96,17 @@ export function sendTwoFactorCode(to: string, name: string, code: string, purpos
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+// Invitation à rejoindre l'équipe d'un espace SuiteFlow
+export function sendTeamInvitation(to: string, invite: { inviter: string; space: string; role: string; url: string; days: number }) {
+  const { inviter, space, role, url, days } = invite;
+  const text = `Bonjour,\n\n${inviter} vous invite à rejoindre l'espace « ${space} » sur SuiteFlow, avec le rôle ${role}.\n\nAccepter l'invitation : ${url}\n\nLe lien est valable ${days} jours. Si vous ne connaissez pas cette personne, ignorez cet e-mail.\n\nL'équipe SuiteFlow`;
+  const html = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:auto;padding:24px;color:#111B21">
+  <p style="font-size:15px;margin:0 0 6px">Bonjour,</p>
+  <p style="font-size:15px;margin:0 0 18px"><strong>${escapeHtml(inviter)}</strong> vous invite à rejoindre l'espace <strong>« ${escapeHtml(space)} »</strong> sur SuiteFlow, avec le rôle <strong>${escapeHtml(role)}</strong>.</p>
+  <p style="margin:0 0 20px;text-align:center"><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 22px;border-radius:10px;background:#008069;color:#fff;font-weight:600;font-size:15px;text-decoration:none">Accepter l'invitation</a></p>
+  <p style="font-size:13px;color:#54656F;margin:0 0 4px">Le lien est valable ${days} jours.</p>
+  <p style="font-size:13px;color:#54656F;margin:0">Si vous ne connaissez pas cette personne, ignorez cet e-mail.</p>
+  <p style="font-size:13px;color:#54656F;margin:22px 0 0">L'équipe SuiteFlow</p></div>`;
+  return sendMail(to, `${inviter} vous invite sur SuiteFlow`, text, html);
+}

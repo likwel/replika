@@ -27,6 +27,7 @@ export interface SubscriptionSummary {
   limits: Limits;
   features: Record<Feature, boolean>;
   liveCreditSeconds: number; // heures de live achetées à l'unité (secondes restantes)
+  replyCredits: number; // réponses automatiques achetées en packs (restantes)
   admin: boolean;
 }
 
@@ -38,16 +39,20 @@ export interface PublicPlan {
   annualMonthly: number | null;
   limits: Limits;
   features: Record<Feature, boolean>;
+  teamSeats: number | null; // membres d'équipe (0 = pas d'équipe, null = illimité)
   purchasable: boolean;
 }
 
+export type PaymentKind = "SUBSCRIPTION" | "LIVE_HOURS" | "REPLY_CREDITS";
+
 export interface PaymentRow {
   reference: string;
-  kind: "SUBSCRIPTION" | "LIVE_HOURS";
+  kind: PaymentKind;
   plan: PlanId | null;
   planName: string;
   period: BillingPeriod | null;
   liveHours: number | null;
+  replyCredits: number | null;
   amount: number;
   status: PaymentStatus;
   paymentMethod: string | null;
@@ -62,8 +67,9 @@ export interface PaymentRow {
 
 export interface BillingOverview {
   subscription: SubscriptionSummary;
-  usage: { month: string; aiReplies: number; liveSeconds: number; liveCreditUsed: number; pages: number };
+  usage: { month: string; aiReplies: number; liveSeconds: number; liveCreditUsed: number; replyCreditUsed: number; pages: number };
   liveHourPrice: number; // Ar par heure de Live Manager à l'unité
+  replyPack: { size: number; price: number }; // pack de réponses automatiques : nombre de réponses, prix en Ar
   paymentPhone: string | null; // dernier numéro de paiement, proposé par défaut
   plans: PublicPlan[];
   payments: PaymentRow[];
@@ -90,6 +96,8 @@ export const billingApi = {
     api.post<Res<{ reference: string; paymentLink: string }>>("/billing/checkout", { plan, period, phone }).then((r) => r.data),
   buyLiveHours: (hours: number, phone?: string) =>
     api.post<Res<{ reference: string; paymentLink: string }>>("/billing/live-hours", { hours, phone }).then((r) => r.data),
+  buyReplyCredits: (packs: number, phone?: string) =>
+    api.post<Res<{ reference: string; paymentLink: string }>>("/billing/reply-credits", { packs, phone }).then((r) => r.data),
   refresh: (reference: string) =>
     api
       .post<Res<{ payment: PaymentRow; subscription: SubscriptionSummary }>>(`/billing/payments/${encodeURIComponent(reference)}/refresh`)
@@ -97,7 +105,24 @@ export const billingApi = {
 };
 
 // Codes d'erreur de l'API liés à la formule
-export const BILLING_CODES = ["PLAN_REQUIRED", "QUOTA_EXCEEDED", "SUBSCRIPTION_INACTIVE", "PAGE_LIMIT", "LIVE_HOURS_REQUIRED"];
+export const BILLING_CODES = ["PLAN_REQUIRED", "QUOTA_EXCEEDED", "SUBSCRIPTION_INACTIVE", "PAGE_LIMIT", "LIVE_HOURS_REQUIRED", "REPLY_CREDITS_REQUIRED"];
+
+// Plus de réponses IA disponibles : la fenêtre d'achat de crédits de réponses est la solution
+export const REPLY_CREDIT_CODES = ["QUOTA_EXCEEDED", "REPLY_CREDITS_REQUIRED"];
+
+// Réponses IA restantes (formule active : quota du mois ; sinon 0) et crédits achetés
+export function repliesLeft(o: BillingOverview): { quota: number | null; credit: number } {
+  const s = o.subscription;
+  const quota = !s.active ? 0 : s.limits.aiReplies === null ? null : Math.max(0, s.limits.aiReplies - o.usage.aiReplies);
+  return { quota, credit: s.replyCredits ?? 0 };
+}
+
+// Libellé court d'un achat (historique, administration)
+export function purchaseLabel(p: Pick<PaymentRow, "kind" | "planName" | "period" | "liveHours" | "replyCredits">): string {
+  if (p.kind === "LIVE_HOURS") return `${p.liveHours} h de Live Manager`;
+  if (p.kind === "REPLY_CREDITS") return `${(p.replyCredits ?? 0).toLocaleString("fr-FR")} réponses automatiques`;
+  return `Formule ${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`;
+}
 
 // Heures de live restantes (formule active : quota du mois ; sinon crédit acheté)
 export function liveHoursLeft(o: BillingOverview): { quota: number | null; credit: number; canRun: boolean } {
@@ -119,6 +144,7 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
 // Ce qu'un paiement confirmé a apporté
 export function paidText(p: PaymentRow, periodEnd: string | null): string {
   if (p.kind === "LIVE_HOURS") return `${p.liveHours} h de Live Manager ajoutées à votre crédit.`;
+  if (p.kind === "REPLY_CREDITS") return `${(p.replyCredits ?? 0).toLocaleString("fr-FR")} réponses automatiques ajoutées à votre crédit.`;
   const end = p.appliedPeriodEnd ?? periodEnd;
   const date = end ? new Date(end).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : null;
   return `Formule ${p.planName} active${date ? ` jusqu'au ${date}` : ""}.`;

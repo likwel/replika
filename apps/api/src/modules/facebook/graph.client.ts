@@ -144,15 +144,6 @@ export const graphClient = {
     return data.access_token as string;
   },
 
-  // Autorisations portées par un jeton (de Page ou d'utilisateur), vérifiées avec le jeton de l'app
-  async getTokenScopes(token: string): Promise<string[]> {
-    const { data } = await axios.get(`${GRAPH}/debug_token`, {
-      params: { input_token: token, access_token: `${env.fb.appId}|${env.fb.appSecret}` },
-      timeout: 15_000,
-    });
-    return (data.data?.scopes as string[] | undefined) ?? [];
-  },
-
   // Autorisations réellement accordées par l'utilisateur (il peut en décocher dans la fenêtre Facebook)
   async getGrantedPermissions(userToken: string): Promise<string[]> {
     const { data } = await axios.get(`${GRAPH}/me/permissions`, { params: { access_token: userToken } });
@@ -653,13 +644,19 @@ export const graphClient = {
   // Connexions : état d'un jeton de Page
   // ============================================================
 
+  // Appel fait avec le jeton de l'app : compté dans le plafond de l'app (passer par tokenInfo(), mis en cache)
   async getTokenInfo(token: string) {
-    const { data } = await axios.get(`${GRAPH}/debug_token`, {
+    const res = await axios.get(`${GRAPH}/debug_token`, {
       params: { input_token: token, access_token: `${env.fb.appId}|${env.fb.appSecret}` },
       timeout: 15_000,
     });
-    const info = data.data as { is_valid?: boolean; scopes?: string[]; error?: { message?: string } } | undefined;
-    return { isValid: info?.is_valid ?? false, scopes: info?.scopes ?? [], error: info?.error?.message ?? null };
+    const info = res.data.data as { is_valid?: boolean; scopes?: string[]; error?: { message?: string } } | undefined;
+    return {
+      isValid: info?.is_valid ?? false,
+      scopes: info?.scopes ?? [],
+      error: info?.error?.message ?? null,
+      appUsage: appUsagePercent(res.headers["x-app-usage"]),
+    };
   },
 
   // Lecture minimale du compte avec son propre jeton : échoue si la Page n'est plus autorisée
@@ -668,6 +665,20 @@ export const graphClient = {
     return data as { id: string; name?: string };
   },
 };
+
+// En-tête X-App-Usage : part du plafond horaire de l'app déjà consommée (plus forte des trois mesures, en %)
+function appUsagePercent(header: unknown): number | null {
+  if (typeof header !== "string") return null;
+  try {
+    const u = JSON.parse(header) as { call_count?: number; total_time?: number; total_cputime?: number };
+    return Math.max(u.call_count ?? 0, u.total_time ?? 0, u.total_cputime ?? 0);
+  } catch {
+    return null;
+  }
+}
+
+// Plafond d'appels atteint (app, utilisateur, Page ou jeton de Page)
+export const isRateLimited = (e: unknown) => [4, 17, 32, 613].includes(graphErrorDetails(e).code ?? -1);
 
 // Extrait le message d'erreur renvoyé par l'API Graph
 export function graphErrorMessage(e: unknown): string {

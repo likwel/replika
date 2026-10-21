@@ -11,6 +11,7 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Segmented } from "@/components/ui/Segmented";
 import { IntentChip } from "@/components/messages/IntentChip";
 import { ApiError } from "@/lib/api";
+import { offerReplyCredits } from "@/lib/replyCredits";
 import { timeAgo } from "@/lib/format";
 import { aiApi, type AiAccount, type AiLanguage, type AiOverview, type AiReply } from "@/lib/ai.api";
 import type { RuleChannel } from "@/lib/automation.api";
@@ -399,6 +400,7 @@ function AiTester({ accountId, configured, aiContext, aiInstructions, aiLanguage
       setResult(await aiApi.test({ accountId, text: message, kind, aiContext, aiInstructions, aiLanguage }));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Test impossible.");
+      offerReplyCredits(err);
     } finally {
       setLoading(false);
     }

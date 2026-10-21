@@ -1,7 +1,9 @@
 import type { AutomationRule, SocialAccount } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
-import { graphClient, graphErrorMessage } from "../facebook/graph.client.js";
+import { graphErrorMessage } from "../facebook/graph.client.js";
+import { tokenInfo } from "../facebook/tokenInfo.js";
+import { AppError } from "../../utils/AppError.js";
 import { aiProviderName, isAiConfigured } from "../ai/ai.client.js";
 import { isPublicAddress } from "../uploads/upload.service.js";
 
@@ -84,16 +86,17 @@ export async function diagnose(userId: string) {
       let scopes: string[] | null = null;
       let tokenError: string | null = null;
       try {
-        const info = await graphClient.getTokenInfo(acc.accessToken);
+        const info = await tokenInfo(acc);
         if (info.isValid) scopes = info.scopes;
-        else tokenError = "Facebook a retiré l'accès (Page décochée lors de la dernière connexion, ou mot de passe changé).";
+        else if (info.isValid === false) tokenError = "Facebook a retiré l'accès (Page décochée lors de la dernière connexion, ou mot de passe changé).";
       } catch (e) {
-        tokenError = `Vérification impossible : ${graphErrorMessage(e)}`;
+        // Vérification reportée (plafond d'appels de l'app) : rien ne permet de conclure à un refus
+        if (!(e instanceof AppError && e.code === "FB_RATE_LIMIT")) tokenError = `Vérification impossible : ${graphErrorMessage(e)}`;
       }
       const notAuthorized = /non autoris/i.test(acc.syncError ?? "");
       checks.push(
         !tokenError && !notAuthorized
-          ? { id: "authorized", ok: true, label: "Accès autorisé par Facebook", detail: "Jeton valide." }
+          ? { id: "authorized", ok: true, label: "Accès autorisé par Facebook", detail: scopes ? "Jeton valide." : "Aucun refus de Facebook (vérification complète reportée)." }
           : { id: "authorized", ok: false, label: "Accès autorisé par Facebook", detail: tokenError ?? acc.syncError!, action: "reconnect" }
       );
 

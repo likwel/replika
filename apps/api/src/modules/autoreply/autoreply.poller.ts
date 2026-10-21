@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
 import { graphClient, graphErrorMessage, isNetworkError } from "../facebook/graph.client.js";
 import { handleIncoming, type IncomingEvent } from "./autoreply.engine.js";
+import { tokenInfo } from "../facebook/tokenInfo.js";
 import { workingUserWhere } from "../../utils/accountAccess.js";
 
 // Chevauchement entre deux passages : Meta indexe parfois avec retard (les doublons sont écartés par l'index unique)
@@ -31,27 +32,16 @@ const REQUIRED_SCOPES: Record<"FACEBOOK" | "INSTAGRAM", Array<[scope: string, la
     ["instagram_manage_messages", "messages Instagram"],
   ],
 };
-const PERMISSION_CHECK_MS = 60 * 60 * 1000;
 
 const PAGE_NOT_AUTHORIZED =
   "Page non autorisée : elle n'a pas été cochée lors de la dernière connexion Facebook. Reconnectez Facebook et sélectionnez-la.";
-const permissionCache = new Map<string, { at: number; token: string; missing: string[] }>();
 
+// Autorisations lues en base (vérifiées au plus une fois par jour, et à chaque reconnexion)
 async function missingPermissions(acc: SocialAccount): Promise<string[]> {
   if (acc.platform === "TIKTOK") return [];
-  const cached = permissionCache.get(acc.id);
-  // Un nouveau jeton (reconnexion) invalide le cache
-  if (cached && cached.token === acc.accessToken && Date.now() - cached.at < PERMISSION_CHECK_MS) {
-    return cached.missing;
-  }
-  try {
-    const scopes = await graphClient.getTokenScopes(acc.accessToken);
-    const missing = REQUIRED_SCOPES[acc.platform].filter(([s]) => !scopes.includes(s)).map(([, label]) => label);
-    permissionCache.set(acc.id, { at: Date.now(), token: acc.accessToken, missing });
-    return missing;
-  } catch {
-    return cached?.missing ?? []; // vérification impossible (réseau) : on ne bloque rien
-  }
+  const info = await tokenInfo(acc).catch(() => null);
+  if (!info?.isValid) return []; // inconnu ou jeton refusé : les appels de relève signalent l'erreur exacte
+  return REQUIRED_SCOPES[acc.platform].filter(([s]) => !info.scopes.includes(s)).map(([, label]) => label);
 }
 
 // Chaque source lève une erreur si l'API Graph refuse (permission manquante, jeton expiré…)

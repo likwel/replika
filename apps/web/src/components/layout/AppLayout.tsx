@@ -8,8 +8,10 @@ import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 import { BuyLiveHoursHost } from "@/components/billing/BuyLiveHoursDialog";
+import { BuyReplyCreditsHost } from "@/components/billing/BuyReplyCreditsDialog";
 import { PaymentHost } from "@/components/billing/PaymentHost";
 import { PaymentSuccessHost } from "@/components/billing/PaymentSuccessModal";
+import { WorkspaceBanner, WorkspaceGate } from "./WorkspaceGate";
 
 // map id menu -> segment d'URL
 const PATHS: Record<string, string> = {
@@ -113,15 +115,19 @@ export function AppLayout() {
           onNavigate={goTo}
           onOpenSettings={(i) => goTo("set", i)}
         />
+        <WorkspaceBanner />
         <SubscriptionBanner onOpenBilling={() => goTo("set", 4)} />
         <main ref={mainRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-3 sm:px-8 sm:pt-4 lg:px-12">
-            <Outlet context={{ active, sub, setSub }} />
+            <WorkspaceGate menuId={active} sub={sub} onNavigate={goTo}>
+              <Outlet context={{ active, sub, setSub }} />
+            </WorkspaceGate>
           </div>
         </main>
       </div>
 
       <BuyLiveHoursHost />
+      <BuyReplyCreditsHost />
       <PaymentHost />
       <PaymentSuccessHost />
       <CommandPalette

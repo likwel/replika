@@ -1,7 +1,7 @@
 import {
   UserPlus, LogIn, LogOut, KeyRound, Mail, Facebook, Bot, Sparkles, Send,
   MessageCircle, Trash2, Target, CalendarClock, CheckCircle2, XCircle, Radio, Settings2, Power, History as HistoryIcon,
-  CreditCard, Gauge, PauseCircle, ShieldAlert, ShieldCheck,
+  CreditCard, Gauge, PauseCircle, ShieldAlert, ShieldCheck, Coins, Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -42,6 +42,7 @@ export const ACTION_META: Record<string, ActionMeta> = {
   CHECKOUT_CREATED: { label: "Paiement démarré", icon: CreditCard, color: theme.textMuted },
   SUBSCRIPTION_ACTIVATED: { label: "Formule activée", icon: CreditCard, color: "#166534" },
   LIVE_HOURS_PURCHASED: { label: "Heures de live achetées", icon: Radio, color: "#166534" },
+  REPLY_CREDITS_PURCHASED: { label: "Crédits de réponses achetés", icon: Coins, color: "#166534" },
   SUBSCRIPTION_SET_BY_ADMIN: { label: "Formule modifiée par l'équipe SuiteFlow", icon: CreditCard, color: theme.goldDark },
   PAYMENT_FAILED: { label: "Paiement refusé", icon: CreditCard, color: theme.red },
   PAYMENT_AMOUNT_MISMATCH: { label: "Paiement à vérifier", icon: ShieldAlert, color: theme.red },
@@ -52,6 +53,17 @@ export const ACTION_META: Record<string, ActionMeta> = {
   SCHEDULE_SKIPPED_SUBSCRIPTION: { label: "Publication non envoyée : abonnement expiré", icon: XCircle, color: theme.red },
   PAGES_DEACTIVATED_FOR_PLAN: { label: "Pages désactivées (limite de la formule)", icon: Power, color: theme.amber },
   LIVE_HOURS_GIFTED: { label: "Heures de live offertes par SuiteFlow", icon: Radio, color: "#166534" },
+  REPLY_CREDITS_GIFTED: { label: "Crédits de réponses offerts par SuiteFlow", icon: Coins, color: "#166534" },
+  // Équipe
+  TEAM_MEMBER_INVITED: { label: "Membre invité dans l'équipe", icon: Users, color: theme.goldDark },
+  TEAM_MEMBER_JOINED: { label: "Membre arrivé dans l'équipe", icon: Users, color: "#166534" },
+  TEAM_MEMBER_UPDATED: { label: "Droits d'un membre modifiés", icon: Users, color: theme.goldDark },
+  TEAM_MEMBER_DISABLED: { label: "Accès d'un membre suspendu", icon: Users, color: theme.amber },
+  TEAM_MEMBER_ENABLED: { label: "Accès d'un membre rétabli", icon: Users, color: "#166534" },
+  TEAM_MEMBER_REMOVED: { label: "Membre retiré de l'équipe", icon: Users, color: theme.red },
+  TEAM_MEMBER_LEFT: { label: "Membre parti de l'équipe", icon: Users, color: theme.textMuted },
+  TEAM_INVITE_CANCELLED: { label: "Invitation annulée", icon: Users, color: theme.textMuted },
+  TEAM_INVITE_DECLINED: { label: "Invitation refusée", icon: Users, color: theme.textMuted },
   // Modération par un administrateur
   ACCOUNT_SUSPENDED: { label: "Compte suspendu", icon: PauseCircle, color: theme.amber },
   ACCOUNT_REACTIVATED: { label: "Suspension levée", icon: Power, color: "#166534" },
@@ -137,6 +149,25 @@ export function detailOf(e: HistoryEntry): string | null {
       const amount = num(m, "amount");
       return [hours !== null ? `${hours} h de Live Manager` : null, amount !== null ? fmtAr(amount) : null].filter(Boolean).join(" · ");
     }
+    case "TEAM_MEMBER_INVITED":
+    case "TEAM_MEMBER_JOINED":
+    case "TEAM_MEMBER_UPDATED":
+    case "TEAM_MEMBER_DISABLED":
+    case "TEAM_MEMBER_ENABLED":
+    case "TEAM_MEMBER_REMOVED":
+    case "TEAM_MEMBER_LEFT":
+    case "TEAM_INVITE_CANCELLED":
+    case "TEAM_INVITE_DECLINED":
+      return str(m, "email");
+    case "REPLY_CREDITS_PURCHASED": {
+      const credits = num(m, "credits");
+      const amount = num(m, "amount");
+      return [credits !== null ? `${credits.toLocaleString("fr-FR")} réponses` : null, amount !== null ? fmtAr(amount) : null].filter(Boolean).join(" · ");
+    }
+    case "REPLY_CREDITS_GIFTED": {
+      const credits = num(m, "credits");
+      return credits !== null ? `${credits.toLocaleString("fr-FR")} réponses ajoutées au crédit` : null;
+    }
     case "SUBSCRIPTION_SET_BY_ADMIN": {
       const end = str(m, "periodEnd");
       return [PLAN_NAMES[str(m, "plan") ?? ""], end ? `jusqu'au ${new Date(end).toLocaleDateString("fr-FR")}` : "sans échéance"].filter(Boolean).join(" · ");
@@ -145,7 +176,7 @@ export function detailOf(e: HistoryEntry): string | null {
       return str(m, "message");
     case "AI_QUOTA_REACHED": {
       const limit = num(m, "limit");
-      return limit !== null ? `${limit.toLocaleString("fr-FR")} réponses ce mois-ci : les messages restent dans « À traiter »` : null;
+      return limit !== null ? `${limit.toLocaleString("fr-FR")} réponses ce mois-ci : les crédits de réponses prennent le relais, sinon les messages restent dans « À traiter »` : null;
     }
     case "LIVE_PAUSED_QUOTA":
     case "LIVE_QUOTA_REACHED":

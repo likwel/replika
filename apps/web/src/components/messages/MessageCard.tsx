@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { PlatIcon } from "@/components/ui/PlatIcon";
 import { IntentChip } from "./IntentChip";
 import { ApiError } from "@/lib/api";
+import { offerReplyCredits } from "@/lib/replyCredits";
 import { timeAgo } from "@/lib/format";
 import { messageApi, type InboxMessage, type MessageStatus } from "@/lib/message.api";
 
@@ -79,6 +80,7 @@ export function MessageCard({ message: m, onChange, context }: Props) {
       onChange({ ...m, ...updated });
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Suggestion impossible.");
+      offerReplyCredits(e);
     } finally {
       setBusy(null);
     }

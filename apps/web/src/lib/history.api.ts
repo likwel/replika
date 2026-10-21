@@ -18,6 +18,7 @@ export interface HistoryEntry {
   meta: Record<string, unknown> | null;
   account: HistoryAccount | null;
   context: string | null;
+  actorName: string | null; // membre de l'équipe à l'origine de l'action
 }
 
 export interface HistoryCounts {

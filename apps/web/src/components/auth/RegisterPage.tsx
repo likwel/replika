@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { User, Mail, Lock } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -18,7 +18,9 @@ const legalLink = "font-medium underline underline-offset-2";
 export function RegisterPage() {
   const nav = useNavigate();
   const { register } = useAuth();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [params] = useSearchParams();
+  const invitation = params.get("invitation"); // venu d'une invitation d'équipe : retour dessus après l'inscription
+  const [form, setForm] = useState({ name: "", email: params.get("email") ?? "", password: "" });
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,7 @@ export function RegisterPage() {
     setLoading(true);
     try {
       await register(form.name.trim(), form.email.trim(), form.password, captcha);
-      nav("/app", { replace: true });
+      nav(invitation ? `/invitation/${invitation}` : "/app", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Inscription impossible, réessayez.");
       turnstile.current?.reset(); // un jeton Cloudflare ne sert qu'une fois

@@ -135,6 +135,12 @@ export const facebookService = {
 
     if (!pages.length) throw new AppError("Aucune Page Facebook trouvée sur ce compte", 404);
 
+    // Le jeton de Page porte les autorisations accordées par l'utilisateur : enregistrées tout de suite,
+    // sans appel à debug_token (compté dans le plafond de l'app). Inconnues : vérifiées à la prochaine relève.
+    const token = granted
+      ? { tokenScopes: granted, tokenValid: true, tokenCheckedAt: new Date() }
+      : { tokenScopes: [], tokenValid: null, tokenCheckedAt: null };
+
     // Nombre de Pages de la formule : une Page déjà active le reste, les nouvelles prennent les places libres
     let slots = await pageSlotsLeft(userId);
     const limited: string[] = [];
@@ -162,6 +168,7 @@ export const facebookService = {
           avatarUrl,
           isActive,
           syncError: null, // nouveau jeton : l'erreur éventuelle sera réévaluée à la prochaine relève
+          ...token,
         },
         create: {
           userId,
@@ -171,6 +178,7 @@ export const facebookService = {
           avatarUrl,
           accessToken: page.access_token,
           isActive,
+          ...token,
         },
       });
 
@@ -183,6 +191,7 @@ export const facebookService = {
           accessToken: page.access_token,
           linkedPageId: page.id, // activé et désactivé avec sa Page
           isActive,
+          ...token,
         };
         await prisma.socialAccount.upsert({
           where: { platform_externalId_userId: { platform: "INSTAGRAM", externalId: ig.id, userId } },
