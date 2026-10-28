@@ -34,6 +34,19 @@ function requestedScopes(): string[] {
   ];
 }
 
+const NO_PAGE_FOUND =
+  "Aucune Page Facebook trouvée sur ce compte : il doit être administrateur (contrôle total) d'au moins une Page, et cette Page doit être cochée dans la fenêtre Facebook.";
+
+function noPageAccessMessage(granted: string[]) {
+  const got = granted.filter((p) => p !== "public_profile");
+  return (
+    "Facebook n'a donné à SuiteFlow aucun accès aux Pages de ce compte" +
+    (got.length ? ` (autorisations reçues : ${got.join(", ")})` : "") +
+    ". Si vos Pages étaient bien cochées, l'app SuiteFlow attend encore la validation de ses autorisations par Meta : " +
+    "en attendant, seuls les comptes Facebook ajoutés à l'app (administrateur, développeur ou testeur) peuvent connecter leurs Pages."
+  );
+}
+
 // Comptes connectés auparavant mais absents de la dernière connexion (Page décochée dans la fenêtre Facebook)
 const NOT_SELECTED = {
   FACEBOOK:
@@ -127,13 +140,21 @@ export const facebookService = {
   async handleCallback(code: string, userId: string) {
     const shortToken = await graphClient.exchangeCodeForToken(code);
     const longToken = await graphClient.getLongLivedToken(shortToken);
-    const pages = await graphClient.getUserPages(longToken);
 
     // Autorisations décochées dans la fenêtre Facebook : signalées tout de suite à l'utilisateur
     const granted = await graphClient.getGrantedPermissions(longToken).catch(() => null);
     const missing = granted ? requestedScopes().filter((s) => !granted.includes(s)) : [];
 
-    if (!pages.length) throw new AppError("Aucune Page Facebook trouvée sur ce compte", 404);
+    // Aucun accès aux Pages : Page décochée, ou autorisations de l'app pas encore validées par Meta
+    // (sans « accès avancé », seuls les comptes ayant un rôle sur l'app peuvent les accorder)
+    const noPageAccess = Boolean(granted && !granted.includes("pages_show_list"));
+    const pages = await graphClient.getUserPages(longToken).catch((e) => {
+      if (noPageAccess) return [];
+      throw e;
+    });
+    if (!pages.length) {
+      throw new AppError(noPageAccess ? noPageAccessMessage(granted!) : NO_PAGE_FOUND, 404, noPageAccess ? "FB_NO_PAGE_ACCESS" : "FB_NO_PAGE");
+    }
 
     // Le jeton de Page porte les autorisations accordées par l'utilisateur : enregistrées tout de suite,
     // sans appel à debug_token (compté dans le plafond de l'app). Inconnues : vérifiées à la prochaine relève.

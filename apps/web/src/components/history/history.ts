@@ -22,6 +22,7 @@ export const ACTION_META: Record<string, ActionMeta> = {
   PASSWORD_RESET: { label: "Mot de passe réinitialisé", icon: KeyRound, color: theme.goldDark },
   EMAIL_CHANGED: { label: "Adresse e-mail modifiée", icon: Mail, color: theme.goldDark },
   FACEBOOK_CONNECTED: { label: "Facebook connecté", icon: Facebook, color: "#1877F2" },
+  FACEBOOK_CONNECT_FAILED: { label: "Connexion Facebook échouée", icon: Facebook, color: theme.red },
   AUTO_REPLY_SENT: { label: "Réponse automatique envoyée", icon: Bot, color: theme.goldDark },
   AUTO_REPLY_FAILED: { label: "Réponse automatique en échec", icon: Bot, color: theme.red },
   AI_REPLY_SENT: { label: "Réponse IA envoyée", icon: Sparkles, color: theme.goldDark },
@@ -149,6 +150,8 @@ export function detailOf(e: HistoryEntry): string | null {
       const amount = num(m, "amount");
       return [hours !== null ? `${hours} h de Live Manager` : null, amount !== null ? fmtAr(amount) : null].filter(Boolean).join(" · ");
     }
+    case "FACEBOOK_CONNECT_FAILED":
+      return str(m, "reason");
     case "TEAM_MEMBER_INVITED":
     case "TEAM_MEMBER_JOINED":
     case "TEAM_MEMBER_UPDATED":

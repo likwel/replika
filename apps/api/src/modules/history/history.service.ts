@@ -13,6 +13,7 @@ const CATEGORY_OF: Record<string, HistoryCategory> = {
   PASSWORD_RESET: "connexion",
   EMAIL_CHANGED: "connexion",
   FACEBOOK_CONNECTED: "connexion",
+  FACEBOOK_CONNECT_FAILED: "connexion",
   AUTO_REPLY_SENT: "message",
   AUTO_REPLY_FAILED: "message",
   AI_REPLY_SENT: "message",

@@ -4,6 +4,8 @@ import { facebookService } from "./facebook.service.js";
 import { env } from "../../config/env.js";
 import { AppError } from "../../utils/AppError.js";
 import { consumeOAuthState, issueOAuthState } from "../../utils/oauthState.js";
+import { prisma } from "../../config/prisma.js";
+import { graphErrorMessage } from "./graph.client.js";
 
 export const facebookController = {
   // GET /api/facebook/connect → renvoie l'URL de consentement
@@ -14,11 +16,21 @@ export const facebookController = {
 
   // GET /api/facebook/callback → Meta redirige ici
   callback: catchAsync(async (req: Request, res: Response) => {
-    const { code, state, error } = req.query as Record<string, string>;
+    const { code, state, error, error_reason: errorReason, error_description: errorDescription } = req.query as Record<string, string>;
     // Le compte à relier vient du state émis par /connect pour CE navigateur : un lien Facebook fabriqué par
     // un tiers (avec son propre identifiant) ne peut plus rattacher les Pages d'une victime à son compte.
     const purpose = consumeOAuthState(req, res, state);
-    if (error) return res.redirect(`${env.clientUrl}/app/connexions?fb=denied`);
+    const owner = purpose?.startsWith("pages:") ? purpose.slice("pages:".length) : null;
+    // Échec gardé dans l'historique du compte : c'est souvent la seule trace (aucune Page n'est créée)
+    const fail = async (reason: string) => {
+      if (owner) await prisma.activityLog.create({ data: { userId: owner, action: "FACEBOOK_CONNECT_FAILED", meta: { reason } } }).catch(() => {});
+      return res.redirect(`${env.clientUrl}/app/connexions?${new URLSearchParams({ fb: "error", reason })}`);
+    };
+    if (error) {
+      // Annulation par la personne, ou refus de Facebook (autorisations de l'app non validées…) : message de Facebook
+      if (errorReason === "user_denied") return res.redirect(`${env.clientUrl}/app/connexions?fb=denied`);
+      return fail(`Facebook a refusé la connexion${errorDescription ? ` : « ${errorDescription} »` : ""}${errorReason ? ` (${errorReason})` : ""}.`);
+    }
     if (!purpose?.startsWith("pages:") || !code) {
       const reason = "La demande de connexion à Facebook a expiré : relancez-la depuis Connexions.";
       return res.redirect(`${env.clientUrl}/app/connexions?${new URLSearchParams({ fb: "error", reason })}`);
@@ -30,9 +42,9 @@ export const facebookController = {
     try {
       result = await facebookService.handleCallback(code, userId);
     } catch (e) {
-      const reason = e instanceof AppError ? e.message : "Connexion à Facebook impossible, réessayez.";
       if (!(e instanceof AppError)) console.error("❌ Connexion Facebook :", e);
-      return res.redirect(`${env.clientUrl}/app/connexions?${new URLSearchParams({ fb: "error", reason })}`);
+      const reason = e instanceof AppError ? e.message : `Connexion à Facebook impossible : ${graphErrorMessage(e)}`;
+      return fail(reason);
     }
     const { pages, instagram, missing, absent, limited } = result;
     const params = new URLSearchParams({ fb: "success", pages: String(pages), ig: String(instagram) });
