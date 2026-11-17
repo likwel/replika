@@ -142,7 +142,7 @@ export function PipelineEditor({ pipeline, preset, rules, accounts, onClose, onS
                     <b className="block text-[13.5px] font-semibold" style={{ color: on ? theme.goldDark : theme.text }}>{tr.label}</b>
                     <small className="block text-[12px] leading-snug" style={{ color: theme.textMuted }}>{tr.text}</small>
                   </span>
-                  {on && <span className="tr-ico ok-solid !h-6 !w-6"><Check strokeWidth={3} /></span>}
+                  {on && <span className="tr-ico ok-solid sm"><Check strokeWidth={3} /></span>}
                 </button>
               );
             })}

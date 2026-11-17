@@ -20,6 +20,8 @@ import { statsApi, type RuleStats, type StatsOverview } from "@/lib/stats.api";
 import { automationApi, type AutomationSettings } from "@/lib/automation.api";
 import { billingApi, repliesLeft, type BillingOverview } from "@/lib/billing.api";
 import { teamApi, type TeamOverview } from "@/lib/team.api";
+import { RULE_PRESETS } from "@/components/automation/rules";
+import { Avatar } from "@/components/ui/Avatar";
 import { historyApi, type HistoryEntry } from "@/lib/history.api";
 
 interface Ctx { setSub: (i: number) => void }
@@ -77,7 +79,11 @@ export function DashboardPage() {
   const protectedCount = (twoFa ? 1 : 0) + (notif ? 1 : 0);
 
   const lastAuto = (history ?? []).find((e) => e.action === "AUTO_REPLY_SENT" || e.action === "AI_REPLY_SENT");
-  const topRules = [...(rules ?? [])].sort((a, b) => b.hitCount - a.hitCount).slice(0, 3);
+  const sortedRules = [...(rules ?? [])].sort((a, b) => b.hitCount - a.hitCount);
+  const topRules = sortedRules.slice(0, 5);
+  const maxHits = Math.max(1, ...topRules.map((r) => r.hitCount));
+  // Modèles proposés : ceux dont le nom n'existe pas déjà parmi vos règles
+  const suggestions = RULE_PRESETS.filter((p) => ["price", "delivery", "hours"].includes(p.id) && !(rules ?? []).some((r) => r.name.toLowerCase() === p.label.toLowerCase())).slice(0, 3);
 
   const share = (v: number) => (stats?.responseRate.total ? Math.round((v / stats.responseRate.total) * 100) : 0);
 
@@ -126,14 +132,14 @@ export function DashboardPage() {
               <ul className="stagger flex flex-col gap-2">
                 {accounts.map((a) => (
                   <li key={a.id} className="row-s">
-                    <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={go("gestion", a.pending ? 2 : 0)} title={a.syncError ?? undefined}>
+                    <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={go(a.pending ? "a-traiter" : "gestion")} title={a.syncError ?? undefined}>
                       <AccountAvatar name={a.accountName} src={a.accountAvatar} platform={a.platform} size={36} />
                       <span className="min-w-0 flex-1">
                         <b className="block truncate text-[14px] font-semibold" style={{ color: theme.text }}>{a.accountName}</b>
                         <small className="block truncate text-[12px]" style={{ color: theme.textMuted }}>{a.platform === "INSTAGRAM" ? "Compte Instagram" : "Page Facebook"}</small>
                       </span>
                       {a.syncError ? (
-                        <span className="tr-ico warn" title="À reconnecter"><AlertTriangle /></span>
+                        <span className="tr-ico warn md" title="À reconnecter"><AlertTriangle /></span>
                       ) : a.pending ? (
                         <span className="chip brand flex-shrink-0">{a.pending} à traiter</span>
                       ) : (
@@ -225,7 +231,7 @@ export function DashboardPage() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button className="btn-w" onClick={go("gestion", 2)}><Inbox />Ouvrir la file</button>
+              <button className="btn-w" onClick={go("a-traiter")}><Inbox />Ouvrir la file</button>
               <button className="btn-g" onClick={go("regles")}><Bot />Règles</button>
             </div>
           </div>
@@ -261,26 +267,88 @@ export function DashboardPage() {
           subtitle="Partagez la gestion de vos Pages"
           icon={Users}
           tint="#a855f7"
-          link={canMenu("set", 3) ? { label: "Comment ça marche", onClick: go("parametres", 3) } : undefined}
+          link={canMenu("set", 3) && team !== "na" ? { label: "Gérer", onClick: go("parametres", 3) } : undefined}
         >
           {team === null ? (
             <div className="flex flex-col gap-3"><span className="sk h-9 w-24" /><span className="sk h-3 w-3/4" /><span className="sk h-11 w-full" /></div>
           ) : team === "na" ? (
             <p className="text-[13.5px]" style={{ color: theme.textMuted }}>La gestion de l'équipe est réservée au propriétaire de cet espace.</p>
+          ) : team.seats === 0 ? (
+            // Formule sans équipe : ce que ça apporte, et comment l'obtenir
+            <div className="flex flex-col gap-3">
+              <p className="text-[13.5px] leading-snug" style={{ color: theme.text }}>
+                Donnez à un collaborateur l'accès aux messages, aux lives ou aux statistiques <b>seulement</b>, sans partager votre mot de passe.
+              </p>
+              <ul className="flex flex-col gap-1.5 text-[13px]" style={{ color: theme.textMuted }}>
+                {["Droits par module : lecture ou écriture", "Chaque action porte le nom de son auteur", "Vous retirez un accès à tout moment"].map((t) => (
+                  <li key={t} className="flex items-start gap-2"><Check size={14} className="mt-0.5 flex-shrink-0" style={{ color: theme.green }} />{t}</li>
+                ))}
+              </ul>
+              <div className="strip !mx-0">
+                <Lock />
+                <span>L'équipe est incluse à partir de la formule <b>Business</b> (5 membres).</span>
+              </div>
+              <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 4)}><Sparkles size={15} className="mr-1.5 inline" />Voir les formules</button>
+            </div>
           ) : (
             <>
-              <p className="hero-fig-lite tabular text-[34px] font-extrabold leading-none tracking-[-0.03em]" style={{ color: theme.text }}>
-                <CountUp value={String(team.used)} />
-                <span className="ml-1.5 text-[18px] font-bold" style={{ color: theme.textMuted }}>/ {team.seats === null ? "∞" : team.seats}</span>
-              </p>
-              <p className="mb-3.5 mt-1.5 text-[13px]" style={{ color: theme.textMuted }}>
-                {team.seats === 0 ? "Votre formule n'inclut pas de membres d'équipe." : `${plural(team.used, "place utilisée", "places utilisées")} avec la formule ${team.planName}.`}
-              </p>
-              <div className="copy-field mb-3"><Users size={15} className="mr-2 flex-shrink-0" />{team.members.length ? plural(team.members.length, "membre invité", "membres invités") : "Aucun membre pour l'instant"}</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="btn-soft h-11 rounded-[14px] text-[13.5px] font-semibold" onClick={go("parametres", 3)}><Settings2 size={15} className="mr-1.5 inline" />Gérer</button>
-                <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 3)} disabled={team.seats === 0}><UserPlus size={15} className="mr-1.5 inline" />Inviter</button>
+              <div className="flex items-end justify-between gap-3">
+                <p className="hero-fig-lite tabular text-[34px] font-extrabold leading-none tracking-[-0.03em]" style={{ color: theme.text }}>
+                  <CountUp value={String(team.used)} />
+                  <span className="ml-1.5 text-[18px] font-bold" style={{ color: theme.textMuted }}>/ {team.seats === null ? "∞" : team.seats}</span>
+                </p>
+                {team.members.length > 0 && (
+                  <span className="flex -space-x-2" aria-hidden>
+                    {team.members.slice(0, 4).map((m) => (
+                      <span key={m.id} className="rounded-full" style={{ boxShadow: "0 0 0 2px var(--surface)" }}><Avatar name={m.name ?? m.email} src={m.avatarUrl} size={30} /></span>
+                    ))}
+                    {team.members.length > 4 && <span className="grid h-[30px] w-[30px] place-items-center rounded-full text-[11px] font-bold" style={{ background: "var(--surface-3)", color: theme.textMuted, boxShadow: "0 0 0 2px var(--surface)" }}>+{team.members.length - 4}</span>}
+                  </span>
+                )}
               </div>
+              {team.seats !== null && (
+                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }} role="progressbar" aria-valuemin={0} aria-valuemax={team.seats} aria-valuenow={team.used} aria-label="Places utilisées">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, (team.used / Math.max(1, team.seats)) * 100)}%`, background: team.used >= team.seats ? "linear-gradient(90deg,#f59e0b,#dc2626)" : "linear-gradient(90deg,#c084fc,#a855f7)" }} />
+                </div>
+              )}
+              <p className="mb-3 mt-1.5 text-[13px]" style={{ color: theme.textMuted }}>
+                {plural(team.used, "place utilisée", "places utilisées")} avec la formule {team.planName}
+                {team.seats !== null && team.used < team.seats ? ` · ${plural(team.seats - team.used, "place libre", "places libres")}` : ""}.
+              </p>
+
+              {team.members.length === 0 ? (
+                <p className="mb-3 rounded-xl px-3.5 py-3 text-[13px] leading-snug" style={{ background: "var(--surface-2)", color: theme.textMuted }}>
+                  Personne d'autre n'a encore accès à votre espace. Invitez un collaborateur par e-mail et choisissez ce qu'il peut voir et faire.
+                </p>
+              ) : (
+                <ul className="mb-3 flex flex-col gap-1">
+                  {team.members.slice(0, 3).map((m) => (
+                    <li key={m.id} className="flex items-center gap-2.5 rounded-xl px-1 py-1">
+                      <Avatar name={m.name ?? m.email} src={m.avatarUrl} size={28} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-semibold" style={{ color: theme.text }}>{m.name ?? m.email}</span>
+                        <span className="block truncate text-[11.5px]" style={{ color: theme.textMuted }}>{m.roleLabel}</span>
+                      </span>
+                      <span className={`chip ${m.status === "ACTIVE" ? "ok" : m.status === "INVITED" && !m.inviteExpired ? "warn" : "off"}`}>
+                        {m.status === "ACTIVE" ? "Actif" : m.status === "DISABLED" ? "Suspendu" : m.inviteExpired ? "Expirée" : "Invité"}
+                      </span>
+                    </li>
+                  ))}
+                  {team.members.length > 3 && <li className="px-1 text-xs" style={{ color: theme.textMuted }}>+ {plural(team.members.length - 3, "autre membre", "autres membres")}</li>}
+                </ul>
+              )}
+
+              {team.seats !== null && team.used >= team.seats ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="btn-soft h-11 rounded-[14px] text-[13.5px] font-semibold" onClick={go("parametres", 3)}><Settings2 size={15} className="mr-1.5 inline" />Gérer</button>
+                  <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 4)}><Sparkles size={15} className="mr-1.5 inline" />Plus de places</button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="btn-soft h-11 rounded-[14px] text-[13.5px] font-semibold" onClick={go("parametres", 3)}><Settings2 size={15} className="mr-1.5 inline" />Gérer</button>
+                  <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 3)}><UserPlus size={15} className="mr-1.5 inline" />Inviter</button>
+                </div>
+              )}
             </>
           )}
         </Panel>
@@ -291,29 +359,60 @@ export function DashboardPage() {
           icon={Trophy}
           tint="#f59e0b"
           flush
+          link={canMenu("auto") ? { label: "Créer", onClick: go("regles?creer=1") } : undefined}
           footer={
             <div className="strip">
               <Bot />
               <span>{rules === null ? "Chargement…" : rules.length ? <><b>{rules.length}</b> {rules.length > 1 ? "règles ont déjà répondu" : "règle a déjà répondu"}</> : "Aucune règle n'a encore répondu."}</span>
-              <button className="lnk" onClick={go("regles")}>Ouvrir<span aria-hidden> ›</span></button>
+              <button className="lnk" onClick={go("regles")}>Toutes<span aria-hidden> ›</span></button>
             </div>
           }
         >
           {rules === null ? (
             <div className="flex flex-col gap-3 px-5 pb-4">{[0, 1, 2].map((i) => <span key={i} className="sk h-10 w-full" />)}</div>
           ) : topRules.length === 0 ? (
-            <p className="px-5 pb-5 text-[13.5px]" style={{ color: theme.textMuted }}>Créez une règle de réponse : elle apparaîtra ici dès qu'elle aura servi.</p>
-          ) : (
-            topRules.map((r, i) => (
-              <div key={r.id} className="trow">
-                <span className={`medal-rank r${i + 1}`}>{i + 1}</span>
-                <span className="tr-m">
-                  <b>{r.name}</b>
-                  <small>{CHANNEL[r.channel]}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}</small>
-                </span>
-                <span className="tr-r">{r.hitCount}×</span>
+            <div className="flex flex-col gap-3 px-5 pb-5">
+              <p className="text-[13.5px] leading-snug" style={{ color: theme.textMuted }}>Aucune règle n'a encore répondu. Choisissez un modèle pour commencer.</p>
+              <div className="flex flex-col gap-1.5">
+                {suggestions.map((p) => (
+                  <button key={p.id} className="prow w-full text-left" onClick={go(`regles?creer=${p.id}`)}>
+                    <span className="ico-tile sm" style={{ ...grad("#fcd34d", "#f59e0b"), color: "#fff" }}><p.icon size={17} strokeWidth={2.1} /></span>
+                    <div><b>{p.label}</b><small>{p.desc}</small></div>
+                    <ChevronRight className="ml-auto flex-shrink-0" size={16} />
+                  </button>
+                ))}
               </div>
-            ))
+              <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("regles?creer=1")}><Plus size={15} className="mr-1.5 inline" />Créer une règle</button>
+            </div>
+          ) : (
+            <>
+              {topRules.map((r, i) => (
+                <button key={r.id} className="trow w-full text-left" onClick={go("regles")} title="Ouvrir mes règles">
+                  <span className={`medal-rank r${i + 1}`}>{i + 1}</span>
+                  <span className="tr-m">
+                    <b>{r.name}</b>
+                    <small>{CHANNEL[r.channel]}{r.account ? ` · ${r.account.name}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}</small>
+                    <span className="mt-1.5 block h-1 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }} aria-hidden>
+                      <span className="block h-full rounded-full" style={{ width: `${Math.max(4, (r.hitCount / maxHits) * 100)}%`, background: "linear-gradient(90deg,#fcd34d,#f59e0b)" }} />
+                    </span>
+                  </span>
+                  <span className="flex flex-shrink-0 flex-col items-end gap-1">
+                    <span className="tr-r">{r.hitCount}×</span>
+                    <span className={`chip ${r.autoSend ? "ok" : "warn"}`}>{r.autoSend ? "Auto" : "À valider"}</span>
+                  </span>
+                </button>
+              ))}
+              {suggestions.length > 0 && topRules.length < 4 && (
+                <div className="flex flex-wrap items-center gap-1.5 px-5 pb-4 pt-1.5">
+                  <span className="text-xs font-semibold" style={{ color: theme.textMuted }}>Ajouter :</span>
+                  {suggestions.map((p) => (
+                    <button key={p.id} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--surface-2)", color: theme.text, border: "1px solid var(--line)" }} onClick={go(`regles?creer=${p.id}`)}>
+                      <Plus size={11} /> {p.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </Panel>
 
@@ -398,7 +497,7 @@ export function DashboardPage() {
           account={managed}
           onClose={() => setManaged(null)}
           onChanged={() => workspaceApi.accounts().then(setAccounts).catch(() => undefined)}
-          onOpenInbox={go("gestion", managed.pending ? 2 : 0)}
+          onOpenInbox={go(managed.pending ? "a-traiter" : "gestion")}
           onOpenAssistant={go("regles", 1)}
         />
       )}

@@ -9,6 +9,8 @@ export interface AdminOverview {
   days: number;
   users: { total: number; new: number; active7d: number; moderation: { suspended: number; banned: number; deleted: number }; signups: DayPoint[] };
   finance: {
+    // Revenus par source (le brut total est leur somme) : abonnements, crédits de réponses IA, heures de live
+    bySource: Record<"SUBSCRIPTION" | "REPLY_CREDITS" | "LIVE_HOURS", { gross: number; fees: number; net: number; count: number }>;
     gross: number;
     fees: number;
     feesEstimated: number; // paiements dont la commission est estimée (non transmise par l'opérateur)

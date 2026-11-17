@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { IconTile } from "@/components/ui/Dash";
 import { PageCard } from "@/components/ui/PageCard";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { Check, FlaskConical, Info, LayoutGrid, List, MessageSquareText, Pause, Play, Plus, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
@@ -80,6 +80,13 @@ export function RulesPage() {
   const { sub, setSub } = useOutletContext<Ctx>();
   // Depuis l'onglet « État des comptes », « Créer une règle » ramène à la liste avec l'éditeur ouvert
   const [pendingCreate, setPendingCreate] = useState<"COMMENT" | "DIRECT" | null>(null);
+  // Lien direct (tableau de bord…) : /app/regles?creer=1 ouvre l'éditeur, ?creer=price|delivery|hours|welcome part d'un modèle
+  const [params, setParams] = useSearchParams();
+  const [deepLink] = useState<string | null>(() => params.get("creer"));
+  useEffect(() => {
+    if (params.has("creer")) setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <PageCard header={<PageHeader bare className="" description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]} />}>
       {sub === 1 ? (
@@ -93,13 +100,13 @@ export function RulesPage() {
           onOpenAi={() => setSub(1)}
         />
       ) : (
-        <RulesView onOpenAi={() => setSub(1)} initialCreate={pendingCreate} onCreateConsumed={() => setPendingCreate(null)} />
+        <RulesView onOpenAi={() => setSub(1)} initialCreate={pendingCreate} onCreateConsumed={() => setPendingCreate(null)} deepLink={deepLink} />
       )}
     </PageCard>
   );
 }
 
-function RulesView({ onOpenAi, initialCreate, onCreateConsumed }: { onOpenAi: () => void; initialCreate: "COMMENT" | "DIRECT" | null; onCreateConsumed: () => void }) {
+function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { onOpenAi: () => void; initialCreate: "COMMENT" | "DIRECT" | null; onCreateConsumed: () => void; deepLink: string | null }) {
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -225,6 +232,14 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed }: { onOpenAi: ()
     const preset = RULE_PRESETS.find((p) => (kind === "DIRECT" ? p.id === "welcome" : p.id === "price"))!;
     setEditor({ rule: null, preset: { ...preset.rule, accountId: null } });
   };
+
+  // Éditeur ouvert par un lien : vierge (?creer=1) ou depuis un modèle (?creer=price)
+  useEffect(() => {
+    if (!deepLink) return;
+    const preset = RULE_PRESETS.find((p) => p.id === deepLink);
+    setEditor(preset ? { rule: null, preset: { ...preset.rule, accountId: null } } : { rule: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!initialCreate) return;
@@ -372,7 +387,7 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed }: { onOpenAi: ()
           <ul className="stagger flex flex-col gap-2">
             {TIPS.map(([t, d]) => (
               <li key={t} className="row-s !items-start">
-                <span className="tr-ico ok-solid !h-6 !w-6"><Check strokeWidth={3} /></span>
+                <span className="tr-ico ok-solid sm"><Check strokeWidth={3} /></span>
                 <span className="text-[13.5px] leading-snug" style={{ color: theme.text }}><b>{t}.</b> <span style={{ color: theme.textMuted }}>{d}</span></span>
               </li>
             ))}

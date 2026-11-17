@@ -17,6 +17,7 @@ import { OrderEditor } from "./OrderEditor";
 import { CommentsFeed } from "./CommentsFeed";
 import { ProductsEditor } from "./ProductsEditor";
 import { SessionSettingsForm } from "./SessionSettingsForm";
+import { LiveRepliesBar } from "./LiveRepliesBar";
 import { InvoicesPanel } from "./InvoicesPanel";
 import { SESSION_STATUS, fromRows, toRows, type ProductRow } from "./live";
 import { swal } from "@/lib/swal";
@@ -223,7 +224,12 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
           onAdd={() => setEditing("new")}
         />
       )}
-      {tab === "comments" && <CommentsFeed sessionId={sessionId} active={session.status === "ACTIVE"} onOrder={upsertOrder} />}
+      {tab === "comments" && (
+        <>
+          <LiveRepliesBar session={session} onChanged={(updated) => { setSession(updated); setSettings((cur) => (cur ? { ...cur, replyMode: updated.replyMode, replyRuleIds: updated.replyRuleIds } : cur)); }} onOpenSettings={() => setTab("settings")} />
+          <CommentsFeed sessionId={sessionId} active={session.status === "ACTIVE"} onOrder={upsertOrder} />
+        </>
+      )}
       {tab === "invoices" && <InvoicesPanel sessionId={sessionId} sessionEnded={session.status === "ENDED"} />}
       {tab === "products" && rows && (
         <div>
@@ -255,6 +261,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
             />
           </label>
           <SessionSettingsForm
+            accountId={session.account.id}
             value={settings}
             onChange={(v) => {
               dirty.current = true;

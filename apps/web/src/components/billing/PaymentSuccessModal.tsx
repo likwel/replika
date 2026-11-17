@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Copy, Plug, Radio, ShieldCheck, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
-import { BRAND_GRADIENT } from "@/components/ui/Logo";
 import { useAuth } from "@/context/AuthContext";
 import { fmtHours, purchaseLabel, PAYMENT_METHOD_LABEL, type PaymentRow, type SubscriptionSummary } from "@/lib/billing.api";
 import { paymentSuccess, usePaymentSuccess } from "@/lib/paymentSuccess";
@@ -16,13 +15,16 @@ export function PaymentSuccessHost() {
   return <PaymentSuccessModal key={data.payment.reference} payment={data.payment} subscription={data.subscription} />;
 }
 
+// Vert « succès » du bandeau, de la coche et du bouton
+const SUCCESS_GRADIENT = "linear-gradient(135deg, #4ade80 0%, #22C55E 48%, #16a34a 100%)";
+
 // Confettis : positions fixes (rendu stable), couleurs de la marque
 const CONFETTI = Array.from({ length: 18 }, (_, i) => ({
   left: `${(i * 37 + 7) % 100}%`,
   delay: `${(i % 6) * 0.12}s`,
   size: 5 + (i % 3) * 2,
   round: i % 3 === 0,
-  color: ["#FFFFFF", "#FDE68A", "#A7F3D0", "#FFFFFFB0"][i % 4],
+  color: ["#FFFFFF", "#FDE68A", "#BBF7D0", "#FFFFFFB0"][i % 4],
 }));
 
 function PaymentSuccessModal({ payment: p, subscription: s }: { payment: PaymentRow; subscription: SubscriptionSummary }) {
@@ -69,16 +71,16 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
       style={{ background: "rgba(10, 20, 26, 0.55)", backdropFilter: "blur(3px)" }}
       onClick={() => paymentSuccess.close()}
     >
+      <div className="animate-success-card w-full max-w-[440px]" style={{ filter: "drop-shadow(0 24px 40px rgba(6, 40, 20, 0.35))" }} onClick={(e) => e.stopPropagation()}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="pay-ok-title"
-        className="animate-success-card relative max-h-[94vh] w-full max-w-[440px] overflow-y-auto rounded-t-3xl shadow-2xl sm:rounded-3xl"
+        className="ticket relative max-h-[94vh] w-full overflow-y-auto"
         style={{ background: theme.bgCard }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Bandeau de marque, coche animée et confettis */}
-        <div className="relative h-36 overflow-hidden" style={{ background: BRAND_GRADIENT }}>
+        <div className="relative h-40 overflow-hidden" style={{ background: SUCCESS_GRADIENT }}>
           {CONFETTI.map((c, i) => (
             <span
               key={i}
@@ -97,9 +99,9 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
           <div className="absolute inset-x-0 bottom-0 flex justify-center">
             <span
               className="animate-success-badge flex h-[76px] w-[76px] items-center justify-center rounded-full"
-              style={{ background: theme.bgCard, boxShadow: "0 10px 30px rgba(0,128,105,0.35)" }}
+              style={{ background: theme.bgCard, boxShadow: "0 10px 30px rgba(22,163,74,0.4)" }}
             >
-              <span className="flex h-[60px] w-[60px] items-center justify-center rounded-full" style={{ background: BRAND_GRADIENT }}>
+              <span className="flex h-[60px] w-[60px] items-center justify-center rounded-full" style={{ background: SUCCESS_GRADIENT }}>
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden>
                   <path className="animate-check-draw" d="M5 12.5l4.5 4.5L19 7.5" stroke="#fff" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -131,10 +133,15 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
             )}
           </div>
 
-          {/* Reçu */}
+          {/* Reçu : ligne de perforation puis le détail */}
+          <div className="animate-success-rise mt-5 flex items-center gap-2" style={rise(3)} aria-hidden>
+            <span className="h-px flex-1" style={{ borderTop: `2px dashed ${theme.border}` }} />
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.14em]" style={{ color: theme.textMuted }}>Reçu</span>
+            <span className="h-px flex-1" style={{ borderTop: `2px dashed ${theme.border}` }} />
+          </div>
           <dl
-            className="animate-success-rise mt-5 rounded-2xl px-4 py-1 text-left text-[13px]"
-            style={{ ...rise(3), background: theme.bg, border: `1px solid ${theme.border}` }}
+            className="animate-success-rise mt-2 px-1 py-1 text-left text-[13px]"
+            style={rise(3)}
           >
             <Row label="Achat">{purchaseLabel(p)}</Row>
             {hours ? (
@@ -177,7 +184,7 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
                 if (next && !pathname.startsWith(next.path)) nav(next.path);
               }}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
-              style={{ background: BRAND_GRADIENT, color: "#fff", boxShadow: "0 6px 18px rgba(0,128,105,0.3)" }}
+              style={{ background: SUCCESS_GRADIENT, color: "#fff", boxShadow: "0 6px 18px rgba(34,197,94,0.4)" }}
             >
               {next ? next.label : "C'est parti"} <ArrowRight size={16} />
             </button>
@@ -201,6 +208,7 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -216,8 +224,8 @@ function Row({ label, children, last }: { label: string; children: ReactNode; la
 
 function Perk({ icon: Icon, value, label }: { icon: LucideIcon; value: string; label: string }) {
   return (
-    <div className="rounded-xl px-2 py-2.5" style={{ background: theme.goldSoft }}>
-      <Icon size={15} className="mx-auto" style={{ color: theme.goldDark }} />
+    <div className="rounded-xl px-2 py-2.5" style={{ background: theme.greenSoft }}>
+      <Icon size={15} className="mx-auto" style={{ color: "#16a34a" }} />
       <p className="mt-1 text-[15px] font-bold leading-tight" style={{ color: theme.text }}>{value}</p>
       <p className="text-[10.5px] leading-tight" style={{ color: theme.textMuted }}>{label}</p>
     </div>

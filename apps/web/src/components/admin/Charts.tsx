@@ -12,6 +12,31 @@ const compact = new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFra
 const dayLabel = (d: string, long = false) =>
   new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR", long ? { weekday: "short", day: "numeric", month: "long" } : { day: "numeric", month: "short" });
 
+// Courbe d'évolution compacte (carte héros) : une série, aire douce, dernier point marqué
+export function Sparkline({ data, label }: { data: DayPoint[]; label: string }) {
+  const gid = useId();
+  if (data.length < 2) return null;
+  const W = 400;
+  const H = 64;
+  const max = Math.max(1, ...data.map((d) => d.value));
+  const pts = data.map((d, i) => [(i / (data.length - 1)) * W, H - 6 - (d.value / max) * (H - 14)] as const);
+  const line = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const [lx, ly] = pts[pts.length - 1];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-16 w-full" preserveAspectRatio="none" role="img" aria-label={label}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ff8a3d" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#ff8a3d" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${line} L${W},${H} L0,${H} Z`} fill={`url(#${gid})`} />
+      <path d={line} fill="none" stroke="#ffb27a" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={lx} cy={ly} r="3.5" fill="#fff" stroke="#ff8a3d" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 // Maximum d'axe « rond » (1, 2, 2.5, 5 × 10^n)
 function niceMax(v: number) {
   if (v <= 0) return 1;

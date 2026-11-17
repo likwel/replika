@@ -256,7 +256,7 @@ function RunsView() {
             return (
               <li key={r.id}>
                 <button onClick={() => setOpen(r)} className="row-s w-full text-left" aria-haspopup="dialog">
-                  <span className={`tr-ico ${r.status === "SUCCESS" ? "ok-solid" : r.status === "FAILED" ? "bad" : ""}`}>{r.status === "SUCCESS" ? <Check strokeWidth={3} /> : r.status === "FAILED" ? <X strokeWidth={2.6} /> : <Zap />}</span>
+                  <span className={`tr-ico ${r.status === "SUCCESS" ? "ok-solid sm" : r.status === "FAILED" ? "bad" : ""}`}>{r.status === "SUCCESS" ? <Check strokeWidth={3} /> : r.status === "FAILED" ? <X strokeWidth={2.6} /> : <Zap />}</span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[13.5px] font-semibold" style={{ color: theme.text }}>{r.pipeline.name}</b>
                     <small className="block truncate text-[12px]" style={{ color: theme.textMuted }}>{r.subject}</small>
@@ -293,7 +293,7 @@ function RunModal({ run, onClose }: { run: PipelineRun; onClose: () => void }) {
           const m = stepMeta(s.type);
           return (
             <li key={s.stepId} className="row-s !items-start" style={s.status === "skipped" ? { opacity: 0.55 } : undefined}>
-              <span className={`tr-ico ${s.status === "ok" ? "ok-solid" : s.status === "failed" ? "bad" : ""}`} title={s.status === "ok" ? "Fait" : s.status === "failed" ? "En échec" : "Non exécutée"}>
+              <span className={`tr-ico ${s.status === "ok" ? "ok-solid sm" : s.status === "failed" ? "bad" : ""}`} title={s.status === "ok" ? "Fait" : s.status === "failed" ? "En échec" : "Non exécutée"}>
                 {s.status === "ok" ? <Check strokeWidth={3} /> : s.status === "failed" ? <X strokeWidth={2.6} /> : <m.icon />}
               </span>
               <div className="min-w-0 flex-1">

@@ -49,7 +49,7 @@ export function AiModelPicker({ overview }: { overview: AiOverview }) {
             <b className="block truncate text-[13.5px] font-bold" style={{ color: theme.goldDark }}>{ok ? overview.model : "SuiteFlow IA"}</b>
             <small className="block truncate text-[12px]" style={{ color: theme.textMuted }}>{ok ? `${overview.provider} · modèle actuel` : "Non configuré sur ce serveur"}</small>
           </span>
-          {ok ? <span className="tr-ico ok-solid !h-6 !w-6" title="Modèle actif"><Check strokeWidth={3} /></span> : <span className="chip warn flex-shrink-0">À configurer</span>}
+          {ok ? <span className="tr-ico ok-solid sm" title="Modèle actif"><Check strokeWidth={3} /></span> : <span className="chip warn flex-shrink-0">À configurer</span>}
         </div>
 
         {/* À venir : visibles, mais désactivés */}

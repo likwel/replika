@@ -257,7 +257,7 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
             </span>
             <Toggle checked={includeExisting} onChange={setIncludeExisting} label="Commentaires déjà publiés" />
           </label>
-          <SessionSettingsForm value={settings} onChange={setSettings} products={products} />
+          <SessionSettingsForm accountId={accountId} value={settings} onChange={setSettings} products={products} />
         </div>
       )}
     </Modal>

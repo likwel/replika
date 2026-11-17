@@ -27,7 +27,7 @@ interface Net {
 // Pastille ronde d'état : coche verte pour un compte associé et en ordre, alerte pour un compte à vérifier
 function StatusDot({ tone }: { tone: State["tone"] }) {
   if (tone === "ok") return <span className="tr-ico ok-solid" title="Associé"><Check strokeWidth={3} /></span>;
-  if (tone === "warn" || tone === "bad") return <span className="tr-ico warn" title="À vérifier"><AlertTriangle /></span>;
+  if (tone === "warn" || tone === "bad") return <span className="tr-ico warn md" title="À vérifier"><AlertTriangle /></span>;
   return null;
 }
 

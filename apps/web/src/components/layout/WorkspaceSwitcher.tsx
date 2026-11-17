@@ -52,7 +52,7 @@ export function WorkspaceSwitcher({ compact, onOpenTeam, onOpenProfile }: Props)
       {busy === (id ?? "self") ? (
         <Loader2 size={15} className="animate-spin" style={{ color: theme.textMuted }} />
       ) : (
-        active && <span className="tr-ico ok-solid" aria-label="Espace ouvert"><Check size={13} strokeWidth={3} /></span>
+        active && <span className="tr-ico ok-solid sm" aria-label="Espace ouvert"><Check strokeWidth={3} /></span>
       )}
     </button>
   );

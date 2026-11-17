@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { Bot, BellOff, Check, ExternalLink, FlaskConical, Info, ListChecks, Loader2, MessageCircleReply, Plus, ShieldCheck, Workflow } from "lucide-react";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
+import { Button } from "@/components/ui/Button";
 import { liveApi, type ContactField, type Detection, type LiveProduct, type LiveSettings, type ReplyMode } from "@/lib/live.api";
 import { automationApi, type AutomationRule } from "@/lib/automation.api";
+import { accountApi, type SocialAccount } from "@/lib/account.api";
+import { RuleEditor } from "@/components/automation/RuleEditor";
+import { swal } from "@/lib/swal";
 import { FIELD_OPTIONS, VARIABLES } from "./live";
 
 interface Props {
+  accountId?: string | null; // compte du live : proposé par défaut aux nouvelles règles
   value: LiveSettings;
   onChange: (v: LiveSettings) => void;
   products: LiveProduct[];
@@ -63,11 +68,26 @@ const REPLY_MODES: Array<{ value: ReplyMode; icon: typeof Bot; title: string; te
 ];
 
 // Réponses aux commentaires qui ne sont pas des JP (prix, livraison, questions…) : une automatisation jointe au live
-function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends keyof LiveSettings>(k: K, val: LiveSettings[K]) => void }) {
+function OtherCommentsReplies({ v, set, accountId }: { v: LiveSettings; set: <K extends keyof LiveSettings>(k: K, val: LiveSettings[K]) => void; accountId: string | null }) {
   const [rules, setRules] = useState<AutomationRule[] | null>(null);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
+  const [creating, setCreating] = useState(false);
   useEffect(() => {
     automationApi.list().then(setRules).catch(() => setRules([]));
+    accountApi.list().then(setAccounts).catch(() => undefined);
   }, []);
+
+  // Règle créée ici (réponse par IA ou texte, commentaires ou messages) : ajoutée à la liste et jointe à ce live.
+  // « Toutes mes règles » l'applique déjà ; « Aucune réponse » passe à « règles de ce live » pour qu'elle serve vraiment.
+  const created = (rule: AutomationRule) => {
+    setCreating(false);
+    setRules((l) => [rule, ...(l ?? [])]);
+    if (v.replyMode !== "ALL") {
+      set("replyMode", "SELECTED");
+      if (!v.replyRuleIds.includes(rule.id)) set("replyRuleIds", [...v.replyRuleIds, rule.id]);
+    }
+    swal.toast({ title: "Règle créée", text: v.replyMode === "ALL" ? "Elle répondra aux commentaires de ce live." : "Elle est jointe à ce live." });
+  };
   const toggle = (id: string) => set("replyRuleIds", v.replyRuleIds.includes(id) ? v.replyRuleIds.filter((x) => x !== id) : [...v.replyRuleIds, id]);
 
   return (
@@ -94,6 +114,15 @@ function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends key
             </button>
           );
         })}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl p-3" style={{ background: theme.goldSoft }}>
+        <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg" style={{ background: theme.bgCard, color: theme.goldDark }}><Bot size={17} /></span>
+        <div className="min-w-0 flex-1 basis-48">
+          <p className="text-[13px] font-semibold" style={{ color: theme.text }}>Ajouter une règle de réponse</p>
+          <p className="text-xs" style={{ color: theme.textMuted }}>Réponse par IA ou texte à valider, pour les commentaires ou les messages. Créée ici, utilisée tout de suite.</p>
+        </div>
+        <Button size="sm" icon={Plus} type="button" onClick={() => setCreating(true)}>Nouvelle règle</Button>
       </div>
 
       {v.replyMode === "SELECTED" && (
@@ -137,8 +166,8 @@ function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends key
               })}
             </ul>
           )}
-          <a href="/app/regles" target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold hover:underline" style={{ color: theme.goldDark }}>
-            <Plus size={12} /> Créer une règle <ExternalLink size={11} />
+          <a href="/app/regles" target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold hover:underline" style={{ color: theme.textMuted }}>
+            Gérer toutes mes règles <ExternalLink size={11} />
           </a>
           <label className="mt-1 flex items-start justify-between gap-3 rounded-lg p-2.5" style={{ background: theme.bgCard }}>
             <span>
@@ -151,6 +180,8 @@ function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends key
         </div>
       )}
 
+      {creating && <RuleEditor rule={null} accounts={accounts} defaultAccountId={accountId} defaultChannel="COMMENT" onClose={() => setCreating(false)} onSaved={created} />}
+
       <p className="flex items-start gap-1.5 text-[11.5px]" style={{ color: theme.textMuted }}>
         <MessageCircleReply size={13} className="mt-0.5 flex-shrink-0" />
         Ces réponses ne concernent que les commentaires de ce live qui ne sont pas des JP, et suivent l'interrupteur général des réponses automatiques (page Règles de réponse).
@@ -159,7 +190,7 @@ function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends key
   );
 }
 
-export function SessionSettingsForm({ value: v, onChange, products }: Props) {
+export function SessionSettingsForm({ value: v, onChange, products, accountId }: Props) {
   const [recapDefaults, setRecapDefaults] = useState<{ recapMessage: string; recapUpdateMessage: string } | null>(null);
   useEffect(() => {
     liveApi.defaults().then((d) => setRecapDefaults({ recapMessage: d.recapMessage, recapUpdateMessage: d.recapUpdateMessage }));
@@ -189,7 +220,7 @@ export function SessionSettingsForm({ value: v, onChange, products }: Props) {
       </Section>
 
       <Section title="Réponses aux autres commentaires" hint="Prix, livraison, questions… : joignez une automatisation pour répondre aux commentaires qui ne sont pas des JP.">
-        <OtherCommentsReplies v={v} set={set} />
+        <OtherCommentsReplies v={v} set={set} accountId={accountId ?? null} />
       </Section>
 
       <Section title="Informations à collecter" hint="Demandées en message privé ; la commande est confirmée quand tout est reçu.">

@@ -272,7 +272,7 @@ export function ManageAccountModal({ account, onClose, onChanged, onOpenInbox, o
               </Setting>
               {check && check !== "loading" && (
                 <div className="row-s !items-start">
-                  <span className={`tr-ico ${CHECK_META[check.status].tone === "ok" ? "ok-solid" : CHECK_META[check.status].tone === "off" ? "" : "warn"}`}>
+                  <span className={`tr-ico md ${CHECK_META[check.status].tone === "ok" ? "ok-solid" : CHECK_META[check.status].tone === "off" ? "" : "warn"}`}>
                     {CHECK_META[check.status].tone === "ok" ? <Check strokeWidth={3} /> : CHECK_META[check.status].tone === "off" ? <X /> : <AlertTriangle />}
                   </span>
                   <div className="min-w-0 flex-1">

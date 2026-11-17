@@ -1,3 +1,4 @@
+import { revenueBySource } from "./finance.logic.js";
 import { Prisma, type PaymentStatus, type PlanId } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
@@ -95,7 +96,7 @@ const feeOf = (rates: FeeRates, p: { amount: number; fee: number | null; feeEsti
 // Résultat d'une période : brut − commissions Papi − coût IA − dépenses = bénéfice
 async function finance(since: Date, now: Date) {
   const [paid, aiDays, expenses, rates] = await Promise.all([
-    prisma.payment.findMany({ where: { status: "PAID", paidAt: { gte: since } }, select: { amount: true, fee: true, feeEstimated: true, paymentMethod: true } }),
+    prisma.payment.findMany({ where: { status: "PAID", paidAt: { gte: since } }, select: { kind: true, amount: true, fee: true, feeEstimated: true, paymentMethod: true } }),
     prisma.aiDailyUsage.aggregate({ where: { day: { gte: usageDay(since) } }, _sum: { replies: true } }),
     prisma.expense.findMany({ where: { date: { lte: now }, OR: [{ recurring: true }, { date: { gte: since } }] } }),
     feeRates(),
@@ -115,7 +116,9 @@ async function finance(since: Date, now: Date) {
   }
   const net = gross - fees;
   const profit = net - aiCost - other;
+  const bySource = revenueBySource(paid, (p) => feeOf(rates, p));
   return {
+    bySource,
     gross,
     fees,
     feesEstimated,

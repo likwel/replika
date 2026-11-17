@@ -57,7 +57,7 @@
   --color-red: #be123c;
   --color-redLight: #e11d48;
   --color-dangerBg: rgba(225, 29, 72, 0.09);
-  --color-green: #166534;
+  --color-green: #22C55E;
   --color-greenLight: #16a34a;
   --color-greenSoft: rgba(22, 163, 74, 0.10);
   --color-amber: #9a5a06;
@@ -101,7 +101,7 @@
   --color-red: #fb7185;
   --color-redLight: #fda4af;
   --color-dangerBg: rgba(244, 63, 94, 0.14);
-  --color-green: #4ade80;
+  --color-green: #22C55E;
   --color-greenLight: #4ade80;
   --color-greenSoft: rgba(34, 197, 94, 0.13);
   --color-amber: #fbbf24;
@@ -1060,12 +1060,17 @@ h1, h2, h3, .hero-fig, .font-display { font-family: var(--font-display); }
 /* Satoshi est un peu plus compacte qu'Inter : on resserre moins les titres */
 :root[data-font="satoshi"] h1, :root[data-font="satoshi"] h2, :root[data-font="satoshi"] h3 { letter-spacing: -0.005em; }
 
-/* Pastille « tout est en ordre » en vrai vert (rond plein, coche blanche) — et non le vert pâle des pastilles d'information */
-.tr-ico.ok-solid {
-  background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
-  color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px -6px rgba(22, 163, 74, 0.75);
-}
+/* Pastille « validé » : rond plein vert, coche blanche, ombre verte douce. 26 px par défaut ; .sm (20 px) pour les listes denses
+   (étapes, lignes de menu, cartes compactes) */
+.tr-ico.ok-solid { width: 26px; height: 26px; background: #22C55E; color: #fff; box-shadow: 0 5px 11px -3px rgba(34, 197, 94, 0.65); }
+.tr-ico.ok-solid svg { width: 14px; height: 14px; }
+.tr-ico.ok-solid.sm { width: 20px; height: 20px; box-shadow: 0 3px 8px -2px rgba(34, 197, 94, 0.6); }
+.tr-ico.ok-solid.sm svg { width: 12px; height: 12px; }
+/* Mêmes tailles pour les autres pastilles (alerte, bloqué…) posées à côté d'une coche verte */
+.tr-ico.md { width: 26px; height: 26px; }
+.tr-ico.md svg { width: 14px; height: 14px; }
+.tr-ico.sm:not(.ok-solid) { width: 20px; height: 20px; }
+.tr-ico.sm:not(.ok-solid) svg { width: 12px; height: 12px; }
 
 /* Tableau posé dans une carte plus grande : simple cadre fin, pas de carte supplémentaire */
 .tbl { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); background: var(--surface); overflow: hidden; }
@@ -1082,3 +1087,16 @@ h1, h2, h3, .hero-fig, .font-display { font-family: var(--font-display); }
 /* Badge de statistique de la barre latérale : discret au repos, ambre quand quelque chose est à vérifier */
 .cnt.warn { background: var(--color-amberSoft); color: var(--color-amber); }
 .side-item.on .cnt.warn { background: #fff; color: #9a3412; }
+
+/* Ticket de caisse : bords haut et bas en dents de scie (masque), l'ombre se pose sur un conteneur parent (drop-shadow) */
+.ticket {
+  --t: 9px;
+  -webkit-mask:
+    conic-gradient(from 135deg at 50% 0, #000 0 90deg, #0000 0) top / calc(var(--t) * 2) var(--t) repeat-x,
+    linear-gradient(#000 0 0) 0 var(--t) / 100% calc(100% - var(--t) * 2) no-repeat,
+    conic-gradient(from -45deg at 50% 100%, #000 0 90deg, #0000 0) bottom / calc(var(--t) * 2) var(--t) repeat-x;
+  mask:
+    conic-gradient(from 135deg at 50% 0, #000 0 90deg, #0000 0) top / calc(var(--t) * 2) var(--t) repeat-x,
+    linear-gradient(#000 0 0) 0 var(--t) / 100% calc(100% - var(--t) * 2) no-repeat,
+    conic-gradient(from -45deg at 50% 100%, #000 0 90deg, #0000 0) bottom / calc(var(--t) * 2) var(--t) repeat-x;
+}

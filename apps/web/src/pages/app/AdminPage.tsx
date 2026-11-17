@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Select } from "@/components/ui/Select";
 import { Navigate, useOutletContext } from "react-router-dom";
-import { AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, Coins, CreditCard, Gift, Hourglass, Languages, Loader2, Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus, Users, Wallet, XCircle, Save, X } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, Coins, CreditCard, Gift, Hourglass, Languages, Loader2, Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, Copy, ChevronRight, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus, Users, Wallet, XCircle, Save, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +11,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/Alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Pagination } from "@/components/ui/Pagination";
-import { BarList, ColumnChart } from "@/components/admin/Charts";
+import { BarList, ColumnChart, Sparkline } from "@/components/admin/Charts";
+import { FilterChips } from "@/components/workspace/WorkspaceUi";
 import { CardTitle, Hero, Panel as DashPanel, SkeletonCards } from "@/components/ui/Dash";
 import { StatCard } from "@/components/ui/StatCard";
 import { FloatingMenu, MenuItem, MenuSeparator } from "@/components/ui/FloatingMenu";
@@ -21,12 +22,12 @@ import {
 } from "@/lib/admin.api";
 import { PAYMENT_METHOD_LABEL, fmtHours, type PaymentStatus } from "@/lib/billing.api";
 import { fmtAr, fmtDate, fmtNum } from "@/hooks/usePlan";
-import { timeAgo } from "@/lib/format";
+import { plural, timeAgo } from "@/lib/format";
 import { swal } from "@/lib/swal";
 import { contactApi, type ContactMessage } from "@/lib/contact.api";
 import type { PlanId } from "@/data/plans";
 
-interface Ctx { sub: number }
+interface Ctx { sub: number; setSub: (i: number) => void }
 
 const PERIODS = [
   { days: 7, label: "7 jours" },
@@ -63,12 +64,31 @@ const DESCRIPTIONS = [
 // Tableau de bord administrateur : réservé au rôle ADMIN (le premier compte inscrit)
 export function AdminPage() {
   const { user } = useAuth();
-  const { sub } = useOutletContext<Ctx>();
+  const { sub, setSub } = useOutletContext<Ctx>();
+  const [days, setDays] = useState(30);
+  const ov = useOverview(days, sub === 0 && user?.role === "ADMIN");
   if (user?.role !== "ADMIN") return <Navigate to="/app" replace />;
+  // Pastille sur l'onglet qui demande une action : paiements à suivre, échecs de l'IA
+  const d = ov.data;
+  const badges = d ? { 2: d.revenue.failed + d.revenue.pending.count, 4: d.ai.failures24h + (d.ai.configured ? 0 : 1) } : undefined;
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader className="mb-0" description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]} />
-      {sub === 1 ? <UsersView /> : sub === 2 ? <PaymentsView /> : sub === 3 ? <ExpensesView /> : sub === 4 ? <AiView /> : sub === 5 ? <MessagesView /> : <OverviewView />}
+      <PageHeader
+        className="mb-0"
+        description={DESCRIPTIONS[sub] ?? DESCRIPTIONS[0]}
+        badges={badges}
+        actions={
+          sub === 0 ? (
+            <>
+              <PeriodPicker value={days} onChange={setDays} />
+              <Button size="sm" variant="ghost" icon={ov.loading ? Loader2 : RefreshCw} onClick={ov.reload} disabled={ov.loading} className={ov.loading ? "[&>svg]:animate-spin" : ""}>
+                Actualiser
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
+      {sub === 1 ? <UsersView /> : sub === 2 ? <PaymentsView /> : sub === 3 ? <ExpensesView /> : sub === 4 ? <AiView /> : sub === 5 ? <MessagesView /> : <OverviewView days={days} ov={ov} go={setSub} />}
     </div>
   );
 }
@@ -110,11 +130,12 @@ function PeriodPicker({ value, onChange }: { value: number; onChange: (d: number
   );
 }
 
-function useOverview(days: number) {
+function useOverview(days: number, enabled = true) {
   const [data, setData] = useState<AdminOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(() => {
+    if (!enabled) return;
     setLoading(true);
     adminApi
       .overview(days)
@@ -124,7 +145,7 @@ function useOverview(days: number) {
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [days]);
+  }, [days, enabled]);
   useEffect(load, [load]);
   return { data, loading, error, reload: load };
 }
@@ -140,25 +161,18 @@ function StatusBadge({ status }: { status: AdminStatus }) {
 
 // ─── Vue d'ensemble ──────────────────────────────────────────────────────────
 
-function OverviewView() {
-  const [days, setDays] = useState(30);
-  const { data, loading, error, reload } = useOverview(days);
+function OverviewView({ days, ov, go }: { days: number; ov: ReturnType<typeof useOverview>; go: (sub: number) => void }) {
+  const { data, loading, error } = ov;
   const periodLabel = PERIODS.find((p) => p.days === days)!.label;
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Filtre : une ligne, au-dessus de tout ce qu'il concerne */}
-      <div className="card-x flex flex-wrap items-center gap-2 rounded-2xl p-3">
-        <PeriodPicker value={days} onChange={setDays} />
-        <Button size="sm" variant="ghost" icon={loading ? Loader2 : RefreshCw} onClick={reload} disabled={loading} className={loading ? "[&>svg]:animate-spin" : ""}>
-          Actualiser
-        </Button>
-      </div>
       {error && <Alert variant="error">{error}</Alert>}
       {!data ? (
         <SkeletonCards count={4} height={104} className="grid grid-cols-2 gap-3 lg:grid-cols-4" />
       ) : (
         <div className="flex flex-col gap-5" style={{ opacity: loading ? 0.6 : 1, transition: "opacity .2s" }}>
+          <Watchlist data={data} go={go} />
           {/* Chiffre principal : bénéfice net de la période (carte héros), et le compte de résultat qui y mène */}
           <section className="stagger grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
             <Hero
@@ -166,8 +180,13 @@ function OverviewView() {
               label={`Bénéfice net · ${periodLabel}`}
               value={fmtAr(data.finance.profit)}
               tone={data.finance.profit < 0 ? "bad" : undefined}
-              caption={`Marge ${pct(data.finance.margin)} · sur ${fmtAr(data.finance.gross)} collectés (brut)`}
+              caption={`Abonnements + crédits de réponses IA + heures de live, moins commissions, coût IA et dépenses · marge ${pct(data.finance.margin)}`}
             >
+              <SourceBar bySource={data.finance.bySource} />
+              <div className="mb-5">
+                <p className="mb-1 text-[12px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>Montant collecté par jour</p>
+                <Sparkline data={data.revenue.daily} label={`Montant collecté par jour, ${periodLabel}`} />
+              </div>
               <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
                 <Mini dark label="Revenu mensuel récurrent" value={fmtAr(data.subscriptions.mrr)} detail="estimé, formules payées en cours" />
                 <Mini dark label="Collecté depuis le début" value={fmtAr(data.revenue.total)} detail={`${fmtNum(data.revenue.totalCount)} paiements, brut`} />
@@ -240,6 +259,83 @@ function OverviewView() {
   );
 }
 
+// Sources de revenus : le bénéfice net est la somme de toutes (abonnements, crédits de réponses IA, heures de live)
+const SOURCES: Array<{ kind: "SUBSCRIPTION" | "REPLY_CREDITS" | "LIVE_HOURS"; label: string; color: string }> = [
+  { kind: "SUBSCRIPTION", label: "Abonnements", color: "#f05a1a" },
+  { kind: "REPLY_CREDITS", label: "Crédits de réponses IA", color: "#a78bfa" },
+  { kind: "LIVE_HOURS", label: "Heures de live", color: "#38bdf8" },
+];
+
+// Répartition de l'encaissé net entre les trois sources, dans la carte héros
+function SourceBar({ bySource }: { bySource: AdminOverview["finance"]["bySource"] }) {
+  const total = SOURCES.reduce((n, s) => n + Math.max(0, bySource[s.kind].net), 0);
+  return (
+    <div className="mb-5">
+      <p className="mb-1.5 text-[12px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>Encaissé net par source</p>
+      <div className="flex h-2 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.1)" }} role="img" aria-label="Répartition de l'encaissé net par source">
+        {total > 0 && SOURCES.map((s) => <span key={s.kind} style={{ width: `${(Math.max(0, bySource[s.kind].net) / total) * 100}%`, background: s.color }} />)}
+      </div>
+      <ul className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-[12px] sm:grid-cols-3">
+        {SOURCES.map((s) => (
+          <li key={s.kind} className="min-w-0" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: s.color }} aria-hidden />
+              <span className="min-w-0 truncate">{s.label}</span>
+            </span>
+            <b className="block pl-3.5 text-[13px] tabular-nums text-white">{fmtAr(bySource[s.kind].net)}</b>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// « À surveiller » : ce qui demande une action de l'administrateur, avec un accès direct à l'onglet concerné
+function Watchlist({ data, go }: { data: AdminOverview; go: (sub: number) => void }) {
+  type Item = { key: string; tone: "bad" | "warn"; icon: LucideIcon; text: string; sub: number; action: string };
+  const items: Item[] = [];
+  const s = data.system;
+  if (!s.papi.configured) items.push({ key: "papi", tone: "bad", icon: CreditCard, text: "Paiement en ligne non configuré : aucun abonnement ne peut être payé", sub: 4, action: "Voir le système" });
+  else if (s.papi.testMode) items.push({ key: "test", tone: "warn", icon: CreditCard, text: "Paiement en mode test : aucun débit réel", sub: 4, action: "Voir le système" });
+  if (data.revenue.failed > 0) items.push({ key: "failed", tone: "bad", icon: XCircle, text: `${plural(data.revenue.failed, "paiement échoué", "paiements échoués")} sur la période`, sub: 2, action: "Voir les paiements" });
+  if (data.revenue.pending.count > 0) items.push({ key: "pending", tone: "warn", icon: Hourglass, text: `${plural(data.revenue.pending.count, "lien", "liens")} en attente de paiement (${fmtAr(data.revenue.pending.amount)})`, sub: 2, action: "Voir les paiements" });
+  if (!data.ai.configured) items.push({ key: "ai", tone: "bad", icon: Bot, text: "Aucun modèle d'IA configuré : l'assistant ne peut pas répondre", sub: 4, action: "Configurer" });
+  if (data.ai.failures24h > 0) items.push({ key: "aifail", tone: "bad", icon: AlertTriangle, text: `${plural(data.ai.failures24h, "échec de l'IA", "échecs de l'IA")} en 24 h`, sub: 4, action: "Voir l'IA" });
+  if (data.ai.quotaHits > 0) items.push({ key: "quota", tone: "warn", icon: Gift, text: `${plural(data.ai.quotaHits, "compte a", "comptes ont")} atteint son quota de réponses IA`, sub: 1, action: "Voir les comptes" });
+  if (!s.mail.configured) items.push({ key: "mail", tone: "warn", icon: Mail, text: "E-mail non configuré : les codes de validation s'affichent dans le terminal du serveur", sub: 4, action: "Voir le système" });
+  if (!s.webhookConfigured) items.push({ key: "hook", tone: "warn", icon: Plug, text: "Webhooks Meta non configurés : les commentaires arrivent seulement par relève", sub: 4, action: "Voir le système" });
+
+  if (items.length === 0) {
+    return (
+      <div className="strip !m-0 !rounded-2xl">
+        <CheckCircle2 />
+        <span><b>Tout est en ordre</b> : aucun paiement en échec, IA, e-mail et paiement configurés.</span>
+      </div>
+    );
+  }
+  const tone = { bad: { bg: theme.dangerBg, fg: theme.red }, warn: { bg: theme.amberSoft, fg: theme.amber } };
+  return (
+    <section className="card-x rounded-2xl p-3 sm:p-4" aria-label="À surveiller">
+      <div className="mb-2.5 flex items-center gap-2 px-1">
+        <AlertTriangle size={15} style={{ color: theme.amber }} />
+        <h2 className="text-[13.5px] font-bold" style={{ color: theme.text }}>À surveiller</h2>
+        <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: theme.amberSoft, color: theme.amber }}>{items.length}</span>
+      </div>
+      <ul className="grid gap-2 md:grid-cols-2">
+        {items.map((it) => (
+          <li key={it.key}>
+            <button onClick={() => go(it.sub)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-opacity hover:opacity-85" style={{ background: tone[it.tone].bg }}>
+              <it.icon size={17} className="flex-shrink-0" style={{ color: tone[it.tone].fg }} />
+              <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug" style={{ color: theme.text }}>{it.text}</span>
+              <span className="flex-shrink-0 text-[12px] font-semibold" style={{ color: tone[it.tone].fg }}>{it.action} ›</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 // Compte de résultat de la période : du brut au bénéfice
 function Ledger({ finance: f, periodLabel, count }: { finance: AdminOverview["finance"]; periodLabel: string; count: number }) {
   const line = (label: ReactNode, value: number, opts: { sign?: "-" | "="; detail?: ReactNode; strong?: boolean } = {}) => (
@@ -264,6 +360,19 @@ function Ledger({ finance: f, periodLabel, count }: { finance: AdminOverview["fi
     <div className="card-s px-5 py-5 text-[13px]">
       <CardTitle title="Compte de résultat" subtitle={`Du montant collecté au bénéfice · ${periodLabel}`} icon={Receipt} tint="#10B981" className="!mb-1.5" />
       {line("Montant collecté (brut)", f.gross, { detail: `${fmtNum(count)} paiement${count > 1 ? "s" : ""} confirmé${count > 1 ? "s" : ""}` })}
+      <ul className="mb-1 ml-4 flex flex-col gap-1 border-l pl-3" style={{ borderColor: "var(--line-2)" }}>
+        {SOURCES.map((src) => {
+          const t = f.bySource[src.kind];
+          return (
+            <li key={src.kind} className="flex items-center gap-2 text-[12.5px]">
+              <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: src.color }} aria-hidden />
+              <span className="min-w-0 flex-1 truncate" style={{ color: theme.textMuted }}>{src.label} <span className="text-[11px]">· {fmtNum(t.count)}×</span></span>
+              <span className="whitespace-nowrap font-semibold tabular-nums" style={{ color: theme.text }}>{fmtAr(t.gross)}</span>
+              <span className="w-10 text-right text-[11px] tabular-nums" style={{ color: theme.textMuted }}>{f.gross ? `${Math.round((t.gross / f.gross) * 100)} %` : "—"}</span>
+            </li>
+          );
+        })}
+      </ul>
       {line("Commissions de paiement", f.fees, {
         sign: "-",
         detail: f.feesEstimated
@@ -290,6 +399,108 @@ function Mini({ label, value, detail, dark }: { label: string; value: string; de
       <p className="tabular truncate text-[18px] font-extrabold tracking-[-0.02em]" style={{ color: dark ? "#fff" : theme.text }}>{value}</p>
       {detail && <p className="text-[11.5px]" style={{ color: dark ? "rgba(255,255,255,0.5)" : theme.textMuted }}>{detail}</p>}
     </div>
+  );
+}
+
+// ─── Briques des listes (utilisateurs, paiements) ────────────────────────────
+
+function RowsSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" aria-busy>
+      {[0, 1, 2, 3].map((i) => <span key={i} className="sk h-[68px] w-full rounded-2xl" />)}
+    </div>
+  );
+}
+
+// Nom, étiquettes (admin, état du compte, 2FA)
+function UserName({ u }: { u: AdminUser }) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-semibold" style={{ color: theme.text }}>
+      <span className="truncate">{u.name}</span>
+      {u.role === "ADMIN" && <span className="rounded px-1 text-[10px] font-bold" style={{ background: "#6366F11f", color: "#6366F1" }}>ADMIN</span>}
+      {u.account !== "ACTIVE" && <AccountBadge user={u} />}
+      {u.twoFactorMethod && (
+        <span className="inline-flex items-center gap-0.5 rounded px-1 text-[10px] font-bold" style={{ background: theme.greenSoft, color: theme.green }} title={u.twoFactorMethod === "TOTP" ? "Validation en deux étapes : application" : "Validation en deux étapes : e-mail"}>
+          <ShieldCheck size={10} /> 2FA
+        </span>
+      )}
+    </p>
+  );
+}
+
+// Échéance en clair : « dans 6 j », « expiré depuis 3 j » (rouge si expiré, ambre si ≤ 3 jours)
+function Due({ iso }: { iso: string | null }) {
+  if (!iso) return null;
+  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  const [text, color] = days < 0 ? [`expiré depuis ${-days} j`, theme.red] : days === 0 ? ["aujourd'hui", theme.amber] : days <= 3 ? [`dans ${days} j`, theme.amber] : [`dans ${days} j`, theme.textMuted];
+  return <span className="text-[11.5px] font-medium" style={{ color }}>{text}</span>;
+}
+
+// Petite jauge : valeur / limite, rouge quand la limite est atteinte
+function Meter({ label, value, limit, extra, bad }: { label: string; value: string; limit?: string; extra?: string; bad?: boolean }) {
+  const used = Number(value.replace(/\D/g, ""));
+  const max = limit ? Number(limit.replace(/\D/g, "")) : 0;
+  const ratio = max ? Math.min(1, used / max) : 0;
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
+        <span style={{ color: theme.textMuted }}>{label}</span>
+        <span className="tabular-nums" style={{ color: bad ? theme.red : theme.text }}>
+          <b className="font-semibold">{value}</b>{limit && <span style={{ color: theme.textMuted }}> / {limit}</span>}
+          {extra && <span style={{ color: theme.textMuted }}> {extra}</span>}
+        </span>
+      </div>
+      {max > 0 && (
+        <div className="mt-1 h-1 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }} role="progressbar" aria-valuemin={0} aria-valuemax={max} aria-valuenow={used} aria-label={label}>
+          <div className="h-full rounded-full" style={{ width: `${ratio * 100}%`, background: bad ? "linear-gradient(90deg,#f59e0b,#dc2626)" : ratio > 0.8 ? "#f59e0b" : "linear-gradient(90deg,#fcd34d,#f05a1a)" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Consommation d'un compte : pages, réponses IA, heures de live
+function Usage({ u }: { u: AdminUser }) {
+  const aiBad = u.aiLimit !== null && u.aiReplies >= u.aiLimit && !u.replyCredits;
+  return (
+    <div className="flex flex-col gap-2">
+      <Meter label="Pages" value={String(u.pages)} limit={u.pagesLimit !== null ? String(u.pagesLimit) : undefined} bad={u.pagesLimit !== null && u.pages > u.pagesLimit} />
+      <Meter label="IA" value={fmtNum(u.aiReplies)} limit={u.aiLimit !== null ? fmtNum(u.aiLimit) : undefined} extra={u.replyCredits > 0 ? `+${fmtNum(u.replyCredits)} cr.` : undefined} bad={aiBad} />
+      <Meter label="Live" value={fmtHours(u.liveSeconds)} extra={u.liveCreditSeconds > 0 ? `+${fmtHours(u.liveCreditSeconds)} achetées` : undefined} />
+    </div>
+  );
+}
+
+const KIND_ICON: Record<AdminPayment["kind"], LucideIcon> = { SUBSCRIPTION: CreditCard, LIVE_HOURS: Radio, REPLY_CREDITS: Coins };
+const payDate = (p: AdminPayment) => new Date(p.paidAt ?? p.createdAt).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+const payItem = (p: AdminPayment) =>
+  p.kind === "LIVE_HOURS" ? `${p.liveHours} h de live` : p.kind === "REPLY_CREDITS" ? `${fmtNum(p.replyCredits ?? 0)} réponses IA` : `${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`;
+
+const PAY_ICON: Record<PaymentStatus, LucideIcon> = { PAID: CheckCircle2, PENDING: Hourglass, FAILED: XCircle, EXPIRED: Clock };
+
+function PayStatus({ p, compact }: { p: AdminPayment; compact?: boolean }) {
+  const s = PAY_STATUS[p.status];
+  const Icon = PAY_ICON[p.status];
+  return (
+    <div className="min-w-0">
+      <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: s.bg, color: s.color }}><Icon size={11} /> {s.label}</span>
+      {!compact && p.failureMessage && p.status !== "PAID" && <span className="mt-0.5 block max-w-[200px] truncate text-[11px]" style={{ color: theme.textMuted }} title={p.failureMessage}>{p.failureMessage}</span>}
+    </div>
+  );
+}
+
+// Référence du paiement : un clic la copie
+function CopyRef({ value, className = "" }: { value: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => navigator.clipboard?.writeText(value).then(() => swal.toast({ title: "Référence copiée" }), () => undefined)}
+      className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-mono text-[11.5px] hover:bg-black/5 ${className}`}
+      style={{ color: theme.textMuted }}
+      title="Copier la référence"
+    >
+      <span className="max-w-[140px] truncate">{value}</span> <Copy size={11} />
+    </button>
   );
 }
 
@@ -329,111 +540,143 @@ function UsersView() {
   }, [query, plan, status, account, page, size]);
   useEffect(load, [load]);
 
-  const select = "rounded-lg px-2.5 py-1.5 text-[13px] outline-none";
-  const selectStyle = { background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text };
+  const select = "field-in h-10 rounded-xl px-3 text-[13px] font-medium outline-none";
+  const selectStyle = { border: 0 };
+  const filtered = Boolean(query || plan || status || account !== "current");
+  const resetFilters = () => {
+    setSearch("");
+    setQuery("");
+    setPlan("");
+    setStatus("");
+    setAccount("current");
+    setPage(1);
+  };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex min-w-[220px] flex-1 items-center gap-2 rounded-lg px-2.5 py-1.5" style={selectStyle}>
-          <Search size={14} style={{ color: theme.textMuted }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nom ou e-mail…" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" style={{ color: theme.text }} />
-        </label>
-        <Select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Formule">
-          <option value="">Toutes les formules</option>
-          <option value="STARTER">Starter</option>
-          <option value="PRO">Pro</option>
-          <option value="BUSINESS">Business</option>
-          <option value="AGENCY">Agence</option>
-        </Select>
-        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Statut">
-          <option value="">Tous les statuts</option>
-          <option value="ACTIVE">Actifs</option>
-          <option value="TRIAL">En essai</option>
-          <option value="EXPIRED">Expirés</option>
-        </Select>
-        <Select value={account} onChange={(e) => { setAccount(e.target.value as AccountFilter); setPage(1); }} className={select} style={selectStyle} aria-label="État du compte">
-          <option value="current">Comptes non supprimés</option>
-          <option value="active">Actifs</option>
-          <option value="suspended">Suspendus</option>
-          <option value="banned">Bannis</option>
-          <option value="deleted">Supprimés</option>
-          <option value="all">Tous, y compris supprimés</option>
-        </Select>
-        {data && <span className="text-[12.5px]" style={{ color: theme.textMuted }}>{fmtNum(data.total)} compte{data.total > 1 ? "s" : ""}</span>}
-      </div>
+      <Panel
+        title="Utilisateurs"
+        subtitle={data ? `${fmtNum(data.total)} compte${data.total > 1 ? "s" : ""}${filtered ? " correspondent aux filtres" : ""}` : "Chargement…"}
+        icon={Users}
+        action={
+          filtered ? (
+            <Button size="sm" variant="ghost" icon={RotateCcw} onClick={resetFilters}>Réinitialiser</Button>
+          ) : undefined
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <label className="field-in flex h-10 items-center gap-2 rounded-xl px-3 sm:col-span-2 lg:col-span-1" style={selectStyle}>
+              <Search size={15} className="flex-shrink-0" style={{ color: theme.textMuted }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher par nom ou e-mail…" aria-label="Rechercher un utilisateur" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" style={{ color: theme.text }} />
+              {search && (
+                <button type="button" onClick={() => setSearch("")} className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full hover:bg-black/10" aria-label="Effacer la recherche"><X size={12} /></button>
+              )}
+            </label>
+            <Select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className={`${select} w-full`} style={selectStyle} aria-label="Formule">
+              <option value="">Toutes les formules</option>
+              <option value="STARTER">Starter</option>
+              <option value="PRO">Pro</option>
+              <option value="BUSINESS">Business</option>
+              <option value="AGENCY">Agence</option>
+            </Select>
+            <Select value={account} onChange={(e) => { setAccount(e.target.value as AccountFilter); setPage(1); }} className={`${select} w-full`} style={selectStyle} aria-label="État du compte">
+              <option value="current">Comptes non supprimés</option>
+              <option value="active">Actifs</option>
+              <option value="suspended">Suspendus</option>
+              <option value="banned">Bannis</option>
+              <option value="deleted">Supprimés</option>
+              <option value="all">Tous, y compris supprimés</option>
+            </Select>
+          </div>
+          <FilterChips
+            items={[{ id: "", label: "Tous" }, { id: "ACTIVE", label: "Abonnés actifs" }, { id: "TRIAL", label: "En essai" }, { id: "EXPIRED", label: "Expirés" }]}
+            value={status}
+            onChange={(v) => { setStatus(v); setPage(1); }}
+          />
+        </div>
+      </Panel>
 
-      <div className="overflow-x-auto rounded-2xl card-x" style={{ opacity: loading && data ? 0.6 : 1 }}>
-        <table className="w-full min-w-[1060px] text-[13px] [&_td]:whitespace-nowrap">
-          <thead style={{ background: theme.bg, borderBottom: `1px solid ${theme.border}` }}>
-            <tr>
-              {["Utilisateur", "Formule", "Échéance", "Pages", "IA ce mois", "Live", "Total payé", "Activité", ""].map((h, i) => (
-                <th key={i} className="px-3 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {!data && loading ? (
-              <tr><td colSpan={9} className="px-3 py-10 text-center" style={{ color: theme.textMuted }}><Loader2 size={16} className="mx-auto animate-spin" /></td></tr>
-            ) : data?.users.length === 0 ? (
-              <tr><td colSpan={9} className="px-3 py-10 text-center" style={{ color: theme.textMuted }}>Aucun compte ne correspond.</td></tr>
-            ) : (
-              data?.users.map((u) => (
-                <tr key={u.id} style={{ borderTop: `1px solid ${theme.border}`, background: u.account !== "ACTIVE" ? ACCOUNT_META[u.account].rowBg : undefined }}>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar name={u.name} src={u.avatarUrl} size={30} />
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 truncate font-semibold" style={{ color: theme.text }}>
-                          {u.name}
-                          {u.role === "ADMIN" && <span className="rounded px-1 text-[10px] font-bold" style={{ background: "#6366F11f", color: "#6366F1" }}>ADMIN</span>}
-                          {u.account !== "ACTIVE" && <AccountBadge user={u} />}
-                          {u.twoFactorMethod && (
-                            <span className="inline-flex items-center gap-0.5 rounded px-1 text-[10px] font-bold" style={{ background: theme.greenSoft, color: theme.green }} title={u.twoFactorMethod === "TOTP" ? "Validation en deux étapes : application" : "Validation en deux étapes : e-mail"}>
-                              <ShieldCheck size={10} /> 2FA
-                            </span>
-                          )}
-                        </p>
-                        <p className="truncate text-[11.5px]" style={{ color: theme.textMuted }}>{u.email} · inscrit le {fmtDate(u.createdAt)}</p>
-                        {u.paymentPhone && (
-                          <p className="flex items-center gap-1 text-[11.5px]" style={{ color: theme.textMuted }}>
-                            <Smartphone size={11} /> {u.paymentPhone}
-                          </p>
-                        )}
-                      </div>
+      {(() => {
+        const menu = (u: AdminUser) => (
+          <UserMenu user={u} self={u.id === me} onEdit={() => setEditing(u)} onGift={(kind) => setGifting({ user: u, kind })} onModerate={(action) => setModerating({ user: u, action })} />
+        );
+        if (!data) return loading ? <RowsSkeleton /> : null;
+        if (data.users.length === 0) return <p className="card-x rounded-2xl px-4 py-10 text-center text-sm" style={{ color: theme.textMuted }}>Aucun compte ne correspond.</p>;
+        return (
+          <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity .2s" }}>
+            {/* Écrans étroits et moyens : une carte par compte */}
+            <ul className="grid gap-3 md:grid-cols-2 xl:hidden">
+              {data.users.map((u) => (
+                <li key={u.id} className="card-x flex flex-col gap-3 rounded-2xl p-4" style={u.account !== "ACTIVE" ? { background: ACCOUNT_META[u.account].rowBg } : undefined}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={u.name} src={u.avatarUrl} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <UserName u={u} />
+                      <p className="truncate text-[12px]" style={{ color: theme.textMuted }}>{u.email}</p>
                     </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <p className="font-medium" style={{ color: theme.text }}>{u.planName}</p>
+                    {menu(u)}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-semibold" style={{ color: theme.text }}>{u.planName}</span>
                     <StatusBadge status={u.status} />
-                  </td>
-                  <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>{u.periodEnd ? fmtDate(u.periodEnd) : "—"}</td>
-                  <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.text }}>{u.pages}{u.pagesLimit !== null && <span style={{ color: theme.textMuted }}> / {u.pagesLimit}</span>}</td>
-                  <td className="px-3 py-2.5 tabular-nums" style={{ color: u.aiLimit !== null && u.aiReplies >= u.aiLimit && !u.replyCredits ? theme.red : theme.text }}>
-                    {fmtNum(u.aiReplies)}{u.aiLimit !== null && <span style={{ color: theme.textMuted }}> / {fmtNum(u.aiLimit)}</span>}
-                    {u.replyCredits > 0 && <span className="block text-[11px]" style={{ color: theme.textMuted }}>+{fmtNum(u.replyCredits)} crédits</span>}
-                  </td>
-                  <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>
-                    {fmtHours(u.liveSeconds)}
-                    {u.liveCreditSeconds > 0 && <span className="block text-[11px]" style={{ color: theme.textMuted }}>+{fmtHours(u.liveCreditSeconds)} achetées</span>}
-                  </td>
-                  <td className="px-3 py-2.5 font-semibold tabular-nums" style={{ color: theme.text }}>{u.totalPaid ? fmtAr(u.totalPaid) : <span style={{ color: theme.textMuted, fontWeight: 400 }}>—</span>}</td>
-                  <td className="px-3 py-2.5 text-[12px]" style={{ color: theme.textMuted }}>{u.lastActivity ? timeAgo(u.lastActivity) : "jamais"}</td>
-                  <td className="px-2 py-2.5">
-                    <UserMenu
-                      user={u}
-                      self={u.id === me}
-                      onEdit={() => setEditing(u)}
-                      onGift={(kind) => setGifting({ user: u, kind })}
-                      onModerate={(action) => setModerating({ user: u, action })}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    <Due iso={u.periodEnd} />
+                  </div>
+                  <Usage u={u} />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2.5 text-[12px]" style={{ borderColor: "var(--line)", color: theme.textMuted }}>
+                    <span>Payé : <b style={{ color: theme.text }}>{u.totalPaid ? fmtAr(u.totalPaid) : "—"}</b></span>
+                    <span>{u.lastActivity ? `Actif ${timeAgo(u.lastActivity)}` : "Jamais connecté"} · inscrit le {fmtDate(u.createdAt)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Grands écrans : tableau, avec la consommation regroupée en une colonne */}
+            <div className="card-x hidden overflow-x-auto rounded-2xl xl:block">
+              <table className="w-full min-w-[920px] text-[13px]">
+                <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
+                  <tr>
+                    {["Utilisateur", "Formule", "Échéance", "Consommation du mois", "Total payé", "Activité", ""].map((h, i) => (
+                      <th key={i} className="px-3 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users.map((u) => (
+                    <tr key={u.id} className="transition-colors hover:bg-black/[0.025]" style={{ borderTop: "1px solid var(--line)", background: u.account !== "ACTIVE" ? ACCOUNT_META[u.account].rowBg : undefined }}>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={u.name} src={u.avatarUrl} size={34} />
+                          <div className="min-w-0">
+                            <UserName u={u} />
+                            <p className="truncate text-[11.5px]" style={{ color: theme.textMuted }}>{u.email}</p>
+                            <p className="flex items-center gap-1 text-[11px]" style={{ color: theme.textMuted }}>
+                              inscrit le {fmtDate(u.createdAt)}
+                              {u.paymentPhone && <><span aria-hidden>·</span><Smartphone size={10} />{u.paymentPhone}</>}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <p className="font-semibold" style={{ color: theme.text }}>{u.planName}</p>
+                        <StatusBadge status={u.status} />
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <p className="text-[12.5px]" style={{ color: theme.text }}>{u.periodEnd ? fmtDate(u.periodEnd) : "—"}</p>
+                        <Due iso={u.periodEnd} />
+                      </td>
+                      <td className="px-3 py-3"><div className="w-[230px]"><Usage u={u} /></div></td>
+                      <td className="px-3 py-3 whitespace-nowrap font-semibold tabular-nums" style={{ color: theme.text }}>{u.totalPaid ? fmtAr(u.totalPaid) : <span style={{ color: theme.textMuted, fontWeight: 400 }}>—</span>}</td>
+                      <td className="px-3 py-3 whitespace-nowrap text-[12px]" style={{ color: theme.textMuted }}>{u.lastActivity ? timeAgo(u.lastActivity) : "jamais"}</td>
+                      <td className="px-2 py-3 text-right">{menu(u)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
       {data && (
         <Pagination
           page={page}
@@ -672,6 +915,7 @@ function PaymentsView() {
   const [size, setSize] = useState(10);
   const [data, setData] = useState<{ payments: AdminPayment[]; total: number; pageSize: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<AdminPayment | null>(null); // paiement ouvert dans le modal de détail
 
   useEffect(() => {
     setLoading(true);
@@ -693,74 +937,83 @@ function PaymentsView() {
   return (
     <div className="flex flex-col gap-4">
       <FeeRatesCard />
-      <div className="flex flex-wrap items-center gap-1.5">
-        {filters.map((f) => {
-          const on = status === f.id;
-          return (
-            <button
-              key={f.id || "all"}
-              onClick={() => { setStatus(f.id); setPage(1); }}
-              className="rounded-lg px-3 py-1.5 text-[12.5px] font-medium"
-              style={{ background: on ? theme.bgDark : theme.bgCard, color: on ? "#fff" : theme.text, border: `1px solid ${on ? theme.bgDark : theme.border}` }}
-              aria-pressed={on}
-            >
-              {f.label}
-            </button>
-          );
-        })}
-        {data && <span className="ml-1 text-[12.5px]" style={{ color: theme.textMuted }}>{fmtNum(data.total)} paiement{data.total > 1 ? "s" : ""}</span>}
-      </div>
+      <Panel
+        title="Paiements"
+        subtitle={data ? `${fmtNum(data.total)} paiement${data.total > 1 ? "s" : ""}${status ? ` · ${filters.find((f) => f.id === status)?.label.toLowerCase()}` : ""}` : "Chargement…"}
+        icon={CreditCard}
+        action={status ? <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => { setStatus(""); setPage(1); }}>Réinitialiser</Button> : undefined}
+      >
+        <FilterChips items={filters} value={status} onChange={(v) => { setStatus(v); setPage(1); }} />
+      </Panel>
 
-      <div className="overflow-x-auto rounded-2xl card-x" style={{ opacity: loading && data ? 0.6 : 1 }}>
-        <table className="w-full min-w-[1150px] text-[13px] [&_td]:whitespace-nowrap">
-          <thead style={{ background: theme.bg, borderBottom: `1px solid ${theme.border}` }}>
-            <tr>
-              {["Date", "Client", "Achat", "Montant", "Commission", "Net", "Moyen", "Téléphone", "Statut", "Référence"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data?.payments.length === 0 ? (
-              <tr><td colSpan={10} className="px-3 py-10 text-center" style={{ color: theme.textMuted }}>Aucun paiement.</td></tr>
-            ) : (
-              data?.payments.map((p) => {
-                const s = PAY_STATUS[p.status];
-                return (
-                  <tr key={p.reference} style={{ borderTop: `1px solid ${theme.border}` }}>
-                    <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>
-                      {new Date(p.paidAt ?? p.createdAt).toLocaleString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <p className="font-medium" style={{ color: theme.text }}>{p.user.name}</p>
-                      <p className="text-[11.5px]" style={{ color: theme.textMuted }}>{p.user.email}</p>
-                    </td>
-                    <td className="px-3 py-2.5" style={{ color: theme.text }}>
-                      {p.kind === "LIVE_HOURS"
-                        ? `${p.liveHours} h de live`
-                        : p.kind === "REPLY_CREDITS"
-                          ? `${fmtNum(p.replyCredits ?? 0)} réponses`
-                          : `${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`}
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</td>
-                    <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.textMuted }} title={p.feeEstimated ? "Estimée d'après les tarifs de l'opérateur" : "Transmise par l'opérateur"}>
-                      {p.fee === null ? "—" : `${p.feeEstimated ? "≈ " : ""}− ${fmtAr(p.fee)}`}
-                    </td>
-                    <td className="px-3 py-2.5 font-semibold tabular-nums" style={{ color: theme.text }}>{p.net === null ? "—" : fmtAr(p.net)}</td>
-                    <td className="px-3 py-2.5 text-[12.5px]" style={{ color: theme.text }}>{p.paymentMethod ? PAYMENT_METHOD_LABEL[p.paymentMethod] ?? p.paymentMethod : "—"}</td>
-                    <td className="px-3 py-2.5 text-[12.5px] tabular-nums" style={{ color: theme.text }}>{p.payerPhone ?? "—"}</td>
-                    <td className="px-3 py-2.5">
-                      <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: s.bg, color: s.color }}>{s.label}</span>
-                      {p.failureMessage && p.status !== "PAID" && <span className="mt-0.5 block max-w-[180px] truncate text-[11px]" style={{ color: theme.textMuted }} title={p.failureMessage}>{p.failureMessage}</span>}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono text-[11.5px]" style={{ color: theme.textMuted }}>{p.reference}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      {!data ? (
+        loading ? <RowsSkeleton /> : null
+      ) : data.payments.length === 0 ? (
+        <p className="card-x rounded-2xl px-4 py-10 text-center text-sm" style={{ color: theme.textMuted }}>Aucun paiement.</p>
+      ) : (
+        <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity .2s" }}>
+          {/* Écrans étroits et moyens : une carte par paiement, le détail s'ouvre au toucher */}
+          <ul className="grid gap-3 md:grid-cols-2 xl:hidden">
+            {data.payments.map((p) => {
+              const s = PAY_STATUS[p.status];
+              const Kind = KIND_ICON[p.kind];
+              return (
+                <li key={p.reference}>
+                  <button onClick={() => setDetail(p)} className="card-x flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-transform active:scale-[0.99]" aria-label={`Détail du paiement de ${p.user.name}`}>
+                    <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl" style={{ background: s.bg, color: s.color }}><Kind size={18} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-semibold" style={{ color: theme.text }}>{payItem(p)}</span>
+                      <span className="block truncate text-[12px]" style={{ color: theme.textMuted }}>{p.user.name} · {payDate(p)}</span>
+                    </span>
+                    <span className="flex flex-shrink-0 flex-col items-end gap-1">
+                      <span className="text-[14.5px] font-extrabold tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</span>
+                      <PayStatus p={p} compact />
+                    </span>
+                    <ChevronRight size={16} className="flex-shrink-0" style={{ color: theme.textMuted }} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Grands écrans : tableau court (le reste est dans le détail) */}
+          <div className="card-x hidden overflow-x-auto rounded-2xl xl:block">
+            <table className="w-full min-w-[760px] text-[13px]">
+              <thead style={{ background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
+                <tr>
+                  {["Date", "Client", "Achat", "Montant", "Statut", ""].map((h, i) => (
+                    <th key={i} className="px-3 py-2.5 text-left text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.payments.map((p) => {
+                  const Kind = KIND_ICON[p.kind];
+                  return (
+                    <tr key={p.reference} onClick={() => setDetail(p)} className="cursor-pointer transition-colors hover:bg-black/[0.03]" style={{ borderTop: "1px solid var(--line)" }}>
+                      <td className="px-3 py-3 whitespace-nowrap text-[12.5px]" style={{ color: theme.text }}>{payDate(p)}</td>
+                      <td className="px-3 py-3">
+                        <p className="font-semibold" style={{ color: theme.text }}>{p.user.name}</p>
+                        <p className="text-[11.5px]" style={{ color: theme.textMuted }}>{p.user.email}</p>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap" style={{ color: theme.text }}>
+                        <span className="inline-flex items-center gap-2"><Kind size={15} style={{ color: theme.goldDark }} />{payItem(p)}</span>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap font-bold tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</td>
+                      <td className="px-3 py-3"><PayStatus p={p} compact /></td>
+                      <td className="px-3 py-3 text-right">
+                        <button onClick={(e) => { e.stopPropagation(); setDetail(p); }} className="inline-flex items-center gap-0.5 whitespace-nowrap text-[12.5px] font-semibold hover:underline" style={{ color: theme.goldDark }}>
+                          Détails <ChevronRight size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {data && (
         <Pagination
           page={page}
@@ -775,7 +1028,59 @@ function PaymentsView() {
           }}
         />
       )}
+      {detail && <PaymentDetail p={detail} onClose={() => setDetail(null)} />}
     </div>
+  );
+}
+
+// Détail d'un paiement : tout ce que la liste ne montre pas (référence, dates, commission, net, moyen, téléphone, erreur)
+function PaymentDetail({ p, onClose }: { p: AdminPayment; onClose: () => void }) {
+  const s = PAY_STATUS[p.status];
+  const Kind = KIND_ICON[p.kind];
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—");
+  const row = (label: string, value: ReactNode) => (
+    <div className="flex items-start justify-between gap-4 py-2" style={{ borderTop: "1px solid var(--line)" }}>
+      <dt className="text-[12.5px]" style={{ color: theme.textMuted }}>{label}</dt>
+      <dd className="min-w-0 text-right text-[13px] font-medium" style={{ color: theme.text }}>{value}</dd>
+    </div>
+  );
+  return (
+    <Modal title="Détail du paiement" subtitle={<span className="font-mono">{p.reference}</span>} onClose={onClose} footer={<Button variant="ghost" icon={X} onClick={onClose}>Fermer</Button>}>
+      <div className="flex items-center gap-3 rounded-2xl p-4" style={{ background: s.bg }}>
+        <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl" style={{ background: theme.bgCard, color: s.color }}><Kind size={20} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-medium" style={{ color: s.color }}>{payItem(p)}</p>
+          <p className="text-[24px] font-extrabold leading-tight tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</p>
+        </div>
+        <PayStatus p={p} />
+      </div>
+
+      {p.failureMessage && p.status !== "PAID" && <Alert variant="error" className="mt-3">{p.failureMessage}</Alert>}
+
+      <dl className="mt-3">
+        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: theme.textMuted }}>Client</p>
+        {row("Nom", p.user.name)}
+        {row("E-mail", <a href={`mailto:${p.user.email}`} className="underline" style={{ color: theme.goldDark }}>{p.user.email}</a>)}
+        {row("Téléphone du payeur", p.payerPhone ?? "—")}
+
+        <p className="mb-1 mt-4 text-[11px] font-bold uppercase tracking-wide" style={{ color: theme.textMuted }}>Achat</p>
+        {row("Type", p.kind === "SUBSCRIPTION" ? "Abonnement" : p.kind === "LIVE_HOURS" ? "Heures de live" : "Crédits de réponses IA")}
+        {p.kind === "SUBSCRIPTION" && row("Formule", `${p.planName ?? "—"} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`)}
+        {p.kind === "LIVE_HOURS" && row("Heures achetées", `${p.liveHours} h`)}
+        {p.kind === "REPLY_CREDITS" && row("Réponses achetées", fmtNum(p.replyCredits ?? 0))}
+
+        <p className="mb-1 mt-4 text-[11px] font-bold uppercase tracking-wide" style={{ color: theme.textMuted }}>Montants</p>
+        {row("Montant payé (brut)", <b className="tabular-nums">{fmtAr(p.amount)}</b>)}
+        {row(p.feeEstimated ? "Commission (estimée)" : "Commission de l'opérateur", p.fee === null ? "en attente" : <span className="tabular-nums">− {fmtAr(p.fee)}</span>)}
+        {row("Encaissé net", p.net === null ? "—" : <b className="tabular-nums">{fmtAr(p.net)}</b>)}
+
+        <p className="mb-1 mt-4 text-[11px] font-bold uppercase tracking-wide" style={{ color: theme.textMuted }}>Paiement</p>
+        {row("Moyen", p.paymentMethod ? PAYMENT_METHOD_LABEL[p.paymentMethod] ?? p.paymentMethod : "Non précisé")}
+        {row("Créé le", when(p.createdAt))}
+        {row("Payé le", when(p.paidAt))}
+        {row("Référence", <CopyRef value={p.reference} />)}
+      </dl>
+    </Modal>
   );
 }
 
