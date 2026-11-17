@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { theme } from "@/theme";
 import { LegalLayout, Section } from "@/components/marketing/LegalLayout";
+import { AI_PACK, PLAN_DEFS, annualMonthly } from "@/data/plans";
+
+const fmt = (n: number) => n.toLocaleString("fr-FR");
 
 const link = { color: theme.goldDark };
 
@@ -9,13 +12,14 @@ export function TermsPage() {
     <LegalLayout
       title="Conditions Générales d'Utilisation"
       subtitle="Les règles d'utilisation de SuiteFlow, à lire avant de créer votre compte et de connecter vos Pages."
-      updatedAt="20 octobre 2026"
+      updatedAt="17 novembre 2026"
     >
       <Section title="1. Objet">
         <p>
           SuiteFlow (« le Service ») est une plateforme qui permet de gérer, automatiser et planifier les publications,
           commentaires et messages privés de Pages Facebook et de comptes Instagram professionnels, de suivre les
-          clients potentiels (leads), les ventes réalisées pendant les lives et les annonces Marketplace. Les présentes
+          clients potentiels (leads), les ventes réalisées pendant les lives et les annonces Marketplace, d'enchaîner des
+          actions automatiques (pipelines) et de travailler à plusieurs au sein d'un espace de travail. Les présentes
           Conditions Générales d'Utilisation (« CGU ») régissent l'accès et l'utilisation du Service par tout
           utilisateur créant un compte (« vous », « l'Utilisateur »).
         </p>
@@ -42,6 +46,11 @@ export function TermsPage() {
           compte. Prévenez-nous sans délai de toute utilisation non autorisée ; vous pouvez à tout moment déconnecter
           tous vos appareils depuis Paramètres → Sécurité.
         </p>
+        <p>
+          Nous vous recommandons d'activer la validation en deux étapes (Paramètres → Sécurité) : à chaque connexion, un
+          code reçu par e-mail ou généré par une application d'authentification est demandé en plus du mot de passe.
+          Un code ne sert qu'une fois et expire rapidement.
+        </p>
         <p>Vous devez avoir au moins 18 ans, ou l'autorisation d'un représentant légal, pour utiliser le Service.</p>
       </Section>
 
@@ -65,7 +74,28 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="4. Réponses automatiques et intelligence artificielle">
+      <Section title="4. Espaces de travail et équipes">
+        <p>
+          Votre compte dispose de son propre espace de travail. Si votre formule inclut l'équipe (Business et Agence),
+          vous pouvez y inviter des membres par e-mail et définir, module par module (réponses, lives, leads,
+          Marketplace, planification, statistiques, facturation…), s'ils ont un accès en lecture ou en écriture.
+          Le membre invité peut accepter ou ignorer l'invitation, qui expire au bout de 7 jours, et peut quitter
+          l'espace à tout moment.
+        </p>
+        <p>
+          Le propriétaire de l'espace reste responsable de l'usage qu'en font ses membres, des données auxquelles ils
+          accèdent et des actions effectuées en son nom ; chaque action est inscrite dans le journal d'activité avec le
+          nom de son auteur. Il peut suspendre ou retirer un membre à tout moment. Si la formule du propriétaire
+          n'inclut plus l'équipe ou atteint son nombre de membres, l'accès des membres est suspendu jusqu'à la
+          régularisation, sans suppression de leurs données de compte.
+        </p>
+        <p>
+          Lorsque vous travaillez dans l'espace d'un autre utilisateur, les règles, données et abonnement de cet espace
+          s'appliquent ; vos propres espace et abonnement ne sont pas modifiés.
+        </p>
+      </Section>
+
+      <Section title="5. Réponses automatiques, pipelines et intelligence artificielle">
         <p>
           Le Service peut répondre automatiquement à des commentaires et messages, selon des règles que vous
           définissez ou, si vous l'activez, à l'aide d'un modèle d'intelligence artificielle. Ces réponses sont
@@ -76,9 +106,22 @@ export function TermsPage() {
           si vous avez activé l'envoi automatique. SuiteFlow propose des outils de validation manuelle et de suivi ; il
           vous appartient de les utiliser si vous préférez garder un contrôle avant envoi.
         </p>
+        <p>
+          Les <strong>pipelines</strong> enchaînent, à partir d'un déclencheur (nouveau commentaire, nouveau message,
+          nouveau lead…), des conditions et des actions que vous choisissez : envoi d'un message privé, changement du
+          statut d'un lead, escalade vers vous, notification. Un pipeline agit en votre nom, comme une règle, et
+          respecte l'interrupteur général des réponses automatiques : en pause, il n'envoie rien. Chaque exécution est
+          conservée dans son historique pour que vous puissiez la vérifier. Vérifiez vos pipelines avant de les activer :
+          vous êtes responsable des messages et changements qu'ils produisent.
+        </p>
+        <p>
+          Le modèle d'intelligence artificielle utilisé peut évoluer ; d'autres fournisseurs pourront être proposés à
+          l'avenir, sans changer vos règles ni vos réglages. Le modèle utilisé et son fournisseur sont indiqués dans
+          Règles → Assistant IA.
+        </p>
       </Section>
 
-      <Section title="5. Ventes : lives, Marketplace et leads">
+      <Section title="6. Ventes : lives, Marketplace et leads">
         <p>
           Le Service vous aide à enregistrer des commandes (commentaires « JP » pendant un live, demandes reçues sur
           Marketplace), à publier vos articles dans votre Catalogue Facebook et à repérer vos clients potentiels.
@@ -89,9 +132,16 @@ export function TermsPage() {
           Les informations de vos articles (prix, stock, photos, description) sont celles que vous saisissez ou
           importez : vous êtes responsable de leur exactitude et de leur conformité aux règles de Meta.
         </p>
+        <p>
+          Vous pouvez aussi importer vos publications à programmer depuis un tableur (Google Sheets ou CSV) et le garder
+          pour une relève automatique. Vous restez responsable du contenu du tableur, des images vers lesquelles il
+          pointe (vous devez en détenir les droits) et de son partage : un tableur ou une image doivent être lisibles par
+          lien pour être importés. Une ligne ajoutée au tableur est programmée automatiquement à la relève suivante ; mettez
+          la source en pause ou retirez-la pour arrêter ces imports.
+        </p>
       </Section>
 
-      <Section title="6. Données de vos clients">
+      <Section title="7. Données de vos clients">
         <p>
           Le Service traite pour votre compte des données de vos clients : nom, messages, téléphone, e-mail ou adresse
           de livraison qu'ils vous communiquent. Vous êtes responsable de ces données vis-à-vis de vos clients et vous
@@ -100,17 +150,38 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="7. Abonnement, paiement et tarifs">
+      <Section title="8. Abonnement, paiement et tarifs">
         <p>
-          Le Service est proposé selon différentes formules (Starter, Pro, Business, Agence), décrites sur la page
-          d'accueil. À la création du compte, vous bénéficiez d'un essai gratuit de 14 jours de la formule Pro, sans
+          Le Service est proposé selon différentes formules (Starter, Pro, Business, Agence), décrites et comparées sur la
+          page d'accueil (rubrique Tarifs). À la création du compte, vous bénéficiez d'un essai gratuit de 14 jours de la formule Pro, sans
           moyen de paiement à fournir. Les tarifs sont indiqués en ariary (Ar), toutes taxes comprises le cas échéant,
           et peuvent être modifiés avec un préavis raisonnable ; les modifications ne s'appliquent pas à une période
           déjà payée.
         </p>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {PLAN_DEFS.map((p) => (
+            <li key={p.id} className="rounded-xl px-3.5 py-3" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
+              <p className="font-bold">
+                {p.name}
+                <span className="ml-2 font-semibold" style={{ color: theme.goldDark }}>
+                  {p.base ? `${fmt(p.base)} Ar/mois · ${fmt(annualMonthly(p.base))} Ar/mois en annuel` : "Sur devis"}
+                </span>
+              </p>
+              <p className="mt-1 text-[13px]" style={{ color: theme.textMuted }}>
+                {p.limits.pages} · {p.limits.ai} · {p.limits.live}
+                {p.id === "BUSINESS" ? " · équipe de 5 membres" : p.id === "AGENCY" ? " · membres d'équipe illimités" : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Les fonctionnalités propres à une formule (règles IA par publication, leads, Marketplace, statistiques avancées,
+          équipe, accompagnement) sont détaillées dans le tableau comparatif de la page Tarifs. Les règles de réponse,
+          les pipelines et la file « À traiter » sont inclus dans toutes les formules.
+        </p>
         <p>
           L'abonnement est payé d'avance, pour un mois (30 jours) ou pour un an (365 jours, avec une remise de 15 %),
-          depuis Paramètres → Facturation. Le paiement est traité par notre prestataire Papi.mg (MVola, Orange Money,
+          depuis Paramètres → Facturation. Le paiement est traité par notre prestataire de paiement (MVola, Orange Money,
           Airtel Money ou carte bancaire) : SuiteFlow ne reçoit ni ne conserve vos identifiants de paiement. Il n'y a
           aucun prélèvement automatique : chaque période est payée par vous, et vous pouvez la prolonger à tout moment,
           la nouvelle période s'ajoutant à l'échéance en cours.
@@ -134,7 +205,7 @@ export function TermsPage() {
           associés ; elles ne réactivent pas les autres automatisations et ne sont pas remboursables.
         </p>
         <p>
-          Des crédits de réponses automatiques peuvent être achetés par packs, au prix affiché dans Paramètres →
+          Des crédits de réponses automatiques peuvent être achetés par packs (par exemple {fmt(AI_PACK.replies)} réponses pour {fmt(AI_PACK.price)} Ar), au prix affiché dans Paramètres →
           Facturation. Ils sont utilisés après le volume de réponses IA de votre formule, ou lorsque votre abonnement est
           terminé, et n'expirent pas. Abonnement terminé, ils permettent aux règles et à l'assistant IA de continuer à
           répondre, à raison d'un crédit par réponse envoyée ; ils ne réactivent pas les autres automatisations et ne
@@ -150,7 +221,7 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="8. Usage acceptable">
+      <Section title="9. Usage acceptable">
         <p>Vous vous engagez à ne pas utiliser le Service pour :</p>
         <ul className="list-disc space-y-1.5 pl-5">
           <li>envoyer des messages non sollicités constitutifs de spam ;</li>
@@ -162,17 +233,17 @@ export function TermsPage() {
         <p>Tout manquement peut entraîner la suspension ou la résiliation de votre compte, sans préavis en cas d'abus manifeste.</p>
       </Section>
 
-      <Section title="9. Services tiers">
+      <Section title="10. Services tiers">
         <p>
           Certaines fonctionnalités reposent sur des services tiers : Meta (Facebook, Instagram, Marketplace), Google
-          (connexion au compte), Papi.mg (paiement des abonnements) et, si vous l'activez, un fournisseur
+          (connexion au compte), notre prestataire de paiement (paiement des abonnements) et, si vous l'activez, un fournisseur
           d'intelligence artificielle. Leur utilisation est
           également soumise à leurs propres conditions. Une évolution ou une indisponibilité de ces services peut
           limiter certaines fonctionnalités, sans que la responsabilité de SuiteFlow puisse être engagée.
         </p>
       </Section>
 
-      <Section title="10. Disponibilité du Service et responsabilité">
+      <Section title="11. Disponibilité du Service et responsabilité">
         <p>
           Nous mettons en œuvre des moyens raisonnables pour assurer la disponibilité du Service, sans garantir une
           disponibilité continue et sans interruption. Dans la limite permise par la loi, SuiteFlow ne saurait être tenu
@@ -180,10 +251,10 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="11. Résiliation">
+      <Section title="12. Résiliation">
         <p>
           Vous pouvez supprimer votre compte à tout moment depuis Paramètres → Sécurité. La suppression retire vos
-          données du Service et révoque l'accès à vos Pages, selon les modalités décrites dans notre{" "}
+          données du Service et révoque l'accès à vos Pages, ainsi que celui des membres de votre équipe à votre espace, selon les modalités décrites dans notre{" "}
           <Link to="/confidentialite" className="underline" style={link}>Politique de confidentialité</Link>. Si vous
           vous connectiez via Facebook ou Google, vous pouvez aussi retirer l'accès de SuiteFlow depuis les réglages de ce
           compte.
@@ -191,11 +262,11 @@ export function TermsPage() {
         <p>
           Nous pouvons suspendre ou résilier un compte en cas de violation des présentes CGU, après notification
           lorsque cela est raisonnablement possible. L'absence de paiement n'entraîne que la mise en pause des
-          automatisations décrite à la section 7.
+          automatisations décrite à la section 8.
         </p>
       </Section>
 
-      <Section title="12. Modification des CGU">
+      <Section title="13. Modification des CGU">
         <p>
           Nous pouvons modifier les présentes CGU pour refléter une évolution du Service ou de la réglementation. Toute
           modification substantielle vous sera notifiée ; la poursuite de l'utilisation du Service après notification
@@ -203,14 +274,14 @@ export function TermsPage() {
         </p>
       </Section>
 
-      <Section title="13. Droit applicable">
+      <Section title="14. Droit applicable">
         <p>
           Les présentes CGU sont régies par le droit malgache. Tout litige relatif à leur interprétation ou leur
           exécution relève, à défaut de résolution amiable, des juridictions compétentes de Madagascar.
         </p>
       </Section>
 
-      <Section title="14. Contact">
+      <Section title="15. Contact">
         <p>
           Pour toute question relative aux présentes CGU, utilisez le{" "}
           <Link to="/contact" className="underline" style={link}>formulaire de contact</Link> ou écrivez-nous à{" "}

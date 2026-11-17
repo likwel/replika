@@ -145,13 +145,12 @@ function MarketplaceView() {
     loadStats();
   };
 
+  // Une seule carte : en-tête (titre, description, onglets), puis le contenu qui défile (chiffres, avis, annonces / commandes / catalogue)
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        className="mb-1"
-        description={MARKET_DESCRIPTION}
-      />
-
+    <>
+      <section className="card-x flex flex-col overflow-hidden rounded-2xl lg:h-[calc(100dvh-10rem)] lg:min-h-[560px]">
+        <PageHeader bare className="" description={MARKET_DESCRIPTION} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto border-t p-3 sm:p-5" style={{ borderColor: "var(--line)" }}>
       <StatsRow stats={stats} />
 
       {notice?.noCatalog ? (
@@ -206,6 +205,8 @@ function MarketplaceView() {
           pushing={pushing}
         />
       )}
+        </div>
+      </section>
 
       {editing && (
         <ListingEditor
@@ -224,6 +225,6 @@ function MarketplaceView() {
           onRemoved={removeOrder}
         />
       )}
-    </div>
+    </>
   );
 }

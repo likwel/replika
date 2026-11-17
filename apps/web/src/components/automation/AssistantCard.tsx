@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { IconTile } from "@/components/ui/Dash";
 import { useNavigate } from "react-router-dom";
-import { Bot, RefreshCw, Power, AlertTriangle, Facebook } from "lucide-react";
+import { Bot, RefreshCw, Power, AlertTriangle, Facebook, ArrowRight } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -63,14 +64,12 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
   const stats = settings?.stats;
 
   return (
-    <div className="rounded-xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <div className="rounded-xl p-5 card-x">
       <div className="flex items-start gap-4">
-        <div className="rounded-lg p-2.5" style={{ background: theme.goldSoft }}>
-          <Bot size={22} style={{ color: theme.goldDark }} />
-        </div>
+        <IconTile icon={Bot} tint={enabled ? "#16a34a" : "#64748B"} size="md" />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold" style={{ color: theme.text }}>Réponses automatiques</h3>
+            <h3 className="text-[16px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>Réponses automatiques</h3>
             {settings && (
               <span
                 className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium"
@@ -83,7 +82,7 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
           </div>
 
           {stats ? (
-            <p className="mt-1 text-sm" style={{ color: theme.text }}>
+            <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>
               {plural(stats.autoRepliedToday, "réponse automatique", "réponses automatiques")} aujourd'hui ·{" "}
               {plural(stats.suggested, "suggestion")} à valider · {plural(stats.escalated, "escaladé")}
               {stats.failed > 0 && (
@@ -91,7 +90,7 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
               )}
             </p>
           ) : (
-            <p className="mt-1 text-sm" style={{ color: theme.textMuted }}>Chargement…</p>
+            <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>Chargement…</p>
           )}
           {settings && (
             <p className="mt-1 text-[11.5px]" style={{ color: theme.textMuted }}>
@@ -105,7 +104,7 @@ export function AssistantCard({ showRulesLink, onSynced }: Props) {
 
           <div className="mt-3 flex flex-wrap gap-2">
             {showRulesLink && (
-              <Button size="sm" variant="primary" onClick={() => nav("/app/automatisation")}>
+              <Button icon={ArrowRight} size="sm" variant="primary" onClick={() => nav("/app/regles")}>
                 Voir les règles
               </Button>
             )}

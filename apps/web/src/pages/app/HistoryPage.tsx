@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useOutletContext } from "react-router-dom";
-import { ChevronDown, History, Loader2, Users } from "lucide-react";
+import { CalendarDays, ChevronDown, History, Loader2, Users } from "lucide-react";
 import { theme } from "@/theme";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
-import { timeAgo } from "@/lib/format";
+import { plural, timeAgo } from "@/lib/format";
+import { IconTile } from "@/components/ui/Dash";
+import { PageCard } from "@/components/ui/PageCard";
 import { historyApi, type HistoryCategory, type HistoryEntry } from "@/lib/history.api";
 import { actionMeta, detailOf, groupByDay } from "@/components/history/history";
 
@@ -60,12 +62,15 @@ export function HistoryPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
-      <PageHeader
-        className="mb-1"
-        description={sub === 0 ? "Tout ce qui s'est passé sur votre compte, le plus récent en premier." : "Filtré depuis l'historique complet de votre compte."}
-      />
-
+    <PageCard
+      header={
+        <PageHeader
+          bare
+          className=""
+          description={sub === 0 ? "Tout ce qui s'est passé sur votre compte, le plus récent en premier." : "Filtré depuis l'historique complet de votre compte."}
+        />
+      }
+    >
       {items === null ? (
         <ListSkeleton height={64} count={6} />
       ) : items.length === 0 ? (
@@ -74,16 +79,20 @@ export function HistoryPage() {
         <>
           {groupByDay(items).map(([day, entries]) => (
             <div key={day}>
-              <p className="mb-2 px-1 text-xs font-semibold capitalize" style={{ color: theme.textMuted }}>{day}</p>
+              <div className="mb-2 flex items-center gap-2.5 px-1">
+                <IconTile icon={CalendarDays} tint="#64748B" size="sm" />
+                <b className="text-[14px] font-bold capitalize" style={{ color: theme.text }}>{day}</b>
+                <span className="chip off">{plural(entries.length, "action", "actions")}</span>
+              </div>
               <ul className="flex flex-col gap-2">
                 {entries.map((e) => {
                   const meta = actionMeta(e.action);
                   const Icon = meta.icon;
                   const detail = detailOf(e);
                   return (
-                    <li key={e.id} className="flex items-start gap-3 rounded-2xl p-3" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: `${meta.color}1A` }}>
-                        <Icon size={16} style={{ color: meta.color }} />
+                    <li key={e.id} className="flex items-start gap-3 rounded-2xl p-3 card-x">
+                      <span className="ico-tile sm" style={{ "--a": `color-mix(in srgb, ${meta.color} 78%, #fff)`, "--b": meta.color, color: "#fff" } as CSSProperties}>
+                        <Icon size={17} strokeWidth={2.1} />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium" style={{ color: theme.text }}>
@@ -127,6 +136,6 @@ export function HistoryPage() {
           )}
         </>
       )}
-    </div>
+    </PageCard>
   );
 }

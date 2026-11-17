@@ -50,7 +50,7 @@ export function LegalNoticePage() {
           {L.host.website && <Row label="Site"><a href={L.host.website} target="_blank" rel="noreferrer" className="underline" style={link}>{L.host.website}</a></Row>}
         </ul>
         <p>
-          Les paiements sont traités par Papi.mg ; la connexion aux Pages Facebook et comptes Instagram passe par l'API
+          Les paiements sont traités par notre prestataire de paiement ; la connexion aux Pages Facebook et comptes Instagram passe par l'API
           officielle de Meta. Ces prestataires hébergent les données qu'ils traitent selon leurs propres conditions.
         </p>
       </Section>

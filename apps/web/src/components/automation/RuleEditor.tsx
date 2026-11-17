@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { X, Layers, MessageCircle, Mail, Loader2, Sparkles, BookOpen, Plus, Play } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Select } from "@/components/ui/Select";
+import { X, Layers, MessageCircle, Mail, Loader2, Sparkles, BookOpen, Plus, Play, Save } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -151,17 +153,16 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
     }
   };
 
-  return (
+  // Portail : sinon la carte de la page (isolation) emprisonne l'overlay sous l'en-tête
+  return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-4"
-      style={{ background: "rgba(28,24,19,0.55)" }}
+      className="scrim fixed inset-0 z-[80] flex items-end justify-center sm:items-center sm:p-4"
       onClick={onClose}
     >
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-3xl sm:rounded-2xl"
-        style={{ background: theme.bgCard }}
+        className="sheet flex max-h-[92dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-[26px] sm:max-h-[92vh] sm:rounded-[22px]"
       >
         <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: theme.border }}>
           <h3 className="font-semibold" style={{ color: theme.text }}>
@@ -242,7 +243,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
 
           <div>
             <Label>Compte</Label>
-            <select
+            <Select
               className={inputClass}
               style={inputStyle}
               value={form.accountId ?? ""}
@@ -257,7 +258,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
                   {a.name} · {a.platform === "INSTAGRAM" ? "Instagram" : "Facebook"}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {form.accountId && (
@@ -265,7 +266,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
               <Label hint="Laissez sur « Toutes les publications » pour une règle valable sur l'ensemble du compte.">
                 Publication (optionnel)
               </Label>
-              <select
+              <Select
                 className={inputClass}
                 style={inputStyle}
                 value={form.postId ?? ""}
@@ -284,7 +285,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
                     {postSnippet(p)} · {p.comments} commentaire{p.comments > 1 ? "s" : ""}
                   </option>
                 ))}
-              </select>
+              </Select>
               {postsLoading && <p className="mt-1 text-[11px]" style={{ color: theme.textMuted }}>Chargement des publications…</p>}
             </div>
           )}
@@ -476,14 +477,12 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved }: Props) 
         </div>
 
         <div className="flex justify-end gap-2 border-t px-5 py-3" style={{ borderColor: theme.border }}>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
-          <Button type="submit" size="sm" disabled={saving || (!rule && modelId === null)}>
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            Enregistrer
-          </Button>
+          <Button icon={X} type="button" variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button type="submit" size="sm" disabled={saving || (!rule && modelId === null)} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Save}>Enregistrer</Button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

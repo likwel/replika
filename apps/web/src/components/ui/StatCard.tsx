@@ -1,30 +1,43 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { theme } from "@/theme";
+import { CountUp, IconTile } from "./Dash";
 
 interface Props {
   icon: LucideIcon;
   label: string;
   value: string;
   trend?: string; // "+12%", "-8%", "Nouveau"… le signe du préfixe pilote la couleur et la flèche
-  color: string;
+  color: string; // couleur du module : teinte de la tuile d'icône
+  detail?: ReactNode; // ligne d'explication sous le chiffre
+  tone?: "warn" | "bad"; // colore le chiffre quand il signale un problème
 }
 
-export function StatCard({ icon: Icon, label, value, trend, color }: Props) {
+// Carte de chiffre : tuile d'icône en dégradé, libellé, chiffre en gras qui compte jusqu'à sa valeur
+export function StatCard({ icon, label, value, trend, color, detail, tone }: Props) {
   const down = trend?.trimStart().startsWith("-");
   const TrendIcon = down ? TrendingDown : TrendingUp;
   return (
-    <div className="rounded-xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-center gap-2">
-        <Icon size={15} className="flex-shrink-0" style={{ color }} />
-        <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: theme.textMuted }}>{label}</span>
+    <div className="card-s lift justify-between gap-3.5 p-4">
+      <div className="flex items-center gap-2.5">
+        <IconTile icon={icon} tint={color} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium" style={{ color: theme.textMuted }}>{label}</span>
+      </div>
+      <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1">
+        <p
+          className="tabular text-[26px] font-extrabold leading-none tracking-[-0.03em]"
+          style={{ color: tone === "bad" ? theme.red : tone === "warn" ? theme.amber : theme.text }}
+        >
+          <CountUp value={value} />
+        </p>
         {trend && (
-          <span className="flex flex-shrink-0 items-center gap-0.5 text-[11.5px] font-medium" style={{ color: down ? theme.red : theme.green }}>
+          <span className={`chip ${down ? "bad" : "ok"} !text-[11px]`}>
             <TrendIcon size={12} /> {trend}
           </span>
         )}
       </div>
-      <p className="mt-2 text-2xl font-semibold tracking-[-0.02em]" style={{ color: theme.text }}>{value}</p>
+      {detail && <p className="-mt-1.5 text-[12px] leading-snug" style={{ color: theme.textMuted }}>{detail}</p>}
     </div>
   );
 }

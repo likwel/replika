@@ -5,6 +5,7 @@ import { aiErrorMessage, isAiConfigured } from "../ai/ai.client.js";
 import { generateReplyForMessage, type AiReply } from "../ai/ai.service.js";
 import { findActiveSessionForPost, handleLiveDirectMessage, ingestLiveComment } from "../lives/live.service.js";
 import { detectLeadFromMessage } from "../leads/lead.service.js";
+import { runPipelinesFor } from "../pipelines/pipeline.engine.js";
 import { getEntitlements, type Entitlements } from "../billing/entitlements.js";
 import { consumeReplyCredit, returnReplyCredit } from "../billing/usage.js";
 import { usageMonth } from "../billing/billing.logic.js";
@@ -26,6 +27,7 @@ export interface IncomingEvent {
   content: string;
   postId?: string;
   createdAt?: Date;
+  recovery?: boolean; // reprise après un arrêt du serveur : un commentaire de live déjà enregistré, jamais traité, est retraité
 }
 
 // Échec de génération : l'abonnement ou le quota (message clair, déjà journalisé une fois) ou le modèle
@@ -254,9 +256,15 @@ export async function handleIncoming(account: SocialAccount, ev: IncomingEvent) 
   const ent = await getEntitlements(account.userId);
   const msg = await processIncoming(account, ev, ent);
   // Après la réponse : l'intention détectée par l'IA renforce la note du lead (module Leads de la formule)
+  let lead: Awaited<ReturnType<typeof detectLeadFromMessage>> = null;
   if (msg && ent.features.leads) {
-    await detectLeadFromMessage(account, msg).catch((e) => console.error(`❌ Lead ${msg.externalId} :`, e));
+    lead = await detectLeadFromMessage(account, msg).catch((e) => {
+      console.error(`❌ Lead ${msg.externalId} :`, e);
+      return null;
+    });
   }
+  // Pipelines d'automatisation : après la réponse et la détection du lead, pour qu'ils voient l'état final du message
+  if (msg) await runPipelinesFor(account, msg, lead);
   return msg;
 }
 
@@ -270,9 +278,12 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
   // les autres commentaires (prix, questions…) reçoivent les réponses automatiques habituelles
   // Live Manager : formule active ou heures de live achetées à l'unité
   const liveOk = ent.active || ent.liveCreditSeconds > 0;
+  // Réponses aux commentaires qui ne sont pas des JP : réglées par la session (toutes les règles, celles jointes, ou aucune)
+  let liveReply: { mode: string; ruleIds: string[]; useAi: boolean } | null = null;
   if (liveOk && ev.kind !== "DIRECT" && ev.postId) {
     const session = await findActiveSessionForPost(account.id, ev.postId);
     if (session) {
+      liveReply = { mode: session.replyMode, ruleIds: session.replyRuleIds, useAi: session.replyUseAi };
       const createdAt = ev.createdAt ?? new Date();
       const live = await ingestLiveComment(session, {
         id: ev.externalId,
@@ -281,7 +292,8 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
         authorName: ev.authorName,
         createdAt,
       });
-      if (live.status !== "other") return null; // JP, doublon ou commentaire de la Page
+      // JP, doublon ou commentaire de la Page ; une reprise après arrêt retraite le doublon (il n'avait pas été traité jusqu'au bout)
+      if (live.status !== "other" && !(ev.recovery && live.status === "duplicate")) return null;
       // Commentaire antérieur à la session (reprise de l'existant) : pas de réponse tardive
       if (createdAt < session.createdAt) return null;
     }
@@ -331,19 +343,24 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
   });
   const repliesOk = ent.active || ent.replyCredits > 0;
   if (!repliesOk || !user?.autoReplyEnabled) return msg;
+  if (liveReply?.mode === "NONE") return msg; // ce live ne répond pas aux autres commentaires : ils restent dans « À traiter »
 
   const rules = await prisma.automationRule.findMany({
     where: { userId: account.userId, isActive: true },
   });
   // Règles IA ciblées par publication : formule Pro et plus (ignorées après un passage à Starter)
-  const allowed = ent.features.postAiRules ? rules : rules.filter((r) => !(r.postId && r.useAi));
+  const permitted = ent.features.postAiRules ? rules : rules.filter((r) => !(r.postId && r.useAi));
+  // Live avec règles jointes : seules celles-ci répondent (et l'IA seulement si la session l'autorise)
+  const selected = liveReply?.mode === "SELECTED";
+  const allowed = selected ? permitted.filter((r) => liveReply!.ruleIds.includes(r.id)) : permitted;
+  const aiAllowed = !selected || liveReply!.useAi;
   const candidates = candidateRules(allowed, { kind: ev.kind, accountId: account.id, postId: ev.postId ?? null });
 
   const keywordRule = candidates.find((r) => r.matchType !== "ANY" && ruleMatchesText(r, msg.content));
   if (keywordRule) return applyRule(account, msg, keywordRule);
 
   let aiError: string | undefined;
-  if (aiAppliesTo(account, ev.kind)) {
+  if (aiAllowed && aiAppliesTo(account, ev.kind)) {
     const ai = await applyAi(account, msg);
     if (ai.handled) return ai.handled;
     aiError = ai.error;

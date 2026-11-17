@@ -76,7 +76,7 @@ export const ACTION_META: Record<string, ActionMeta> = {
   TWO_FACTOR_ENABLED: { label: "Validation en deux étapes activée", icon: ShieldCheck, color: "#166534" },
   TWO_FACTOR_DISABLED: { label: "Validation en deux étapes désactivée", icon: ShieldAlert, color: theme.amber },
   TWO_FACTOR_RESET: { label: "Validation en deux étapes réinitialisée par l'administrateur", icon: ShieldAlert, color: theme.amber },
-  FEE_RATES_UPDATED: { label: "Commissions Papi modifiées", icon: CreditCard, color: theme.textMuted },
+  FEE_RATES_UPDATED: { label: "Commissions de paiement modifiées", icon: CreditCard, color: theme.textMuted },
 };
 
 const PLAN_NAMES: Record<string, string> = { STARTER: "Starter", PRO: "Pro", BUSINESS: "Business", AGENCY: "Agence" };

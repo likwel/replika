@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, CalendarCheck, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, CalendarCheck, Loader2, ShieldCheck, Sparkles, X, CreditCard } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ interface Props {
   onClose: () => void;
 }
 
-// Récapitulatif avant paiement d'une formule : montant, échéance, puis fenêtre Papi
+// Récapitulatif avant paiement d'une formule : montant, échéance, puis fenêtre de paiement
 export function CheckoutDialog({ plan, period, quote, onClose }: Props) {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function CheckoutDialog({ plan, period, quote, onClose }: Props) {
     setPaying(true);
     setError(null);
     try {
-      // Fenêtre Papi ouverte dans ce clic ; le résultat s'affiche sur la page (PaymentHost)
+      // Fenêtre de paiement ouverte dans ce clic ; le résultat s'affiche sur la page (PaymentHost)
       await payment.start(() => billingApi.checkout(plan.id, period), {
         label: `Formule ${plan.name} · ${period === "ANNUAL" ? "annuel" : "mensuel"}`,
         amount: quote.amount,
@@ -44,9 +44,8 @@ export function CheckoutDialog({ plan, period, quote, onClose }: Props) {
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={pay} disabled={paying}>
-            {paying && <Loader2 size={14} className="animate-spin" />}
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button size="sm" icon={paying ? Loader2 : CreditCard} className={paying ? "[&>svg]:animate-spin" : ""} onClick={pay} disabled={paying}>
             Payer {fmtAr(quote.amount)}
           </Button>
         </>
@@ -75,7 +74,7 @@ export function CheckoutDialog({ plan, period, quote, onClose }: Props) {
 
         <p className="flex items-start gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
           <ShieldCheck size={13} className="mt-px flex-shrink-0" style={{ color: theme.green }} />
-          Paiement sécurisé sur Papi.mg ({MOBILE_MONEY}), dans une fenêtre à part. Aucun prélèvement automatique.
+          Paiement sécurisé ({MOBILE_MONEY}), dans une fenêtre à part. Aucun prélèvement automatique.
         </p>
         {error && <Alert variant="error">{error}</Alert>}
       </div>

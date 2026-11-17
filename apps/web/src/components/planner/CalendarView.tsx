@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CardTitle } from "@/components/ui/Dash";
 import { theme } from "@/theme";
 import type { Schedule } from "@/lib/schedule.api";
 import { KIND_META, STATUS_META, dayKey, monthRange } from "./planner";
@@ -29,10 +30,15 @@ export function CalendarView({ month, items, loading, onMonth, onOpen, onCreate,
   const title = month.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   return (
-    <div className="rounded-2xl p-3 sm:p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="text-base font-semibold capitalize" style={{ color: theme.text }}>{title}</span>
-        {loading && <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: theme.gold }} />}
+    <div>
+      <CardTitle
+        compact
+        className="!mx-0 !px-0"
+        title={<span className="capitalize">{title}</span>}
+        subtitle={loading ? "Chargement…" : "Vos publications programmées, jour par jour"}
+        icon={CalendarDays}
+        tint="#06B6D4"
+        action={
         <div className="ml-auto flex items-center gap-1">
           <button onClick={() => shift(-1)} className="rounded-lg p-1.5 hover:bg-black/5" aria-label="Mois précédent">
             <ChevronLeft size={17} style={{ color: theme.text }} />
@@ -48,7 +54,8 @@ export function CalendarView({ month, items, loading, onMonth, onOpen, onCreate,
             <ChevronRight size={17} style={{ color: theme.text }} />
           </button>
         </div>
-      </div>
+        }
+      />
 
       <div className="overflow-x-auto">
         <div className="grid min-w-[560px] grid-cols-7 gap-1 sm:gap-1.5">

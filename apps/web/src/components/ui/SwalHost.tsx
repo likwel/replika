@@ -1,5 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { AlertTriangle, CheckCircle2, HelpCircle, Info, X, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, HelpCircle, Info, X, XCircle, Trash2, Check } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "./Button";
@@ -114,12 +114,13 @@ function Dialog({ dialog }: { dialog: SwalDialog }) {
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
           {isConfirm && (
-            <Button data-swal-cancel variant="ghost" size="lg" className="w-full justify-center sm:w-auto sm:min-w-[128px]" onClick={() => close(false)}>
+            <Button data-swal-cancel icon={X} variant="ghost" size="lg" className="w-full justify-center sm:w-auto sm:min-w-[128px]" onClick={() => close(false)}>
               {dialog.cancelText}
             </Button>
           )}
           <Button
             data-swal-confirm
+            icon={dialog.variant === "danger" ? Trash2 : Check}
             variant={dialog.variant === "danger" ? "danger" : "primary"}
             size="lg"
             className="w-full justify-center sm:w-auto sm:min-w-[128px]"

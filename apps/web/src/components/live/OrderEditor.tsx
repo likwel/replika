@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { AlertTriangle, Loader2, MessageSquareText, RefreshCw, Save, Send, Trash2 } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
@@ -159,9 +160,9 @@ export function OrderEditor({ order, sessionId, products = [], onClose, onSaved,
           {order && (
             <label className="block">
               <span className="mb-1 block text-xs font-medium" style={{ color: theme.textMuted }}>Statut</span>
-              <select value={form.status} onChange={set("status")} className={input} style={inputStyle}>
+              <Select value={form.status} onChange={set("status")} className={input} style={inputStyle}>
                 {ORDER_STATUSES.map((s) => <option key={s} value={s}>{ORDER_STATUS[s].label}</option>)}
-              </select>
+              </Select>
             </label>
           )}
           {field("Note interne", "note", { placeholder: "Payé, taille, créneau de livraison…" })}

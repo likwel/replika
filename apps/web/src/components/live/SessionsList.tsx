@@ -180,14 +180,14 @@ export function SessionsList({ sessions, onOpen }: Props) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Titre de session, Page…"
             className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-gold/40"
-            style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+            style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
             aria-label="Rechercher une session"
           />
         </div>
         <div className="min-w-0 flex-1">
           <FilterChips items={FILTERS.map((f) => ({ id: f.id, label: f.label, count: f.id === "all" ? undefined : counts[f.id] }))} value={filter} onChange={setFilter} />
         </div>
-        <div className="w-44 flex-shrink-0">
+        <div className="w-56 flex-shrink-0">
           <Segmented
             options={[
               { value: "table" as const, label: "Tableau", icon: Rows3 },
@@ -211,7 +211,7 @@ export function SessionsList({ sessions, onOpen }: Props) {
           )}
 
           {/* Vue tableau, grand écran : colonnes triables */}
-          <div className={`${view === "table" ? "hidden md:block" : "hidden"} overflow-x-auto rounded-2xl`} style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+          <div className={`${view === "table" ? "hidden md:block" : "hidden"} tbl overflow-x-auto`}>
             <table className="w-full min-w-[840px] text-sm">
               <thead style={{ background: theme.bg, color: theme.textMuted }}>
                 <tr>

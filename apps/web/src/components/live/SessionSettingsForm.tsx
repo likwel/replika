@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Check, FlaskConical, Info } from "lucide-react";
+import { Bot, BellOff, Check, ExternalLink, FlaskConical, Info, ListChecks, Loader2, MessageCircleReply, Plus, ShieldCheck, Workflow } from "lucide-react";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
-import { liveApi, type ContactField, type Detection, type LiveProduct, type LiveSettings } from "@/lib/live.api";
+import { liveApi, type ContactField, type Detection, type LiveProduct, type LiveSettings, type ReplyMode } from "@/lib/live.api";
+import { automationApi, type AutomationRule } from "@/lib/automation.api";
 import { FIELD_OPTIONS, VARIABLES } from "./live";
 
 interface Props {
@@ -48,9 +49,112 @@ function DetectionTester({ keywords, products }: { keywords: string; products: L
         <p className="mt-1.5 text-xs" style={{ color: result.isJp ? "#166534" : theme.textMuted }}>
           {result.isJp
             ? `✔ JP détecté — ${result.product ? `${result.product.code} · ${result.product.name}` : result.code ? `code ${result.code}` : result.label ? `« ${result.label} »` : "article non précisé"}${result.quantity > 1 ? ` · quantité ${result.quantity}` : ""}`
-            : "✘ Pas un JP : ce commentaire sera seulement affiché."}
+            : "✘ Pas un JP : ce commentaire reçoit les réponses prévues pour les autres commentaires (voir plus bas)."}
         </p>
       )}
+    </div>
+  );
+}
+
+const REPLY_MODES: Array<{ value: ReplyMode; icon: typeof Bot; title: string; text: string }> = [
+  { value: "ALL", icon: Workflow, title: "Toutes mes règles actives", text: "Comme d'habitude : règles à mots-clés, puis assistant IA du compte." },
+  { value: "SELECTED", icon: ListChecks, title: "Seulement les règles de ce live", text: "Vous choisissez les règles jointes (ex. prix, livraison) et si l'IA complète." },
+  { value: "NONE", icon: BellOff, title: "Aucune réponse", text: "Les autres commentaires s'affichent seulement et restent dans « À traiter »." },
+];
+
+// Réponses aux commentaires qui ne sont pas des JP (prix, livraison, questions…) : une automatisation jointe au live
+function OtherCommentsReplies({ v, set }: { v: LiveSettings; set: <K extends keyof LiveSettings>(k: K, val: LiveSettings[K]) => void }) {
+  const [rules, setRules] = useState<AutomationRule[] | null>(null);
+  useEffect(() => {
+    automationApi.list().then(setRules).catch(() => setRules([]));
+  }, []);
+  const toggle = (id: string) => set("replyRuleIds", v.replyRuleIds.includes(id) ? v.replyRuleIds.filter((x) => x !== id) : [...v.replyRuleIds, id]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Réponses aux autres commentaires">
+        {REPLY_MODES.map((m) => {
+          const on = v.replyMode === m.value;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => set("replyMode", m.value)}
+              className="flex flex-col items-start gap-1.5 rounded-xl p-3 text-left transition-colors"
+              style={{ background: on ? theme.goldSoft : theme.bg, border: `1.5px solid ${on ? theme.gold : theme.border}` }}
+            >
+              <span className="flex w-full items-center gap-2">
+                <m.icon size={16} style={{ color: on ? theme.goldDark : theme.textMuted }} />
+                <span className="flex-1 text-[13px] font-semibold" style={{ color: theme.text }}>{m.title}</span>
+                {on && <Check size={14} style={{ color: theme.goldDark }} />}
+              </span>
+              <span className="text-[11.5px] leading-snug" style={{ color: theme.textMuted }}>{m.text}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {v.replyMode === "SELECTED" && (
+        <div className="flex flex-col gap-2 rounded-xl p-3" style={{ background: theme.bg }}>
+          <p className="text-xs font-semibold" style={{ color: theme.text }}>Règles jointes à ce live ({v.replyRuleIds.length})</p>
+          {rules === null ? (
+            <p className="flex items-center gap-2 text-xs" style={{ color: theme.textMuted }}><Loader2 size={13} className="animate-spin" /> Chargement des règles…</p>
+          ) : rules.length === 0 ? (
+            <p className="text-xs" style={{ color: theme.textMuted }}>Aucune règle pour l'instant. Créez-en une (ex. « Demande de prix »), puis revenez la joindre.</p>
+          ) : (
+            <ul className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">
+              {rules.map((r) => {
+                const on = v.replyRuleIds.includes(r.id);
+                const usable = r.isActive && r.channel !== "DIRECT";
+                return (
+                  <li key={r.id}>
+                    <button
+                      type="button"
+                      onClick={() => usable && toggle(r.id)}
+                      disabled={!usable}
+                      aria-pressed={on}
+                      className="flex w-full items-start gap-2.5 rounded-lg p-2.5 text-left disabled:cursor-not-allowed disabled:opacity-55"
+                      style={{ background: on ? theme.goldSoft : theme.bgCard, border: `1px solid ${on ? theme.gold : theme.border}` }}
+                    >
+                      <span className="mt-0.5 grid h-4 w-4 flex-shrink-0 place-items-center rounded" style={{ background: on ? theme.gold : "transparent", border: `1.5px solid ${on ? theme.gold : theme.border}` }}>
+                        {on && <Check size={11} style={{ color: theme.onAccent }} strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-x-2 text-[13px] font-semibold" style={{ color: theme.text }}>
+                          {r.name}
+                          {!r.isActive && <span className="text-[10.5px] font-medium" style={{ color: theme.amber }}>en pause</span>}
+                          {r.channel === "DIRECT" && <span className="text-[10.5px] font-medium" style={{ color: theme.textMuted }}>messages privés seulement</span>}
+                        </span>
+                        <span className="block truncate text-[11.5px]" style={{ color: theme.textMuted }}>
+                          {r.matchType === "ANY" ? "Tout commentaire" : `Si le commentaire contient : ${r.trigger}`} → {r.useAi ? "réponse par l'IA" : (r.response ?? "").split("||")[0]}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <a href="/app/regles" target="_blank" rel="noreferrer" className="inline-flex w-fit items-center gap-1 text-xs font-semibold hover:underline" style={{ color: theme.goldDark }}>
+            <Plus size={12} /> Créer une règle <ExternalLink size={11} />
+          </a>
+          <label className="mt-1 flex items-start justify-between gap-3 rounded-lg p-2.5" style={{ background: theme.bgCard }}>
+            <span>
+              <span className="flex items-center gap-1.5 text-[13px] font-medium" style={{ color: theme.text }}><Bot size={14} style={{ color: theme.goldDark }} /> L'assistant IA répond aux autres questions</span>
+              <span className="block text-xs" style={{ color: theme.textMuted }}>Quand aucune règle jointe ne correspond (nécessite l'assistant IA activé sur le compte).</span>
+            </span>
+            <Toggle checked={v.replyUseAi} onChange={(x) => set("replyUseAi", x)} label="Assistant IA" />
+          </label>
+          {v.replyRuleIds.length === 0 && !v.replyUseAi && <p className="text-xs" style={{ color: theme.amber }}>Aucune règle jointe et IA désactivée : aucun commentaire ne recevra de réponse.</p>}
+        </div>
+      )}
+
+      <p className="flex items-start gap-1.5 text-[11.5px]" style={{ color: theme.textMuted }}>
+        <MessageCircleReply size={13} className="mt-0.5 flex-shrink-0" />
+        Ces réponses ne concernent que les commentaires de ce live qui ne sont pas des JP, et suivent l'interrupteur général des réponses automatiques (page Règles de réponse).
+      </p>
     </div>
   );
 }
@@ -78,6 +182,14 @@ export function SessionSettingsForm({ value: v, onChange, products }: Props) {
       <Section title="Détection des JP" hint="Mots-clés séparés par des virgules. Le code article est lu juste après (« jp A3 », « jp 12 x2 »).">
         <input value={v.keywords} onChange={(e) => set("keywords", e.target.value)} className={input} style={inputStyle} aria-label="Mots-clés" />
         <DetectionTester keywords={v.keywords} products={products} />
+        <p className="flex items-start gap-1.5 rounded-xl p-2.5 text-[11.5px]" style={{ background: theme.bg, color: theme.textMuted }}>
+          <ShieldCheck size={13} className="mt-0.5 flex-shrink-0" style={{ color: theme.green }} />
+          Aucun JP n'est perdu : si le serveur s'arrête (accident ou maintenance), tout ce qui a été publié pendant l'arrêt est relu au redémarrage, et chaque JP repris va jusqu'au bout (commande, message privé).
+        </p>
+      </Section>
+
+      <Section title="Réponses aux autres commentaires" hint="Prix, livraison, questions… : joignez une automatisation pour répondre aux commentaires qui ne sont pas des JP.">
+        <OtherCommentsReplies v={v} set={set} />
       </Section>
 
       <Section title="Informations à collecter" hint="Demandées en message privé ; la commande est confirmée quand tout est reçu.">

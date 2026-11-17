@@ -4,6 +4,7 @@ import { useOutletContext } from "react-router-dom";
 import { theme } from "@/theme";
 import { MENUS } from "@/data/menus";
 import { Tabs } from "./Tabs";
+import { IconTile } from "./Dash";
 
 interface Ctx {
   active?: string;
@@ -19,10 +20,11 @@ interface Props {
   tabs?: boolean; // onglets des sous-menus (défaut : affichés s'il y en a plusieurs)
   badges?: Partial<Record<number, number>>; // compteur par index de sous-menu
   className?: string;
+  bare?: boolean; // sans carte propre : l'en-tête d'une carte plus grande (ex. Gestion)
 }
 
 // En-tête de page façon Notion : icône, grand titre, description, actions, puis onglets de vue
-export function PageHeader({ title, description, actions, icon, tabs = true, badges, className = "mb-5" }: Props) {
+export function PageHeader({ title, description, actions, icon, tabs = true, badges, className = "mb-5", bare = false }: Props) {
   const ctx = useOutletContext<Ctx | undefined>();
   const menu = MENUS.find((m) => m.id === ctx?.active);
   const Icon = icon ?? menu?.icon;
@@ -32,39 +34,26 @@ export function PageHeader({ title, description, actions, icon, tabs = true, bad
 
   return (
     <header className={className}>
-      {/* Mobile : titre, description, actions. Dès sm : actions à droite du titre, description dessous */}
-      <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="flex min-w-0 items-center gap-3">
-          {Icon && (
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: `${tint}17` }}>
-              <Icon size={19} style={{ color: tint }} />
-            </span>
-          )}
-          <h1 className="min-w-0 truncate text-[22px] font-bold leading-tight tracking-[-0.02em] sm:text-[24px]" style={{ color: theme.text }}>
-            {title ?? menu?.label}
-          </h1>
+      {/* Carte d'introduction : même en-tête que toutes les cartes (tuile 40 px, titre 16 px en gras, description 13 px dessous,
+          action à droite), puis les onglets sous un filet */}
+      <div className={`px-4 py-3.5 sm:px-5 sm:py-4 ${bare ? "" : "card-x rounded-2xl"}`}>
+        <div className={`flex flex-wrap items-center gap-3 ${subs ? "hd-line pb-3.5" : ""}`}>
+          {Icon && <IconTile icon={Icon} tint={tint} size="md" />}
+          <div className="min-w-0 flex-1 basis-40">
+            <h1 className="text-[16px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>{title ?? menu?.label}</h1>
+            {description && <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>{description}</p>}
+          </div>
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
-        {/* Alignée sous le titre : largeur de l'icône + espacement */}
-        {description && (
-          <p
-            className={`order-2 max-w-2xl text-[13px] italic leading-relaxed sm:order-none sm:col-start-1 sm:row-start-2 ${Icon ? "sm:pl-12" : ""}`}
-            style={{ color: theme.textMuted }}
-          >
-            {description}
-          </p>
-        )}
-        {actions && (
-          <div className="order-3 mt-3 flex flex-wrap items-center gap-2 sm:order-none sm:col-start-2 sm:row-start-1 sm:mt-0">{actions}</div>
+        {subs && setSub && (
+          <Tabs
+            className="mt-3.5"
+            items={subs.map((label, i) => ({ id: i, label, badge: badges?.[i] }))}
+            value={ctx?.sub ?? 0}
+            onChange={setSub}
+          />
         )}
       </div>
-      {subs && setSub && (
-        <Tabs
-          className="mt-4"
-          items={subs.map((label, i) => ({ id: i, label, badge: badges?.[i] }))}
-          value={ctx?.sub ?? 0}
-          onChange={setSub}
-        />
-      )}
     </header>
   );
 }

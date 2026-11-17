@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, UserPlus } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api";
@@ -97,7 +97,7 @@ export function RegisterPage() {
           </span>
         </label>
         <Turnstile ref={turnstile} onToken={setCaptcha} onEnabled={setCaptchaOn} />
-        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
+        <Button icon={UserPlus} type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
           {loading ? "Création…" : "Créer mon compte"}
         </Button>
       </form>

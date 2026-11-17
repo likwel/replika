@@ -57,8 +57,8 @@ export function ConversationView({ conversation: c, onBack, onSent }: Props) {
   const windowClosed = lastFromClient ? Date.now() - new Date(lastFromClient.time).getTime() > DAY_MS : false;
 
   return (
-    <article className="flex flex-col rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <header className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: theme.border }}>
+    <article className="flex h-full min-h-[380px] flex-col">
+      <header className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "var(--line)" }}>
         <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-black/5 lg:hidden" aria-label="Retour à la liste">
           <ArrowLeft size={18} style={{ color: theme.text }} />
         </button>
@@ -75,7 +75,7 @@ export function ConversationView({ conversation: c, onBack, onSent }: Props) {
         </button>
       </header>
 
-      <div ref={scrollRef} className="max-h-[55vh] min-h-[240px] overflow-y-auto px-4 py-4 lg:max-h-[calc(100vh-24rem)]" style={{ background: theme.bg }}>
+      <div ref={scrollRef} className="max-h-[55vh] min-h-[240px] flex-1 overflow-y-auto px-4 py-4 lg:max-h-none" style={{ background: theme.bg }}>
         {error ? (
           <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "#FDECEC", color: theme.red }}>{error}</p>
         ) : messages === null ? (
@@ -109,7 +109,7 @@ export function ConversationView({ conversation: c, onBack, onSent }: Props) {
         )}
       </div>
 
-      <footer className="border-t px-4 py-3" style={{ borderColor: theme.border }}>
+      <footer className="border-t px-4 py-3" style={{ borderColor: "var(--line)" }}>
         {windowClosed && (
           <p className="mb-2 flex items-start gap-1.5 rounded-lg px-2.5 py-2 text-xs" style={{ background: theme.goldSoft, color: theme.goldDark }}>
             <Clock size={13} className="mt-0.5 flex-shrink-0" />

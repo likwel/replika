@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
-import { theme } from "@/theme";
 
-// Choix exclusif compact (ex. Tout / Commentaires / Messages privés)
+// Choix exclusif compact (ex. Tout / Commentaires / Messages privés) : piste en creux, choix en relief
 export function Segmented<T extends string>({
   options,
   value,
@@ -12,22 +11,12 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-xl p-1" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
+    <div className="seg flex-wrap" role="group">
       {options.map((o) => {
         const active = o.value === value;
         return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all"
-            style={{
-              background: active ? theme.bgCard : "transparent",
-              color: active ? theme.text : theme.textMuted,
-              boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
-            }}
-          >
-            {o.icon && <o.icon size={13} style={{ color: active ? theme.gold : theme.textMuted }} />}
+          <button key={o.value} type="button" onClick={() => onChange(o.value)} aria-pressed={active} className={`seg-b ${active ? "on" : ""}`}>
+            {o.icon && <o.icon size={13} style={{ color: active ? "var(--brand-ink)" : undefined }} />}
             {o.label}
           </button>
         );

@@ -70,9 +70,9 @@ function headers() {
 function papiError(e: unknown): AppError {
   const ax = e as AxiosError<{ error?: { code?: string; message?: string } }>;
   const msg = ax.response?.data?.error?.message;
-  if (msg) return new AppError(`Papi : ${msg}`, 502, "PAPI_ERROR");
-  if (ax.code === "ECONNABORTED") return new AppError("Papi ne répond pas, réessayez dans un instant.", 502, "PAPI_ERROR");
-  return new AppError("Service de paiement Papi indisponible, réessayez dans un instant.", 502, "PAPI_ERROR");
+  if (msg) return new AppError(`Paiement : ${msg}`, 502, "PAPI_ERROR");
+  if (ax.code === "ECONNABORTED") return new AppError("Le service de paiement ne répond pas, réessayez dans un instant.", 502, "PAPI_ERROR");
+  return new AppError("Service de paiement indisponible, réessayez dans un instant.", 502, "PAPI_ERROR");
 }
 
 export async function createPaymentLink(input: CreateLinkInput): Promise<PaymentLink> {

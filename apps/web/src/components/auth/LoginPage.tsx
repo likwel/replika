@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, LogIn } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { ApiError } from "@/lib/api";
@@ -115,7 +115,7 @@ export function LoginPage() {
           Rester connecté
         </label>
         <Turnstile ref={turnstile} onToken={setCaptcha} onEnabled={setCaptchaOn} />
-        <Button type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
+        <Button icon={LogIn} type="submit" variant="primary" size="lg" className="mt-1 w-full justify-center" disabled={loading || (captchaOn && !captcha)}>
           {loading ? "Connexion…" : "Se connecter"}
         </Button>
       </form>

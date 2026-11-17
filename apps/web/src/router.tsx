@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { GuestRoute } from "@/components/auth/GuestRoute";
 
+import { DashboardPage } from "@/pages/app/DashboardPage";
 import { LandingPage } from "@/pages/marketing/LandingPage";
 import { TermsPage } from "@/pages/marketing/TermsPage";
 import { PrivacyPage } from "@/pages/marketing/PrivacyPage";
@@ -24,7 +25,8 @@ import { LeadsPage } from "@/pages/app/LeadsPage";
 import { StatsPage } from "@/pages/app/StatsPage";
 import { HistoryPage } from "@/pages/app/HistoryPage";
 import { ConnectionsPage } from "@/pages/app/ConnectionsPage";
-import { AutomationPage } from "@/pages/app/AutomationPage";
+import { RulesPage } from "@/pages/app/RulesPage";
+import { PipelinesPage } from "@/pages/app/PipelinesPage";
 import { SettingsPage } from "@/pages/app/SettingsPage";
 import { WorkspacePage } from "@/pages/app/WorkspacePage";
 import { PlaceholderPage } from "@/pages/app/PlaceholderPage";
@@ -60,7 +62,9 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <DefaultPageRedirect /> },
-          { path: "gestion", element: <WorkspacePage /> },
+          { path: "tableau-de-bord", element: <DashboardPage /> },
+          { path: "gestion", element: <WorkspacePage key="hub" mode="hub" /> },
+          { path: "a-traiter", element: <WorkspacePage key="queue" mode="queue" /> },
           // Anciennes pages, désormais onglets de Gestion
           { path: "actualites", element: <HubRedirect tab={0} /> },
           { path: "planifier", element: <PlannerPage /> },
@@ -70,8 +74,9 @@ export const router = createBrowserRouter([
           { path: "statistiques", element: <StatsPage /> },
           { path: "historique", element: <HistoryPage /> },
           { path: "connexions", element: <ConnectionsPage /> },
-          { path: "messages", element: <HubRedirect tab={2} /> },
-          { path: "automatisation", element: <AutomationPage /> },
+          { path: "messages", element: <HubRedirect tab={0} to="/app/a-traiter" /> },
+          { path: "regles", element: <RulesPage /> },
+          { path: "automatisation", element: <PipelinesPage /> },
           { path: "parametres", element: <SettingsPage /> },
           { path: "admin", element: <AdminPage /> },
           { path: "facturation", element: <HubRedirect tab={4} to="/app/parametres" /> },

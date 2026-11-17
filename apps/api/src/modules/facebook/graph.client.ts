@@ -1,3 +1,4 @@
+import { collectSince } from "../lives/live.paging.js";
 import axios from "axios";
 import { env } from "../../config/env.js";
 
@@ -638,6 +639,32 @@ export const graphClient = {
       authorName: c.from?.name ?? "Utilisateur Facebook",
       createdAt: new Date(c.created_time),
     }));
+  },
+
+  // Commentaires d'un live ou d'une publication depuis un instant donné, page après page (voir lives/live.paging.ts) :
+  // rattrape tout ce qui a été publié pendant un arrêt du serveur ou une pause
+  async getCommentsSince(objectId: string, platform: "FACEBOOK" | "INSTAGRAM", pageToken: string, sinceMs: number | null) {
+    type Row = { id: string; text: string; authorId?: string; authorName: string; createdAt: Date };
+    return collectSince<Row>(async (after) => {
+      if (platform === "INSTAGRAM") {
+        const { data } = await axios.get(`${GRAPH}/${objectId}/comments`, {
+          params: { access_token: pageToken, fields: "id,text,timestamp,username,from", limit: 50, ...(after ? { after } : {}) },
+        });
+        const rows = data.data as Array<{ id: string; text?: string; timestamp: string; username?: string; from?: { id: string; username?: string } }>;
+        return {
+          items: rows.map((c) => ({ id: c.id, text: c.text ?? "", authorId: c.from?.id, authorName: c.username ?? c.from?.username ?? "Utilisateur Instagram", createdAt: new Date(c.timestamp) })),
+          next: data.paging?.next ? (data.paging.cursors?.after as string | undefined) : undefined,
+        };
+      }
+      const { data } = await axios.get(`${GRAPH}/${objectId}/comments`, {
+        params: { access_token: pageToken, fields: "id,message,from,created_time", filter: "stream", order: "reverse_chronological", limit: 100, ...(after ? { after } : {}) },
+      });
+      const rows = data.data as Array<{ id: string; message?: string; from?: { id: string; name?: string }; created_time: string }>;
+      return {
+        items: rows.map((c) => ({ id: c.id, text: c.message ?? "", authorId: c.from?.id, authorName: c.from?.name ?? "Utilisateur Facebook", createdAt: new Date(c.created_time) })),
+        next: data.paging?.next ? (data.paging.cursors?.after as string | undefined) : undefined,
+      };
+    }, sinceMs);
   },
 
   // ============================================================

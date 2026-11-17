@@ -17,19 +17,15 @@ export function PostList({ posts, selectedId, onSelect }: Props) {
   const { pageItems, page, pageCount, setPage, total } = usePagination(posts, 20);
   return (
     <>
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-1">
       {pageItems.map((p) => {
         const active = p.id === selectedId;
         return (
           <li key={`${p.accountId}:${p.id}`}>
             <button
               onClick={() => onSelect(p)}
-              className="flex w-full gap-3 rounded-2xl p-3 text-left transition-all hover:shadow-sm"
-              style={{
-                background: theme.bgCard,
-                border: `1px solid ${active ? theme.gold : theme.border}`,
-                boxShadow: active ? `0 0 0 1px ${theme.gold}` : undefined,
-              }}
+              className={`flex w-full gap-3 rounded-xl p-2.5 text-left transition-colors ${active ? "" : "hover:bg-[var(--surface-2)]"}`}
+              style={active ? { background: theme.goldSoft, boxShadow: "inset 0 0 0 1.5px rgb(var(--color-gold-rgb) / 0.55)" } : undefined}
               aria-current={active}
             >
               <span className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl" style={{ background: theme.bg }}>

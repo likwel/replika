@@ -113,7 +113,7 @@ export function InvoicesPanel({ sessionId, sessionEnded }: Props) {
   const th = "px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide";
 
   return (
-    <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <div className="rounded-2xl p-4 card-x">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold" style={{ color: theme.text }}>Récapitulatifs par client</p>

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { ImagePlus, Loader2, X, Save } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -84,11 +85,8 @@ export function ListingEditor({ listing, accounts, onClose, onSaved }: Props) {
       size="lg"
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={submit} disabled={saving}>
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            Enregistrer
-          </Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={submit} disabled={saving} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Save}>Enregistrer</Button>
         </>
       }
     >
@@ -147,21 +145,21 @@ export function ListingEditor({ listing, accounts, onClose, onSaved }: Props) {
           </div>
           <div>
             <label className={label} style={{ color: theme.text }}>Statut</label>
-            <select className={inputClass} style={inputStyle} value={form.status} onChange={(e) => set("status", e.target.value as ListingInput["status"])}>
+            <Select className={inputClass} style={inputStyle} value={form.status} onChange={(e) => set("status", e.target.value as ListingInput["status"])}>
               <option value="ACTIVE">En ligne</option>
               <option value="SOLD_OUT">Épuisé</option>
               <option value="ARCHIVED">Archivé</option>
-            </select>
+            </Select>
           </div>
         </div>
 
         <div>
           <label className={label} style={{ color: theme.text }}>Compte</label>
-          <select className={inputClass} style={inputStyle} value={form.accountId} onChange={(e) => set("accountId", e.target.value)}>
+          <Select className={inputClass} style={inputStyle} value={form.accountId} onChange={(e) => set("accountId", e.target.value)}>
             {replyAccounts.map((a) => (
               <option key={a.id} value={a.id}>{a.name} · {a.platform === "INSTAGRAM" ? "Instagram" : "Facebook"}</option>
             ))}
-          </select>
+          </Select>
         </div>
 
         {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "#FDECEC", color: theme.red }}>{error}</p>}

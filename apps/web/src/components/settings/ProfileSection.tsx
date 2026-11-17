@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Camera, Trash2, Loader2, Mail } from "lucide-react";
+import { Camera, Trash2, Loader2, Mail, Pencil, Save, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -127,10 +127,7 @@ function IdentityCard({ profile, onChange }: { profile: Profile; onChange: (p: P
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Feedback error={error} />
-          <Button type="submit" size="sm" disabled={!dirty || busy !== null}>
-            {busy === "save" && <Loader2 size={14} className="animate-spin" />}
-            Enregistrer
-          </Button>
+          <Button type="submit" size="sm" disabled={!dirty || busy !== null} className={`${busy === "save" ? "[&>svg]:animate-spin" : ""}`} icon={busy === "save" ? Loader2 : Save}>Enregistrer</Button>
         </div>
       </form>
     </SettingsCard>
@@ -177,7 +174,7 @@ function EmailCard({ profile, onChange }: { profile: Profile; onChange: (p: Prof
             <Mail size={15} className="flex-shrink-0" style={{ color: theme.textMuted }} />
             <span className="truncate">{profile.email}</span>
           </span>
-          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Modifier</Button>
+          <Button icon={Pencil} size="sm" variant="ghost" onClick={() => setEditing(true)}>Modifier</Button>
         </div>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
@@ -187,9 +184,8 @@ function EmailCard({ profile, onChange }: { profile: Profile; onChange: (p: Prof
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Feedback error={error} />
-            <Button type="button" size="sm" variant="ghost" onClick={cancel}>Annuler</Button>
-            <Button type="submit" size="sm" disabled={busy || !email.trim() || !password}>
-              {busy && <Loader2 size={14} className="animate-spin" />}
+            <Button icon={X} type="button" size="sm" variant="ghost" onClick={cancel}>Annuler</Button>
+            <Button type="submit" size="sm" icon={busy ? Loader2 : Mail} className={busy ? "[&>svg]:animate-spin" : ""} disabled={busy || !email.trim() || !password}>
               Changer l'e-mail
             </Button>
           </div>

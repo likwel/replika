@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { useOutletContext } from "react-router-dom";
 import { Download, Flame, History, Loader2, Phone, Search, Target, Trophy, UserPlus, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
+import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
@@ -40,7 +42,7 @@ function ScoreBadge({ score }: { score: number }) {
 function StatusSelect({ lead, onChange }: { lead: Lead; onChange: (l: Lead) => void }) {
   const meta = LEAD_STATUS[lead.status];
   return (
-    <select
+    <Select
       value={lead.status}
       onClick={(e) => e.stopPropagation()}
       onChange={async (e) => onChange(await leadApi.update(lead.id, { status: e.target.value as LeadStatus }))}
@@ -49,7 +51,7 @@ function StatusSelect({ lead, onChange }: { lead: Lead; onChange: (l: Lead) => v
       aria-label="Statut du lead"
     >
       {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS[s].label}</option>)}
-    </select>
+    </Select>
   );
 }
 
@@ -134,23 +136,18 @@ function LeadsView() {
   };
 
   const card = (label: string, value: string, Icon: LucideIcon, color: string, sub?: string) => (
-    <div className="rounded-2xl p-3.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-center gap-2">
-        <span className="rounded-lg p-1.5" style={{ background: `${color}1A` }}><Icon size={15} style={{ color }} /></span>
-        <span className="text-[11px]" style={{ color: theme.textMuted }}>{label}</span>
-      </div>
-      <p className="mt-1.5 text-xl font-bold" style={{ color: theme.text }}>{value}</p>
-      {sub && <p className="text-[11px]" style={{ color: theme.textMuted }}>{sub}</p>}
-    </div>
+    <StatCard icon={Icon} label={label} value={value} color={color} detail={sub} />
   );
 
   const byStatus = useMemo(() => Object.fromEntries(LEAD_STATUSES.map((s) => [s, (leads ?? []).filter((l) => l.status === s)])) as Record<LeadStatus, Lead[]>, [leads]);
   const leadsPage = usePagination(leads ?? [], 20);
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
+      <section className="card-x flex flex-col overflow-hidden rounded-2xl lg:h-[calc(100dvh-10rem)] lg:min-h-[560px]">
       <PageHeader
-        className="mb-1"
+        bare
+        className=""
         description={LEADS_DESCRIPTION}
         actions={
           <>
@@ -162,6 +159,7 @@ function LeadsView() {
         }
       />
 
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto border-t p-3 sm:p-5" style={{ borderColor: "var(--line)" }}>
       {notice && (
         <p className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm" style={{ background: theme.goldSoft, color: theme.goldDark }}>
           <span className="flex-1">{notice}</span>
@@ -179,7 +177,7 @@ function LeadsView() {
       )}
 
       {/* Filtres */}
-      <div className="flex flex-col gap-2 rounded-2xl p-3 lg:flex-row lg:items-center" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
         <div className="relative lg:w-64">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: theme.textMuted }} />
           <input
@@ -193,7 +191,7 @@ function LeadsView() {
         <div className="min-w-0 flex-1">
           <FilterChips items={TEMPS} value={temp} onChange={setTemp} />
         </div>
-        <select
+        <Select
           value={accountId}
           onChange={(e) => setAccountId(e.target.value)}
           className="rounded-xl px-3 py-2 text-sm outline-none"
@@ -202,7 +200,7 @@ function LeadsView() {
         >
           <option value="">Tous les comptes</option>
           {accounts.map((a) => <option key={a.id} value={a.id}>{a.accountName}</option>)}
-        </select>
+        </Select>
       </div>
 
       {leads === null ? (
@@ -229,7 +227,7 @@ function LeadsView() {
                     onDragStart={() => setDragging(l.id)}
                     onDragEnd={() => setDragging(null)}
                     onClick={() => setOpenId(l.id)}
-                    className="cursor-grab rounded-xl p-2.5 text-left shadow-sm active:cursor-grabbing"
+                    className="no-flat cursor-grab rounded-xl p-2.5 text-left shadow-sm active:cursor-grabbing"
                     style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
                   >
                     <span className="flex items-center gap-1.5">
@@ -247,7 +245,7 @@ function LeadsView() {
               </div>
             ))}
           </div>
-          <p className="mt-2 text-[11px]" style={{ color: theme.textMuted }}>Glissez une carte d'une colonne à l'autre pour changer son statut.</p>
+          <p className="mt-1 text-[12px]" style={{ color: theme.textMuted }}>Glissez une carte d'une colonne à l'autre pour changer son statut.</p>
         </div>
       ) : leads.length === 0 ? (
         <EmptyState icon={Target} title={search || temp || accountId ? "Aucun lead pour ces filtres" : "Aucun lead pour l'instant"}>
@@ -259,9 +257,12 @@ function LeadsView() {
         <ul className="flex flex-col gap-2">
           {leadsPage.pageItems.map((l) => (
             <li key={l.id}>
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setOpenId(l.id)}
-                className="flex w-full flex-col gap-2 rounded-2xl p-3 text-left transition-all hover:shadow-sm md:flex-row md:items-center"
+                onKeyDown={(e) => e.target === e.currentTarget && (e.key === "Enter" || e.key === " ") && setOpenId(l.id)}
+                className="flex w-full cursor-pointer flex-col gap-2 rounded-2xl p-3 text-left transition-all hover:shadow-sm md:flex-row md:items-center"
                 style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
               >
                 <span className="flex min-w-0 items-center gap-3 md:w-56">
@@ -288,7 +289,7 @@ function LeadsView() {
                   )}
                   <StatusSelect lead={l} onChange={(x) => changed(x)} />
                 </span>
-              </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -296,8 +297,10 @@ function LeadsView() {
       {leads && leads.length > 0 && view !== "pipeline" && (
         <Pagination page={leadsPage.page} pageCount={leadsPage.pageCount} onChange={leadsPage.setPage} total={leadsPage.total} pageSize={20} />
       )}
+      </div>
+      </section>
 
       {openId && <LeadDetail leadId={openId} onClose={() => setOpenId(null)} onChanged={(l) => changed(l, openId)} />}
-    </div>
+    </>
   );
 }

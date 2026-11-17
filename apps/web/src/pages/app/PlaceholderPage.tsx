@@ -3,7 +3,7 @@ import { MENUS } from "@/data/menus";
 import { StateCard } from "@/components/ui/StateCard";
 
 const SEG_TO_ID: Record<string, string> = {
-  lives: "live", automatisation: "auto", parametres: "set",
+  lives: "live", regles: "rules", automatisation: "auto", parametres: "set",
 };
 
 export function PlaceholderPage() {

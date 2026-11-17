@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AlertTriangle, CalendarClock, CheckCircle2, FileText, History, Plus, X, CalendarDays } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, FileSpreadsheet, FileText, History, Plus, X, CalendarDays } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { CardTitle } from "@/components/ui/Dash";
+import { PageCard } from "@/components/ui/PageCard";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
@@ -11,6 +12,8 @@ import { CalendarView } from "@/components/planner/CalendarView";
 import { ScheduleList } from "@/components/planner/ScheduleList";
 import { ScheduleComposer } from "@/components/planner/ScheduleComposer";
 import { ScheduleDetails } from "@/components/planner/ScheduleDetails";
+import { ImportModal } from "@/components/planner/ImportModal";
+import { ImportSources } from "@/components/planner/ImportSources";
 import { EmptyState, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { dayKey, formatSlot, monthRange } from "@/components/planner/planner";
 import { scheduleApi, type Schedule } from "@/lib/schedule.api";
@@ -19,7 +22,7 @@ import { swal } from "@/lib/swal";
 interface Ctx { sub: number; setSub: (i: number) => void }
 
 // Sous-menus de « Planifier » (même ordre)
-const VIEWS = ["calendar", "queue", "drafts", "history"] as const;
+const VIEWS = ["calendar", "queue", "drafts", "history", "imports"] as const;
 type View = (typeof VIEWS)[number];
 
 type ComposerState = { initial?: Schedule | null; duplicate?: boolean; defaultDate?: Date | null } | null;
@@ -35,6 +38,7 @@ export function PlannerPage() {
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [composer, setComposer] = useState<ComposerState>(null);
+  const [importing, setImporting] = useState(false);
   const [details, setDetails] = useState<Schedule | null>(null);
   const [day, setDay] = useState<Date | null>(null);
   const [notice, setNotice] = useState<{ ok: string; warnings: string[] } | null>(null);
@@ -114,7 +118,7 @@ export function PlannerPage() {
   );
 
   const list = view === "queue" ? queue : view === "drafts" ? drafts : history;
-  const empty: Record<Exclude<View, "calendar">, [string, string]> = {
+  const empty: Record<Exclude<View, "calendar" | "imports">, [string, string]> = {
     queue: ["Rien de programmé", "Programmez une publication, un commentaire ou un message : il partira automatiquement à l'heure choisie."],
     drafts: ["Aucun brouillon", "Enregistrez une programmation en brouillon pour la terminer plus tard."],
     history: ["Aucun envoi pour l'instant", "Les publications envoyées et leurs résultats apparaîtront ici."],
@@ -131,13 +135,22 @@ export function PlannerPage() {
   }, [items, month]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader
-        className="mb-1"
-        description="Publications, commentaires et messages privés envoyés automatiquement sur vos Pages et comptes."
-        actions={<Button icon={Plus} onClick={() => setComposer({})}>Nouvelle programmation</Button>}
-      />
-
+    <>
+      <PageCard
+        header={
+          <PageHeader
+            bare
+            className=""
+            description="Publications, commentaires et messages privés envoyés automatiquement sur vos Pages et comptes."
+            actions={
+              <>
+                <Button icon={FileSpreadsheet} variant="ghost" onClick={() => setImporting(true)}>Importer</Button>
+                <Button icon={Plus} onClick={() => setComposer({})}>Nouvelle programmation</Button>
+              </>
+            }
+          />
+        }
+      >
       {notice && (
         <div className="flex items-start gap-3 rounded-xl px-4 py-3 text-sm" style={{ background: notice.warnings.length ? "#FEF3C7" : theme.goldSoft, color: notice.warnings.length ? "#92400e" : theme.goldDark }}>
           {notice.warnings.length ? <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" /> : <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />}
@@ -158,6 +171,8 @@ export function PlannerPage() {
 
       {items === null ? (
         <ListSkeleton height={96} count={3} />
+      ) : view === "imports" ? (
+        <ImportSources onImport={() => setImporting(true)} onChanged={load} />
       ) : view === "calendar" ? (
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[1fr_300px]">
           <div className="hidden sm:block">
@@ -198,8 +213,8 @@ export function PlannerPage() {
           </div>
 
           <aside className="flex flex-col gap-3">
-            <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-              <Title className="mb-3 text-base">Prochains Envois</Title>
+            <div className="rounded-2xl p-4 card-x">
+              <CardTitle compact title="Prochains Envois" subtitle="Les 5 prochaines publications programmées." icon={CalendarClock} tint="#06B6D4" />
               {queue.length === 0 ? (
                 <p className="text-sm" style={{ color: theme.textMuted }}>Aucun envoi programmé.</p>
               ) : (
@@ -225,6 +240,7 @@ export function PlannerPage() {
       ) : (
         <ScheduleList items={list} onOpen={setDetails} dateOf={view === "history" ? sentAt : undefined} />
       )}
+      </PageCard>
 
       {day && (
         <Modal title={day.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} onClose={() => setDay(null)}>
@@ -254,6 +270,13 @@ export function PlannerPage() {
         />
       )}
 
+      {importing && (
+        <ImportModal
+          onClose={() => setImporting(false)}
+          onDone={load}
+        />
+      )}
+
       {composer && (
         <ScheduleComposer
           initial={composer.initial}
@@ -263,6 +286,6 @@ export function PlannerPage() {
           onSaved={saved}
         />
       )}
-    </div>
+    </>
   );
 }

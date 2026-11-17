@@ -8,12 +8,14 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   width?: number;
+  align?: "left" | "right"; // bord du menu aligné sur celui du bouton (right par défaut)
+  rich?: boolean; // habillage « carte » du design system (ombre, grands angles) au lieu du menu compact
 }
 
 // Menu flottant rendu hors de la page (portail, position fixe) : jamais coupé par un tableau défilant
 // ou une carte. S'ouvre sous le bouton, ou au-dessus s'il manque de place ; se ferme au clic extérieur,
 // avec Échap, au défilement et au redimensionnement.
-export function FloatingMenu({ anchor, onClose, children, width = 224 }: Props) {
+export function FloatingMenu({ anchor, onClose, children, width = 224, align = "right", rich }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const close = useRef(onClose);
@@ -25,9 +27,9 @@ export function FloatingMenu({ anchor, onClose, children, width = 224 }: Props) 
     const h = ref.current.offsetHeight;
     const below = r.bottom + 4 + h <= window.innerHeight - 8;
     const top = below ? r.bottom + 4 : Math.max(8, r.top - h - 4);
-    const left = Math.min(Math.max(8, r.right - width), window.innerWidth - width - 8);
+    const left = Math.min(Math.max(8, align === "left" ? r.left : r.right - width), window.innerWidth - width - 8);
     setPos({ top, left });
-  }, [anchor, width]);
+  }, [anchor, width, align]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -52,14 +54,13 @@ export function FloatingMenu({ anchor, onClose, children, width = 224 }: Props) 
     <div
       ref={ref}
       role="menu"
-      className="animate-panel-in fixed z-[90] rounded-xl p-1 shadow-xl"
+      className={`fixed z-[90] ${rich ? "pop rounded-[18px] p-1.5" : "animate-panel-in rounded-xl p-1 shadow-xl"}`}
       style={{
         width,
         top: pos?.top ?? -9999,
         left: pos?.left ?? -9999,
         visibility: pos ? "visible" : "hidden",
-        background: theme.bgCard,
-        border: `1px solid ${theme.border}`,
+        ...(rich ? { transformOrigin: "top left", border: "1px solid var(--line)" } : { background: theme.bgCard, border: `1px solid ${theme.border}` }),
       }}
     >
       {children}

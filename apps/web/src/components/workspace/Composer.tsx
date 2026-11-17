@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { AtSign, Send, Sparkles, Loader2 } from "lucide-react";
+import { AtSign, Send, Sparkles, Loader2, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -225,7 +225,7 @@ export function Composer({
           {nearLimit && ` ${text.length}/${maxLength}`}
         </span>
         {onCancel && (
-          <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy === "send"}>Annuler</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onCancel} disabled={busy === "send"}>Annuler</Button>
         )}
         <Button size="sm" onClick={send} disabled={!text.trim() || busy !== null}>
           {busy === "send" ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

@@ -34,7 +34,7 @@ function PaymentSuccessModal({ payment: p, subscription: s }: { payment: Payment
   const hours = p.kind === "LIVE_HOURS";
   const credits = p.kind === "REPLY_CREDITS";
   const pack = hours || credits; // achat à l'unité : la formule ne change pas
-  const next = hours ? { path: "/app/lives", label: "Aller au Live Manager" } : credits ? { path: "/app/automatisation", label: "Aller à l'automatisation" } : null;
+  const next = hours ? { path: "/app/lives", label: "Aller au Live Manager" } : credits ? { path: "/app/regles", label: "Aller aux règles de réponse" } : null;
   const firstName = user?.name.split(" ")[0] ?? "";
   const method = p.paymentMethod ? PAYMENT_METHOD_LABEL[p.paymentMethod] ?? p.paymentMethod : null;
   const periodEnd = p.appliedPeriodEnd ?? s.periodEnd;

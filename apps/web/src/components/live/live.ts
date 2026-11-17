@@ -165,3 +165,22 @@ export async function parseImportFile(file: File): Promise<ProductRow[]> {
     .map((l) => l.split(delimiter));
   return rowsFromCells(cells);
 }
+
+// Fichier du navigateur → texte CSV (séparateur « ; », guillemets) pour la lecture par colonnes côté serveur :
+// .csv/.txt tels quels, .xlsx converti (première feuille, en-têtes en première ligne)
+export async function fileToCsvText(file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (ext !== "xlsx" && ext !== "xls") return file.text();
+  const { default: ExcelJSModule } = await import("exceljs");
+  const workbook = new ExcelJSModule.Workbook();
+  await workbook.xlsx.load((await file.arrayBuffer()) as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) return "";
+  const q = (v: string) => (/[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const lines: string[] = [];
+  sheet.eachRow({ includeEmpty: true }, (row) => {
+    const values = (row.values as CellValue[]).slice(1);
+    lines.push(values.map((v) => q(v === null || v === undefined ? "" : typeof v === "object" && "text" in (v as object) ? String((v as { text: unknown }).text) : typeof v === "object" && "result" in (v as object) ? String((v as { result: unknown }).result) : String(v))).join(";"));
+  });
+  return lines.join("\r\n");
+}

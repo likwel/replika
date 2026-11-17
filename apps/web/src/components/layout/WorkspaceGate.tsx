@@ -32,7 +32,7 @@ export function WorkspaceBanner() {
 
   if (w.unavailable) {
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2 text-[13px] sm:px-8 lg:px-12" style={{ background: theme.amberSoft, color: theme.amber, borderBottom: `1px solid ${theme.border}` }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-2 text-[13px] md:px-8" style={{ background: theme.amberSoft, color: theme.amber, borderBottom: `1px solid ${theme.border}` }}>
         <Lock size={15} className="flex-shrink-0" />
         <p className="min-w-0 flex-1 font-medium">{w.unavailable}</p>
         <Button size="sm" variant="soft" icon={ArrowLeftRight} onClick={leave} disabled={busy}>Revenir à mon espace</Button>
@@ -40,7 +40,7 @@ export function WorkspaceBanner() {
     );
   }
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-1.5 text-[13px] sm:px-8 lg:px-12" style={{ background: theme.goldSoft, color: theme.goldDark, borderBottom: `1px solid ${theme.border}` }}>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3.5 py-1.5 text-[13px] md:px-8" style={{ background: theme.goldSoft, color: theme.goldDark, borderBottom: `1px solid ${theme.border}` }}>
       <Users size={15} className="flex-shrink-0" />
       <p className="min-w-0 flex-1">
         Espace de <strong>{w.current!.space}</strong>

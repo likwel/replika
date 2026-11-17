@@ -2,117 +2,194 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Thème : neutres façon Notion (par mode light / dark) × couleur d'accent (whatsapp / classic).
-   theme.ts référence ces variables ; changer data-theme / data-accent sur <html>
-   change tout l'affichage en direct, y compris les maps construites au chargement
-   du module (planner.ts, history.ts, leads.ts, live.ts, marketplace.api.ts). */
+/* Design system « pr.social » : fond gris bleuté éclairé de deux halos, cartes blanches en relief,
+   accent orange en dégradé, arrondis généreux, une seule courbe de mouvement.
+   theme.ts référence les variables --color-* ci-dessous ; changer data-theme / data-accent sur <html>
+   change tout l'affichage en direct, y compris les maps construites au chargement du module
+   (planner.ts, history.ts, leads.ts, live.ts, marketplace.api.ts).
+   Les jetons « pr » (--surface, --ink, --sh-card…) servent aux classes de la couche composants
+   en bas de ce fichier. */
 
 /* ---------- Neutres ---------- */
 :root,
 :root[data-theme="light"] {
-  --color-canvas: #FFFFFF;
-  --color-bg: #F7F7F5;
-  --color-bgCard: #FFFFFF;
-  --color-sidebar: #F7F7F5;
-  --color-hover: rgba(55, 53, 47, 0.06);
-  --color-active: rgba(55, 53, 47, 0.09);
-  --color-scroll: #D3D1CB;
-  --color-bgDark: #2F2E2A;
-  --color-bgDark2: #252420;
-  /* Contrastes vérifiés (WCAG) : texte 15,5:1, secondaire 7:1, couleurs d'état ≥ 4,5:1 sur leur fond */
-  --color-text: #252420;
-  --color-textMuted: #5A5954;
-  --color-placeholder: #6E6D68;
-  --color-border: #E0DFDB;
-  --color-red: #C4342D;
-  --color-redLight: #DC4A41;
-  --color-dangerBg: #FDEBEC;
-  --color-green: #2F7A4F;
-  --color-greenLight: #22C55E;
-  --color-greenSoft: #EDF3EC;
-  --color-amber: #9F4A0A;
-  --color-amberSoft: #FBECDD;
-  /* Mot « Flow » du logo : teintes foncées du dégradé de marque, lisibles sur fond clair */
+  color-scheme: light;
+  /* Jetons pr.social */
+  --ground: #eef0f4;
+  --glow-a: rgba(249, 115, 22, 0.16);
+  --glow-b: rgba(99, 102, 241, 0.10);
+  --surface: #ffffff;
+  --surface-2: #f6f7fa;
+  --surface-3: #eceef3;
+  --line: rgba(15, 23, 42, 0.075);
+  --line-2: rgba(15, 23, 42, 0.13);
+  --ink: #0e1016;
+  --ink-2: #434957;
+  --ink-3: #687080;
+  --edge-top: rgba(255, 255, 255, 1);
+  --edge-bot: rgba(15, 23, 42, 0.05);
+  --card-line: rgba(15, 23, 42, 0.04);
+  --sh-card: 0 0 0 1px rgba(15, 23, 42, 0.02), 0 1px 2px rgba(15, 23, 42, 0.06), 0 8px 20px -10px rgba(15, 23, 42, 0.14), 0 30px 50px -34px rgba(15, 23, 42, 0.32);
+  --sh-lift: 0 0 0 1px rgba(15, 23, 42, 0.035), 0 2px 6px rgba(15, 23, 42, 0.07), 0 18px 34px -14px rgba(15, 23, 42, 0.22), 0 44px 70px -40px rgba(15, 23, 42, 0.40);
+  --sh-tile: 0 0 0 1px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 16px -10px rgba(15, 23, 42, 0.2);
+  --sh-pop: 0 0 0 1px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.07), 0 24px 44px -16px rgba(15, 23, 42, 0.30);
+  --tip-bg: #0e1016;
+  --scrim: rgba(7, 8, 11, 0.5);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --side-w: 248px;
+  --tab-h: 64px;
+
+  /* Jetons historiques de replika, recalés sur les jetons pr.social */
+  --color-canvas: var(--ground);
+  --color-bg: var(--surface-2);
+  --color-bgCard: var(--surface);
+  --color-sidebar: var(--surface);
+  --color-hover: rgba(15, 23, 42, 0.055);
+  --color-active: rgba(15, 23, 42, 0.085);
+  --color-scroll: #c5cad4;
+  --color-bgDark: #0e1016;
+  --color-bgDark2: #1d202a;
+  /* Contrastes vérifiés (WCAG) : texte 18:1, secondaire 7:1, couleurs d'état ≥ 4,5:1 sur leur fond */
+  --color-text: var(--ink);
+  --color-textMuted: #566073;
+  --color-placeholder: var(--ink-3);
+  --color-border: rgba(15, 23, 42, 0.10);
+  --color-red: #be123c;
+  --color-redLight: #e11d48;
+  --color-dangerBg: rgba(225, 29, 72, 0.09);
+  --color-green: #166534;
+  --color-greenLight: #16a34a;
+  --color-greenSoft: rgba(22, 163, 74, 0.10);
+  --color-amber: #9a5a06;
+  --color-amberSoft: rgba(245, 158, 11, 0.15);
+  --vio-ink: #6d28d9;
+  --vio-wash: rgba(139, 92, 246, 0.11);
+  /* Mot « Flow » du logo : teinte lisible sur fond clair */
   --brand-text-from: var(--brand-2);
   --brand-text-to: var(--brand-3);
 }
 
 :root[data-theme="dark"] {
-  --color-canvas: #191919;
-  --color-bg: #252525;
-  --color-bgCard: #191919;
-  --color-sidebar: #202020;
-  --color-hover: rgba(255, 255, 255, 0.055);
-  --color-active: rgba(255, 255, 255, 0.09);
-  --color-scroll: #474747;
-  --color-bgDark: #2F2F2F;
-  --color-bgDark2: #373737;
-  --color-text: #D4D4D4;
-  --color-textMuted: #9B9B9B;
-  --color-placeholder: #8A8A8A;
-  --color-border: #2F2F2F;
-  --color-red: #E5675F;
-  --color-redLight: #F08A80;
-  --color-dangerBg: #3B2422;
-  --color-green: #52A57F;
-  --color-greenLight: #4ADE80;
-  --color-greenSoft: #22352B;
-  --color-amber: #E09A4F;
-  --color-amberSoft: #3D2B1C;
+  color-scheme: dark;
+  --ground: #07080b;
+  --glow-a: rgba(249, 115, 22, 0.14);
+  --glow-b: rgba(99, 102, 241, 0.10);
+  --surface: #101217;
+  --surface-2: #151820;
+  --surface-3: #1d202a;
+  --line: rgba(255, 255, 255, 0.065);
+  --line-2: rgba(255, 255, 255, 0.11);
+  --ink: #f4f5f8;
+  --ink-2: #adb3c0;
+  --ink-3: #7f8594;
+  --edge-top: rgba(255, 255, 255, 0.11);
+  --edge-bot: rgba(255, 255, 255, 0.01);
+  --card-line: rgba(255, 255, 255, 0.045);
+  --sh-card: 0 0 0 1px rgba(255, 255, 255, 0.018), 0 1px 2px rgba(0, 0, 0, 0.5), 0 18px 36px -20px rgba(0, 0, 0, 0.9);
+  --sh-lift: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 2px 6px rgba(0, 0, 0, 0.5), 0 28px 52px -22px rgba(0, 0, 0, 0.95);
+  --sh-tile: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 18px -12px rgba(0, 0, 0, 0.9);
+  --sh-pop: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 2px 6px rgba(0, 0, 0, 0.5), 0 30px 54px -20px rgba(0, 0, 0, 0.95);
+  --tip-bg: #262a35;
+
+  --color-hover: rgba(255, 255, 255, 0.06);
+  --color-active: rgba(255, 255, 255, 0.10);
+  --color-scroll: #3a3f4c;
+  --color-bgDark: #151820;
+  --color-bgDark2: #1d202a;
+  --color-textMuted: #9aa1b0;
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-red: #fb7185;
+  --color-redLight: #fda4af;
+  --color-dangerBg: rgba(244, 63, 94, 0.14);
+  --color-green: #4ade80;
+  --color-greenLight: #4ade80;
+  --color-greenSoft: rgba(34, 197, 94, 0.13);
+  --color-amber: #fbbf24;
+  --color-amberSoft: rgba(245, 158, 11, 0.15);
+  --vio-ink: #c4b5fd;
+  --vio-wash: rgba(139, 92, 246, 0.18);
   /* Mot « Flow » du logo : teintes vives, lisibles sur fond sombre */
   --brand-text-from: var(--brand-1);
   --brand-text-to: var(--brand-2);
 }
 
 /* ---------- Accents ---------- */
-/* Vert WhatsApp foncé (#008069) : texte blanc lisible sur les boutons (4,9:1, contre 3:1 avec #00A884) */
+/* La valeur « whatsapp » est celle enregistrée en base pour l'accent par défaut (API et profils existants
+   inchangés) ; elle porte désormais l'orange de pr.social. Texte blanc sur le dégradé. */
 :root,
 :root[data-accent="whatsapp"] {
+  --color-gold: #f05a1a;
+  --color-gold-rgb: 240 90 26;
+  --color-goldDark: #c2410c;
+  --color-goldLight: #ff8a3d;
+  --color-goldSoft: rgba(249, 115, 22, 0.10);
+  --color-onAccent: #ffffff;
+  /* Logo et dégradé de marque, du plus clair au plus foncé (identique en mode sombre) */
+  --brand-1: #ff8a3d;
+  --brand-2: #f05a1a;
+  --brand-3: #dc2626;
+  --brand: linear-gradient(135deg, #ff8a3d 0%, #f05a1a 48%, #dc2626 100%);
+  --brand-glow: rgba(240, 90, 26, 0.5);
+  --brand-ink: #c2410c;
+  --spot: rgba(249, 115, 22, 0.075);
+}
+
+:root[data-theme="dark"][data-accent="whatsapp"],
+:root[data-theme="dark"]:not([data-accent]) {
+  --color-goldDark: #fb923c;
+  --color-goldSoft: rgba(249, 115, 22, 0.16);
+  --brand-ink: #fb923c;
+  --spot: rgba(249, 115, 22, 0.10);
+}
+
+:root[data-accent="classic"] {
+  /* Vert WhatsApp foncé (#008069), valeurs de l'ancien accent par défaut : texte blanc lisible sur les boutons
+     (4,9:1, contre 3:1 avec #00A884). La valeur « classic » reste celle enregistrée en base (API inchangée). */
   --color-gold: #008069;
   --color-gold-rgb: 0 128 105;
   --color-goldDark: #006D59;
   --color-goldLight: #25D366;
   --color-goldSoft: #E2F5EE;
   --color-onAccent: #FFFFFF;
-  /* Logo : dégradé de la marque, du plus clair au plus foncé (identique en mode sombre) */
   --brand-1: #25D366;
   --brand-2: #00A884;
   --brand-3: #008069;
-}
-
-:root[data-theme="dark"][data-accent="whatsapp"] {
-  --color-goldDark: #2EC4A0;
-  --color-goldSoft: #13332A;
-}
-
-:root[data-accent="classic"] {
-  --color-gold: #E5AC5F;
-  --color-gold-rgb: 229 172 95;
-  --color-goldDark: #85591F;
-  --color-goldLight: #F2CB8E;
-  --color-goldSoft: #FBF1E2;
-  --color-onAccent: #2B2116;
-  --brand-1: #F2CB8E;
-  --brand-2: #E5AC5F;
-  --brand-3: #C9914A;
+  --brand: linear-gradient(135deg, #25D366 0%, #00A884 48%, #008069 100%);
+  --brand-glow: rgba(0, 168, 132, 0.5);
+  --brand-ink: #006D59;
+  --spot: rgba(0, 168, 132, 0.09);
+  --glow-a: rgba(0, 168, 132, 0.16);
 }
 
 :root[data-theme="dark"][data-accent="classic"] {
-  --color-goldDark: #F2CB8E;
-  --color-goldLight: #E5AC5F;
-  --color-goldSoft: #3A2E1A;
-  --color-onAccent: #1F1912;
+  --color-goldDark: #2EC4A0;
+  --color-goldSoft: #13332A;
+  --brand-ink: #2EC4A0;
+  --spot: rgba(0, 168, 132, 0.12);
+  --glow-a: rgba(0, 168, 132, 0.13);
 }
 
 /* ---------- Base ---------- */
 :root {
-  font-family: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-feature-settings: "cv11", "ss01";
+  font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   color: var(--color-text);
 }
-body { margin: 0; background: var(--color-canvas); color: var(--color-text); transition: background-color 0.15s ease; }
+body {
+  margin: 0;
+  font-weight: 500;
+  color: var(--color-text);
+  /* Deux halos colorés sur le fond gris, fixes pendant le défilement */
+  background:
+    radial-gradient(900px 520px at 100% -8%, var(--glow-a), transparent 62%),
+    radial-gradient(760px 520px at -6% -4%, var(--glow-b), transparent 60%),
+    var(--ground);
+  background-attachment: fixed;
+  transition: background-color 0.2s var(--ease);
+}
+:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 2px; border-radius: 8px; }
 ::selection { background: rgb(var(--color-gold-rgb) / 0.22); }
 ::placeholder { color: var(--color-placeholder); opacity: 1; }
 
@@ -127,6 +204,7 @@ body { margin: 0; background: var(--color-canvas); color: var(--color-text); tra
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.tabular { font-variant-numeric: tabular-nums; }
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(18px); }
@@ -227,3 +305,780 @@ body { margin: 0; background: var(--color-canvas); color: var(--color-text); tra
   .animate-swal-in, .animate-swal-icon, .animate-toast-in { animation: none; }
   .animate-swal-ring { display: none; }
 }
+
+/* =====================================================================================
+   Couche composants « pr.social » : classes réutilisables par le shell et les composants UI
+   ===================================================================================== */
+
+/* ---------- Cartes en relief ---------- */
+/* Fond blanc, filet lumineux dégradé (clair en haut, plus sombre en bas) et halo qui suit le pointeur
+   (--mx / --my posés par AppLayout). */
+.card-s {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  isolation: isolate;
+  background: var(--surface);
+  border-radius: 18px;
+  box-shadow: var(--sh-card);
+  transition: box-shadow 0.25s var(--ease), transform 0.25s var(--ease);
+}
+.card-s::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, var(--edge-top), var(--edge-bot));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+.card-s::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, -40%), var(--spot), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 0;
+}
+.card-s:hover::after { opacity: 1; }
+.card-s > * { position: relative; z-index: 1; }
+.card-s.lift:hover { box-shadow: var(--sh-lift); transform: translateY(-2px); }
+
+/* Les cartes déjà écrites en « fond carte + bordure » (style en ligne, dans toutes les pages) prennent le
+   même relief sans qu'on les réécrive une à une : ombre portée, filet atténué. */
+:is(div, section, article, aside, li, button, a)[style*="--color-bgCard"][style*="border:"]:not(.rounded-full):not(.rounded-md):not(.rounded-lg):not(.no-lift) {
+  box-shadow: var(--sh-card);
+}
+/* Filet atténué seulement quand la bordure est la bordure par défaut : une bordure d'état (sélection en
+   doré, erreur en rouge…) garde sa couleur */
+:is(div, section, article, aside, li, button, a)[style*="--color-bgCard"][style*="solid var(--color-border)"]:not(.rounded-full):not(.rounded-md):not(.rounded-lg):not(.no-lift) {
+  border-color: var(--card-line) !important;
+}
+
+/* ---------- Boutons ---------- */
+.ibtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--sh-card);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s, color 0.15s;
+}
+.ibtn:hover { color: var(--ink); box-shadow: var(--sh-lift); transform: translateY(-1px); }
+.ibtn:active { transform: translateY(1px); }
+
+/* Pastille de compteur */
+.bd {
+  position: absolute;
+  top: -5px;
+  inset-inline-end: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--color-onAccent);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--ground), 0 4px 10px -4px var(--brand-glow);
+}
+
+/* Bouton principal : dégradé de marque, relief en bas, halo coloré */
+.btn-brand {
+  color: var(--color-onAccent);
+  text-shadow: 0 1px 1px rgba(110, 20, 0, 0.3);
+  background: var(--brand);
+  box-shadow: 0 14px 26px -14px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(120, 20, 0, 0.18);
+  transition: transform 0.15s var(--ease), filter 0.2s, box-shadow 0.2s;
+}
+:root[data-accent="classic"] .btn-brand { text-shadow: 0 1px 1px rgba(0, 50, 40, 0.3); box-shadow: 0 14px 26px -14px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(0, 60, 48, 0.18); }
+.btn-brand:hover:not(:disabled) { transform: translateY(-1px); filter: saturate(1.1); }
+.btn-brand:active:not(:disabled) { transform: translateY(1px); }
+
+/* Bouton secondaire : surface blanche cerclée */
+.btn-soft {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 -1px 0 rgba(15, 23, 42, 0.05);
+  transition: transform 0.15s var(--ease), box-shadow 0.2s;
+}
+:root[data-theme="dark"] .btn-soft { background: var(--surface-3); }
+.btn-soft:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--line-2), 0 8px 16px -10px rgba(15, 23, 42, 0.35), inset 0 -1px 0 rgba(15, 23, 42, 0.05); }
+.btn-soft:active:not(:disabled) { transform: translateY(1px); }
+
+/* Boutons « tactile » : la hauteur monte à 44 px sur mobile */
+@media (max-width: 900px), (pointer: coarse) {
+  .ibtn { width: 44px; height: 44px; border-radius: 13px; }
+}
+
+/* ---------- Tuiles d'icône ---------- */
+/* Carré arrondi en dégradé (--a → --b) avec reflet haut et ombre colorée */
+.ico-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(155deg, var(--a) 0%, var(--b) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1.5px 2.5px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(16, 24, 40, 0.16), 0 6px 12px -7px color-mix(in srgb, var(--b) 38%, #101828);
+}
+.ico-tile.sm { width: 34px; height: 34px; border-radius: 10px; }
+.ico-tile.lg { width: 52px; height: 52px; border-radius: 15px; }
+
+/* ---------- Navigation latérale ---------- */
+.side-grp {
+  padding: 13px 8px 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 11px;
+  background: none;
+  color: var(--color-textMuted);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  flex: none;
+  transition: color 0.2s, background-color 0.15s, box-shadow 0.25s var(--ease);
+}
+.side-item > svg { width: 17px; height: 17px; flex: none; opacity: 0.72; transition: opacity 0.15s; }
+.side-item:hover { background: var(--surface-3); color: var(--ink); }
+.side-item.on {
+  color: var(--color-onAccent);
+  font-weight: 600;
+  background: var(--brand);
+  box-shadow: 0 12px 24px -12px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.side-item.on > svg { opacity: 1; }
+.side-item.here { color: var(--ink); font-weight: 600; }
+.side-item.here > svg { opacity: 1; }
+.side-sub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 11px 0 40px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--color-textMuted);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.15s;
+}
+.side-sub:hover { background: var(--surface-3); color: var(--ink); }
+.side-sub.on { background: var(--color-goldSoft); color: var(--brand-ink); font-weight: 650; }
+.side-sub.on::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 25px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 8px var(--brand-glow);
+}
+/* Rail d'icônes (barre latérale réduite) : icônes centrées, groupes en filets, badges posés sur l'icône */
+.side-rail .side-item { position: relative; justify-content: center; width: 44px; height: 40px; margin-inline: auto; padding: 0; }
+.side-rail .side-item > svg { width: 19px; height: 19px; }
+.side-rail .side-item .cnt { position: absolute; top: 1px; inset-inline-end: 1px; margin: 0; min-width: 16px; padding: 0 4px; font-size: 9.5px; line-height: 16px; text-align: center; box-shadow: 0 0 0 2px var(--surface); }
+.side-rail .side-item .cnt.vio svg { width: 9px; height: 9px; }
+.side-rail .side-grp { height: 1px; margin: 9px 12px 8px; padding: 0; overflow: hidden; font-size: 0; background: var(--line); }
+.side-rail .side-foot { align-items: center; gap: 6px; padding: 8px 6px; }
+.side-rail .foot-row { flex-direction: column; align-items: center; }
+.side-rail .me { flex-direction: column; gap: 6px; }
+.cnt {
+  margin-inline-start: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cnt.hot { background: var(--brand); color: var(--color-onAccent); box-shadow: 0 4px 10px -4px var(--brand-glow); }
+.side-item.on .cnt { background: #fff; color: #9a3412; box-shadow: none; }
+
+/* Logo : tuile sombre à reflet, comme la pastille « PR » de pr.social */
+.mark-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #fff;
+  background: linear-gradient(180deg, #2c2f39 0%, #0e1014 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.45), 0 1px 2px rgba(16, 24, 40, 0.3), 0 6px 12px -7px rgba(16, 24, 40, 0.6);
+}
+:root[data-theme="dark"] .mark-tile { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 12px -7px rgba(0, 0, 0, 0.8); }
+
+/* ---------- Contrôle segmenté et onglets ---------- */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.07);
+}
+:root[data-theme="dark"] .seg { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+.seg-b {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 3px 11px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.seg-b:hover { color: var(--ink); }
+.seg-b.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), 0 6px 12px -8px rgba(15, 23, 42, 0.3); }
+:root[data-theme="dark"] .seg-b.on { background: var(--surface-2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 12px -8px rgba(0, 0, 0, 0.8); }
+@media (max-width: 900px), (pointer: coarse) { .seg-b { min-height: 38px; } }
+
+/* ---------- Interrupteur ---------- */
+.sw {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.sw::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s var(--ease);
+}
+.sw[aria-checked="true"] { background: var(--brand); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 6px 12px -6px var(--brand-glow); }
+.sw[aria-checked="true"]::after { transform: translateX(18px); }
+[dir="rtl"] .sw[aria-checked="true"]::after { transform: translateX(-18px); }
+
+/* ---------- Pastille d'état ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.chip.ok { color: var(--color-green); background: var(--color-greenSoft); }
+.chip.warn { color: var(--color-amber); background: var(--color-amberSoft); }
+.chip.bad { color: var(--color-red); background: var(--color-dangerBg); }
+.chip.off { color: var(--ink-2); background: var(--surface-3); }
+.chip.brand { color: var(--brand-ink); background: var(--color-goldSoft); }
+
+/* ---------- Champs ---------- */
+.field-in {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  transition: box-shadow 0.18s var(--ease), background-color 0.18s;
+}
+.field-in:hover { box-shadow: inset 0 0 0 1px var(--line-2); }
+.field-in:focus, .field-in:focus-within { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--color-gold), 0 0 0 4px rgb(var(--color-gold-rgb) / 0.14); outline: none; }
+
+/* ---------- Fenêtres et feuilles ---------- */
+.scrim { background: var(--scrim); animation: fadeIn 0.18s ease-out both; }
+.sheet {
+  background: var(--surface);
+  box-shadow: 0 -24px 50px -20px rgba(0, 0, 0, 0.5);
+  animation: sheetUp 0.26s var(--ease) both;
+}
+@media (min-width: 640px) {
+  .sheet { box-shadow: var(--sh-pop); animation: dialogIn 0.26s var(--ease) both; }
+}
+.grab { width: 38px; height: 4px; margin: 4px auto 12px; border-radius: 999px; background: var(--line-2); }
+.pop {
+  background: var(--surface);
+  box-shadow: var(--sh-pop);
+  transform-origin: top right;
+  animation: popMenu 0.18s var(--ease) both;
+}
+
+/* ---------- Barre d'onglets mobile ---------- */
+.tabbar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(var(--tabs, 5), minmax(0, 1fr));
+  min-height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+  padding: 6px 6px calc(4px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  backdrop-filter: saturate(1.6) blur(16px);
+  -webkit-backdrop-filter: saturate(1.6) blur(16px);
+  box-shadow: 0 -1px 0 var(--line), 0 -16px 30px -20px rgba(15, 23, 42, 0.3);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  .tabbar { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+}
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 3px 0 0;
+  border: 0;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.tab > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
+.tab i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 28px;
+  border-radius: 10px;
+  transition: background-color 0.2s, box-shadow 0.25s var(--ease), transform 0.2s var(--ease);
+}
+.tab i svg { width: 21px; height: 21px; }
+.tab:active i { transform: scale(0.92); }
+.tab.on { color: var(--ink); }
+.tab.on i { background: var(--brand); color: var(--color-onAccent); box-shadow: 0 8px 16px -8px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.tab .bd { top: -4px; inset-inline-end: 2px; box-shadow: 0 0 0 2px var(--surface), 0 4px 10px -4px var(--brand-glow); }
+
+/* ---------- Squelettes de chargement ---------- */
+.sk {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--surface-3), var(--surface-2), var(--surface-3));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* ---------- Mouvement ---------- */
+@keyframes sheetUp { from { transform: translateY(30px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+@keyframes dialogIn { from { transform: translateY(10px) scale(0.97); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes popMenu { from { opacity: 0; transform: translateY(-6px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes itemIn { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes drawerIn { from { transform: translateX(-24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
+
+/* Chaque page entre en fondu glissé ; les cartes d'un conteneur .stagger se déploient l'une après l'autre */
+.page-in { animation: pageIn 0.32s var(--ease) both; }
+.stagger > * { animation: itemIn 0.42s var(--ease) both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 45ms; }
+.stagger > *:nth-child(3) { animation-delay: 90ms; }
+.stagger > *:nth-child(4) { animation-delay: 135ms; }
+.stagger > *:nth-child(5) { animation-delay: 180ms; }
+.stagger > *:nth-child(6) { animation-delay: 225ms; }
+.stagger > *:nth-child(n + 7) { animation-delay: 270ms; }
+.drawer-in { animation: drawerIn 0.26s var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .stagger > *, .drawer-in, .sheet, .pop, .scrim, .sk { animation: none !important; }
+  .card-s, .ibtn, .btn-brand, .btn-soft, .seg-b, .sw, .sw::after, .tab i { transition: none !important; }
+}
+
+/* ---------- Surfaces du shell ---------- */
+/* Barre latérale : surface translucide sur les halos du fond ; barre du haut : le fond lui-même */
+.side-surface { background: var(--surface); }
+@supports (color: color-mix(in srgb, red, blue)) {
+  .side-surface { background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); }
+}
+.top-surface { background: transparent; }
+
+/* Écrans peu hauts : la navigation se resserre pour garder tout le menu visible */
+@media (max-height: 940px) {
+  .side-item { height: 34px; }
+  .side-sub { height: 30px; }
+  .side-grp { padding-top: 10px; }
+}
+
+/* Bouton principal désactivé : surface grise en creux, comme sur pr.social */
+.btn-brand:disabled { background: var(--surface-3); color: var(--ink-2); text-shadow: none; box-shadow: inset 0 0 0 1px var(--line); opacity: 1 !important; }
+
+/* =====================================================================================
+   Briques de tableau de bord
+   ===================================================================================== */
+
+/* Carte héros : fond sombre éclairé par le dégradé de marque, pour LE chiffre de la page */
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 24px;
+  color: #fff;
+  background:
+    radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--brand-2) 42%, transparent), transparent 62%),
+    radial-gradient(420px 260px at 0% 120%, rgba(99, 102, 241, 0.28), transparent 60%),
+    linear-gradient(180deg, #171a21 0%, #0c0d11 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.04), 0 24px 40px -24px rgba(7, 8, 11, 0.8);
+}
+.hero > * { position: relative; z-index: 1; }
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hero-fig { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hero-sub { color: rgba(255, 255, 255, 0.62); }
+
+/* Ligne de liste : surface en creux, filet intérieur, glisse légèrement au survol */
+.row-s {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: box-shadow 0.2s var(--ease), background-color 0.2s, transform 0.2s var(--ease);
+}
+.row-s:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2), 0 8px 16px -12px rgba(15, 23, 42, 0.3); transform: translateY(-1px); }
+
+/* Barre de progression : piste en creux, remplissage en dégradé avec halo */
+.track { height: 8px; overflow: hidden; border-radius: 999px; background: var(--surface-3); box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08); }
+:root[data-theme="dark"] .track { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+.fill { height: 100%; border-radius: inherit; transition: width 0.7s var(--ease); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+
+/* Graphiques : les colonnes poussent depuis la base */
+@keyframes growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.grow { transform-box: fill-box; transform-origin: 50% 100%; animation: growY 0.6s var(--ease) both; }
+.grow-h { transform-origin: 50% 100%; animation: growY 0.6s var(--ease) both; }
+
+/* Infobulle de graphique : fond sombre comme les infobulles de pr.social */
+.tip { background: var(--tip-bg); color: #fff; border-radius: 12px; box-shadow: 0 20px 40px -18px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.07); animation: fadeIn 0.12s ease-out both; }
+
+/* Pastille d'icône plate (en-tête de panneau, lignes) */
+.ico-flat { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 9px; background: var(--surface-3); color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fill { transition: none; }
+  .grow, .grow-h, .tip { animation: none !important; }
+  .row-s { transition: none; }
+}
+
+/* Numéro de rang d'une liste classée */
+.medal-rank { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); color: var(--ink-2); font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.medal-rank.r1 { color: #5b3a00; background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 5px 9px -5px rgba(245,158,11,.9); }
+.medal-rank.r2 { color: #394150; background: linear-gradient(180deg, #f1f3f6, #b3bac7); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 5px 9px -5px rgba(100,112,134,.8); }
+.medal-rank.r3 { color: #5a2d0c; background: linear-gradient(180deg, #f8cfab, #c8773d); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 5px 9px -5px rgba(200,119,61,.9); }
+
+/* =====================================================================================
+   Carte « neutre » : le relief de .card-s (fond, ombre, filet lumineux, halo au survol) sans toucher
+   à la mise en page. Le rayon, le display (flex / grid / block) et les marges restent ceux des
+   classes Tailwind de l'élément ; on l'ajoute à n'importe quel conteneur de contenu.
+   ===================================================================================== */
+.card-x {
+  isolation: isolate;
+  background: var(--surface);
+  box-shadow: var(--sh-card);
+  transition: box-shadow 0.25s var(--ease);
+}
+/* Le filet et le halo sont positionnés par rapport à la carte : relative, sauf si l'élément est déjà
+   positionné autrement (menu flottant, panneau collant…) */
+.card-x:not(.absolute):not(.fixed):not(.sticky) { position: relative; }
+.card-x::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, var(--edge-top), var(--edge-bot));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+/* Halo derrière le contenu (z-index négatif dans le contexte isolé : au-dessus du fond, sous les enfants) */
+.card-x::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, -40%), var(--spot), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: -1;
+}
+.card-x:hover::after { opacity: 1; }
+
+/* Listes déroulantes : hauteur de champ et interligne qui ne rognent pas le texte */
+select { min-height: 2.375rem; line-height: 1.3; }
+
+/* Carte dans une carte : on n'empile pas les ombres. L'intérieur passe en creux (fond gris, filet), comme
+   les lignes .row-s ; seul le niveau extérieur garde le relief. */
+:is(.card-s, .card-x) :is(.card-x, .card-s, :is(div, section, article, aside, li, button, a)[style*="--color-bgCard"][style*="border:"]):not(.rounded-full):not(.rounded-md):not(.rounded-lg):not(.no-flat):not(.bare) {
+  background: var(--surface-2) !important;
+  box-shadow: inset 0 0 0 1px var(--card-line) !important;
+}
+:is(.card-s, .card-x) :is(.card-x, .card-s):not(.no-flat)::before,
+:is(.card-s, .card-x) :is(.card-x, .card-s):not(.no-flat)::after { display: none; }
+
+/* =====================================================================================
+   Shell pr.social : pied de barre latérale, feuille « Plus » (mobile), lignes de liste, bandes
+   (valeurs relevées dans le CSS de pr.social)
+   ===================================================================================== */
+
+/* ---------- Pied de la barre latérale ---------- */
+.side-foot { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; border-top: 1px solid var(--line); }
+.foot-row { display: flex; gap: 8px; }
+.lang {
+  flex: 1; min-width: 0; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+  border: 0; border-radius: 11px; background: var(--surface); box-shadow: var(--sh-card);
+  font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; transition: box-shadow 0.2s, transform 0.15s var(--ease);
+}
+.lang:hover { box-shadow: var(--sh-lift); transform: translateY(-1px); }
+.lang svg { width: 15px; height: 15px; flex: none; }
+.lang svg:last-child { margin-inline-start: auto; width: 14px; height: 14px; }
+.lang span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-foot .ibtn { width: 36px; height: 36px; border-radius: 11px; }
+.me { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who { min-width: 0; flex: 1; text-align: start; }
+.who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.who span { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--ink-3); }
+.who span.ok { color: var(--color-green); font-weight: 600; }
+.who span.warn { color: var(--color-amber); font-weight: 600; }
+.who span svg { width: 12px; height: 12px; }
+
+/* ---------- Boutons sur carte héros ---------- */
+.btn-w, .btn-g {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px;
+  border: 0; border-radius: 14px; font-size: 14.5px; font-weight: 700; letter-spacing: -0.005em; white-space: nowrap; cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s;
+}
+.btn-w svg, .btn-g svg { width: 17px; height: 17px; }
+.btn-w { background: linear-gradient(180deg, #fff, #f1f2f5); color: #0e1016; box-shadow: 0 16px 26px -14px rgba(0, 0, 0, 0.95), inset 0 -3px 0 rgba(14, 16, 22, 0.13), inset 0 1px 0 #fff; }
+.btn-g { color: #fff; background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
+.btn-w:hover, .btn-g:hover { transform: translateY(-1px); }
+.btn-w:active, .btn-g:active { transform: translateY(1px); }
+
+/* ---------- Lignes de liste dans une carte ---------- */
+.trow {
+  position: relative; isolation: isolate; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px;
+  padding: 10px 20px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; text-align: start; cursor: default;
+}
+button.trow, a.trow { cursor: pointer; }
+.trow::before { content: ""; position: absolute; inset: 4px 8px; border-radius: 14px; z-index: -1; transition: background-color 0.15s; }
+button.trow:hover::before, a.trow:hover::before { background: var(--surface-2); }
+.tr-m { flex: 1; min-width: 0; }
+.tr-m b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 650; line-height: 1.3; }
+.tr-m small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--ink-3); }
+.tr-r { flex: none; font-size: 15px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tr-r.mut { color: var(--ink-3); font-weight: 600; font-size: 13px; }
+.tr-ico { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); color: var(--ink-2); }
+.tr-ico svg { width: 16px; height: 16px; }
+.tr-ico.ok { background: var(--color-greenSoft); color: var(--color-green); }
+.tr-ico.warn { background: var(--color-amberSoft); color: var(--color-amber); }
+
+/* Bandes : en pied de carte (fond en creux) ou premium (dégradé violet) */
+.strip {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 20px;
+  border-top: 1px solid var(--line); background: var(--surface-2); font-size: 13px; line-height: 1.4; color: var(--ink-2);
+  border-radius: 0 0 18px 18px;
+}
+.strip > svg { width: 15px; height: 15px; flex: none; color: var(--ink-3); }
+.strip > span { flex: 1; min-width: 0; }
+.strip b { font-weight: 700; color: var(--ink); }
+.strip .lnk { white-space: nowrap; }
+.prow {
+  display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 20px; border-top: 1px solid var(--line);
+  background: linear-gradient(90deg, var(--vio-wash), transparent 78%); border-radius: 0 0 18px 18px;
+}
+.prow > div { flex: 1; min-width: 0; }
+.prow b { display: block; font-size: 14px; font-weight: 650; }
+.prow small { display: block; font-size: 12.5px; color: var(--ink-3); }
+
+/* Lien d'en-tête de carte (« Comment ça marche > ») */
+.lnk { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; color: var(--brand-ink); white-space: nowrap; background: none; border: 0; padding: 0; cursor: pointer; transition: opacity 0.15s; }
+.lnk:hover { opacity: 0.75; }
+.lnk svg { width: 15px; height: 15px; }
+
+/* Pastille de compteur violette (Premium / verrouillé) */
+.cnt.vio { background: var(--vio-wash); color: var(--vio-ink); display: inline-flex; align-items: center; gap: 3px; }
+.cnt svg { width: 10px; height: 10px; }
+
+/* Pastilles de comptes (comme les pastilles de réseaux du tableau de bord) */
+.net-chip {
+  display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 14px 0 6px; border: 0; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--sh-tile); font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.2s;
+}
+.net-chip:hover { transform: translateY(-1px); box-shadow: var(--sh-lift); }
+.net-chip small { font-size: 12px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .net-chip { background: var(--surface-2); }
+
+/* Champ lecture seule avec valeur (lien, code) */
+.copy-field { display: flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* ---------- Feuille « Plus » (mobile) ---------- */
+.back { position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; background: var(--scrim); animation: fadeIn 0.18s ease-out both; }
+.msheet {
+  width: 100%; max-height: 90vh; max-height: 90dvh; overflow: auto; background: var(--surface); border-radius: 26px 26px 0 0;
+  padding: 8px 14px calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -24px 50px -20px rgba(0, 0, 0, 0.5); animation: sheetUp 0.26s var(--ease) both;
+}
+.msheet .me { padding: 2px 2px 12px; }
+.mgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mi {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 13px 6px 11px; border: 0; border-radius: 16px;
+  background: var(--surface); box-shadow: var(--sh-tile); font-size: 12.5px; font-weight: 600; line-height: 1.2; text-align: center; color: var(--ink); cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+.mi:active { transform: scale(0.97); }
+:root[data-theme="dark"] .mi { background: var(--surface-2); }
+.mi svg { width: 21px; height: 21px; color: var(--ink-2); }
+.mi.on { color: var(--brand-ink); background: color-mix(in srgb, var(--color-gold) 7%, var(--surface)); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--color-gold) 58%, transparent), var(--sh-tile); }
+.mi.on svg { color: var(--brand-ink); }
+.mi .cnt { position: absolute; top: 7px; inset-inline-end: 7px; margin: 0; }
+.mrow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font-size: 14px; text-align: start; cursor: pointer; }
+.mgrid + .mrow { border-top: 0; margin-top: 8px; }
+.mrow > svg { width: 18px; height: 18px; color: var(--ink-2); flex: none; }
+.mrow .v { margin-inline-start: auto; display: flex; align-items: center; gap: 2px; color: var(--ink-2); font-size: 13.5px; }
+.mrow .v svg { width: 16px; height: 16px; }
+.mrow .sw { margin-inline-start: auto; }
+.xbtn { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border: 0; border-radius: 13px; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+.xbtn svg { width: 16px; height: 16px; }
+@media (min-width: 901px) { .back.only-m { display: none; } }
+@media (prefers-reduced-motion: reduce) { .msheet, .back { animation: none !important; } }
+
+
+/* =====================================================================================
+   Titre de carte : une ligne de séparation en dessous, sur toute la largeur de la carte
+   ===================================================================================== */
+.hd-line { border-bottom: 1px solid var(--line); }
+/* À poser sur le bloc de titre d'une carte à marge intérieure : la ligne déborde jusqu'aux bords (20 px, ou 16 px avec .card-hd-16) */
+.card-hd { margin: 0 -20px 16px; padding: 0 20px 13px; border-bottom: 1px solid var(--line); }
+.card-hd.card-hd-16 { margin-inline: -16px; padding-inline: 16px; }
+/* La première ligne d'une liste pleine largeur n'ajoute pas un second filet sous celui du titre */
+.hd-line + div > .trow:first-child { border-top: 0; }
+
+/* Champ de recherche d'une liste déroulante : jamais de cadre, même au focus clavier (la règle globale :focus-visible ne s'y applique pas) */
+[role="searchbox"]:focus, [role="searchbox"]:focus-visible { outline: none !important; box-shadow: none !important; }
+
+
+/* =====================================================================================
+   Police du texte (Paramètres → Préférences → Apparence) : reprend le couple de polices de Karama-Ko
+   (--font-display pour les titres, --font-ui pour le texte). Réglage conservé dans le navigateur
+   (« replika:font »), posé sur <html data-font> avant le premier affichage par index.html.
+   ===================================================================================== */
+@font-face { font-family: "Cabinet Grotesk"; src: url(/fonts/CabinetGrotesk-700.woff2) format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Cabinet Grotesk"; src: url(/fonts/CabinetGrotesk-800.woff2) format("woff2"); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Satoshi"; src: url(/fonts/Satoshi-400.woff2) format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Satoshi"; src: url(/fonts/Satoshi-500.woff2) format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Satoshi"; src: url(/fonts/Satoshi-700.woff2) format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+:root {
+  --font-ui: "Inter", "Noto Sans Arabic", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font-display: var(--font-ui);
+}
+:root[data-font="satoshi"] {
+  --font-ui: "Satoshi", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Cabinet Grotesk", "Satoshi", system-ui, sans-serif;
+}
+:root[data-font="system"] {
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --font-display: var(--font-ui);
+}
+/* Titres et grands chiffres : police d'affichage */
+h1, h2, h3, .hero-fig, .font-display { font-family: var(--font-display); }
+:root[data-font="satoshi"] .font-extrabold { font-family: var(--font-display); }
+/* Satoshi est un peu plus compacte qu'Inter : on resserre moins les titres */
+:root[data-font="satoshi"] h1, :root[data-font="satoshi"] h2, :root[data-font="satoshi"] h3 { letter-spacing: -0.005em; }
+
+/* Pastille « tout est en ordre » en vrai vert (rond plein, coche blanche) — et non le vert pâle des pastilles d'information */
+.tr-ico.ok-solid {
+  background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 12px -6px rgba(22, 163, 74, 0.75);
+}
+
+/* Tableau posé dans une carte plus grande : simple cadre fin, pas de carte supplémentaire */
+.tbl { border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); background: var(--surface); overflow: hidden; }
+.tbl table thead th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); }
+
+/* Bloc posé dans une carte plus grande, sans cadre ni ombre propres (sa mise en page reste la même) */
+/* Spécificité volontairement haute : elle doit l'emporter sur la règle des cartes imbriquées */
+.bare.bare.bare.bare { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+.bare.bare.bare.bare::before, .bare.bare.bare.bare::after { display: none !important; }
+
+/* Pastille ronde « bloqué » (rouge doux), pendant de .warn et .ok-solid */
+.tr-ico.bad { background: var(--color-dangerBg); color: var(--color-red); }
+
+/* Badge de statistique de la barre latérale : discret au repos, ambre quand quelque chose est à vérifier */
+.cnt.warn { background: var(--color-amberSoft); color: var(--color-amber); }
+.side-item.on .cnt.warn { background: #fff; color: #9a3412; }

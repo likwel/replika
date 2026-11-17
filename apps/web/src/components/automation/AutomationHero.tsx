@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowRight, Bot, Coins, Facebook, Hash, Loader2, MessageSquareDashed, RefreshCw, Sparkles } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { IconTile } from "@/components/ui/Dash";
+import { AlertTriangle, Bot, Coins, Facebook, Loader2, RefreshCw } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
@@ -8,8 +8,7 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { ApiError } from "@/lib/api";
 import { plural } from "@/lib/format";
 import { swal } from "@/lib/swal";
-import { automationApi, type AutomationRule, type AutomationSettings } from "@/lib/automation.api";
-import { aiApi, type AiOverview } from "@/lib/ai.api";
+import { automationApi, type AutomationSettings } from "@/lib/automation.api";
 import { facebookApi } from "@/lib/facebook.api";
 import { isPermissionError } from "@/lib/meta";
 import { billingApi, repliesLeft, type BillingOverview } from "@/lib/billing.api";
@@ -17,25 +16,18 @@ import { BILLING_UPDATED } from "@/lib/payment";
 import { replyCredits } from "@/lib/replyCredits";
 import { fmtNum } from "@/hooks/usePlan";
 
-const LANG_LABEL = { AUTO: "langue du client", MG: "malagasy", FR: "français" } as const;
-
 interface Props {
-  rules: AutomationRule[];
   onSynced: () => void;
-  onOpenAi: () => void;
-  onCreateDefault: () => void;
 }
 
-// En-tête de l'automatisation : interrupteur général, activité du jour, et chaîne de réponse en 3 étapes
-export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: Props) {
+// Bandeau d'état : interrupteur général, solde de réponses et activité du jour, d'un seul coup d'œil
+export function AutomationHero({ onSynced }: Props) {
   const [settings, setSettings] = useState<AutomationSettings | null>(null);
-  const [ai, setAi] = useState<AiOverview | null>(null);
   const [busy, setBusy] = useState<"toggle" | "sync" | null>(null);
 
   const load = () => automationApi.settings().then(setSettings).catch(() => setSettings(null));
   useEffect(() => {
     void load();
-    aiApi.overview().then(setAi).catch(() => setAi(null));
   }, []);
 
   const enabled = settings?.autoReplyEnabled ?? false;
@@ -77,22 +69,15 @@ export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: P
     }
   };
 
-  const active = rules.filter((r) => r.isActive);
-  const keywordRules = active.filter((r) => r.matchType !== "ANY");
-  const defaultRules = active.filter((r) => r.matchType === "ANY");
-  const aiAccounts = ai?.accounts.filter((a) => a.aiEnabled) ?? [];
-  const languages = [...new Set(aiAccounts.map((a) => a.aiLanguage ?? "AUTO"))];
 
   return (
-    <section className="overflow-hidden rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <section className="overflow-hidden rounded-2xl card-x">
       {/* Interrupteur général */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
-        <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: enabled ? theme.greenSoft : theme.bg }}>
-          <Bot size={22} style={{ color: enabled ? theme.green : theme.textMuted }} />
-        </span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3.5">
+        <IconTile icon={Bot} tint={enabled ? "#16a34a" : "#64748B"} size="md" />
         <div className="min-w-0 flex-1 basis-60">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[16px] font-semibold" style={{ color: theme.text }}>Réponses automatiques</h2>
+            <h2 className="text-[16px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>Réponses automatiques</h2>
             {settings && (
               <span
                 className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -103,7 +88,7 @@ export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: P
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[13px]" style={{ color: theme.textMuted }}>
+          <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>
             {!settings
               ? "Chargement…"
               : enabled
@@ -122,54 +107,13 @@ export function AutomationHero({ rules, onSynced, onOpenAi, onCreateDefault }: P
         </div>
       </div>
 
-      <ReplyBalance />
-
-      {/* Activité du jour */}
-      <div className="grid grid-cols-2 border-t sm:grid-cols-4" style={{ borderColor: theme.border }}>
-        <Kpi i={0} label="Réponses envoyées aujourd'hui" value={stats?.autoRepliedToday} />
-        <Kpi i={1} label="Suggestions à valider" value={stats?.suggested} tone={stats?.suggested ? "amber" : undefined} />
-        <Kpi i={2} label="Escaladés vers vous" value={stats?.escalated} tone={stats?.escalated ? "amber" : undefined} />
-        <Kpi i={3} label="Échecs d'envoi" value={stats?.failed} tone={stats?.failed ? "red" : undefined} />
-      </div>
-
-      {/* Chaîne de réponse : ordre réel d'évaluation */}
-      <div className="border-t px-5 py-4" style={{ borderColor: theme.border, background: theme.bg }}>
-        <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>Comment SuiteFlow choisit sa réponse</p>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch">
-          <Step
-            n={1}
-            icon={Hash}
-            title="Règles à mots-clés"
-            ok={keywordRules.length > 0}
-            detail={keywordRules.length ? `${plural(keywordRules.length, "règle active", "règles actives")}, par priorité` : "Aucune règle active"}
-          />
-          <Arrow />
-          <Step
-            n={2}
-            icon={Sparkles}
-            title="Assistant IA"
-            ok={aiAccounts.length > 0}
-            detail={
-              !ai
-                ? "…"
-                : !ai.configured
-                  ? "Modèle IA non configuré"
-                  : aiAccounts.length
-                    ? `${plural(aiAccounts.length, "compte")} · réponses en ${languages.map((l) => LANG_LABEL[l as keyof typeof LANG_LABEL]).join(", ")}`
-                    : "Désactivé sur tous les comptes"
-            }
-            action={<button onClick={onOpenAi} className="text-[12px] font-semibold underline-offset-2 hover:underline" style={{ color: theme.goldDark }}>{aiAccounts.length ? "Configurer" : "Activer"}</button>}
-          />
-          <Arrow />
-          <Step
-            n={3}
-            icon={MessageSquareDashed}
-            title="Réponse par défaut"
-            ok={defaultRules.length > 0}
-            detail={defaultRules.length ? `« ${defaultRules[0].name} »${defaultRules.length > 1 ? ` +${defaultRules.length - 1}` : ""}` : "Aucune : le message reste « À traiter »"}
-            action={!defaultRules.length && <button onClick={onCreateDefault} className="text-[12px] font-semibold underline-offset-2 hover:underline" style={{ color: theme.goldDark }}>Créer</button>}
-          />
-        </div>
+      {/* Activité du jour et solde : une seule rangée ; le solde ne devient bannière que s'il faut agir */}
+      <div className="flex flex-wrap items-stretch border-t" style={{ borderColor: "var(--line)" }}>
+        <Kpi label="envoyées aujourd'hui" value={stats?.autoRepliedToday} />
+        <Kpi label="à valider" value={stats?.suggested} tone={stats?.suggested ? "amber" : undefined} />
+        <Kpi label="escaladées" value={stats?.escalated} tone={stats?.escalated ? "amber" : undefined} />
+        <Kpi label="échecs" value={stats?.failed} tone={stats?.failed ? "red" : undefined} />
+        <ReplyBalance />
       </div>
 
       {/* Relève en échec : sans elle, aucun message n'est vu */}
@@ -221,12 +165,24 @@ function ReplyBalance() {
           .filter(Boolean)
           .join(" ");
 
+  const healthy = s.active && !empty && !low;
+  if (healthy) {
+    return (
+      <div className="ml-auto flex items-center gap-2 px-5 py-1.5">
+        <Coins size={14} className="flex-shrink-0" style={{ color: theme.goldDark }} />
+        <span className="text-[12.5px] font-medium" style={{ color: theme.text }}>{text}</span>
+        {quota !== null && (
+          <button onClick={() => replyCredits.open()} className="text-[12px] font-semibold underline-offset-2 hover:underline" style={{ color: theme.goldDark }}>Recharger</button>
+        )}
+      </div>
+    );
+  }
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-5 py-2.5" style={{ borderColor: theme.border, background: bg }}>
+    <div className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 border-t px-5 py-2.5" style={{ borderColor: "var(--line)", background: bg }}>
       <Coins size={16} className="flex-shrink-0" style={{ color: tone }} />
       <p className="min-w-0 flex-1 basis-60 text-[13px] font-medium" style={{ color: empty ? theme.red : theme.text }}>{text}</p>
       {quota !== null && (
-        <Button size="sm" variant={empty || low || !s.active ? "primary" : "ghost"} icon={Coins} onClick={() => replyCredits.open()}>
+        <Button size="sm" variant="primary" icon={Coins} onClick={() => replyCredits.open()}>
           Recharger des réponses
         </Button>
       )}
@@ -234,47 +190,13 @@ function ReplyBalance() {
   );
 }
 
-// Séparateurs : grille 2 × 2 sur mobile, 4 colonnes ensuite
-const KPI_BORDERS = ["", "border-l", "border-t sm:border-t-0 sm:border-l", "border-l border-t sm:border-t-0"];
-
-function Kpi({ i, label, value, tone }: { i: number; label: string; value: number | undefined; tone?: "amber" | "red" }) {
+// Compteur compact : le chiffre et son libellé sur la même ligne
+function Kpi({ label, value, tone }: { label: string; value: number | undefined; tone?: "amber" | "red" }) {
   const color = tone === "red" ? theme.red : tone === "amber" ? theme.amber : theme.text;
   return (
-    <div className={`px-5 py-3 ${KPI_BORDERS[i]}`} style={{ borderColor: theme.border }}>
-      <p className="text-xl font-semibold tabular-nums" style={{ color }}>{value ?? "–"}</p>
-      <p className="text-[11.5px]" style={{ color: theme.textMuted }}>{label}</p>
-    </div>
-  );
-}
-
-function Step({ n, icon: Icon, title, detail, ok, action }: { n: number; icon: LucideIcon; title: string; detail: string; ok: boolean; action?: ReactNode }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl px-3 py-2.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <span
-        className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
-        style={{ background: ok ? theme.goldSoft : theme.bg, color: ok ? theme.goldDark : theme.textMuted }}
-      >
-        <Icon size={16} />
-        <span
-          className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full text-[9.5px] font-bold"
-          style={{ background: ok ? theme.gold : theme.border, color: ok ? theme.onAccent : theme.textMuted }}
-        >
-          {n}
-        </span>
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold" style={{ color: theme.text }}>{title}</p>
-        <p className="text-[12px] leading-snug" style={{ color: theme.textMuted }}>{detail}</p>
-        {action && <div className="mt-0.5">{action}</div>}
-      </div>
-    </div>
-  );
-}
-
-function Arrow() {
-  return (
-    <div className="hidden items-center justify-center md:flex">
-      <ArrowRight size={16} style={{ color: theme.textMuted }} />
+    <div className="flex items-baseline gap-1.5 px-5 py-2.5">
+      <span className="tabular text-[17px] font-extrabold tracking-[-0.02em]" style={{ color }}>{value ?? "–"}</span>
+      <span className="text-[12px]" style={{ color: theme.textMuted }}>{label}</span>
     </div>
   );
 }

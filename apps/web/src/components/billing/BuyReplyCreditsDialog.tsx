@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Coins, Loader2, Minus, Plus, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+import { Coins, Loader2, Minus, Plus, ShieldCheck, Smartphone, Sparkles, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
@@ -46,7 +46,7 @@ function BuyReplyCreditsDialog({ reason, onClose }: { reason: string | null; onC
     setPaying(true);
     setError(null);
     try {
-      // Fenêtre Papi à part : la page reste ouverte et affiche le résultat
+      // Fenêtre de paiement à part : la page reste ouverte et affiche le résultat
       await payment.start(() => billingApi.buyReplyCredits(packs), { label: `${fmtNum(credits)} réponses automatiques`, amount: total });
       onClose();
     } catch (e) {
@@ -62,7 +62,7 @@ function BuyReplyCreditsDialog({ reason, onClose }: { reason: string | null; onC
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
           <Button size="sm" onClick={pay} disabled={!data || paying || !data.papiConfigured}>
             {paying ? <Loader2 size={15} className="animate-spin" /> : <Smartphone size={15} />}
             {data ? `Payer ${fmtAr(total)}` : "Payer"}

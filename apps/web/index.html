@@ -8,7 +8,7 @@
       name="description"
       content="SuiteFlow répond à vos commentaires et messages Facebook et Instagram 24h/24 grâce à son assistant IA : leads, lives, Marketplace et planification au même endroit."
     />
-    <meta name="theme-color" content="#008069" />
+    <meta name="theme-color" content="#f05a1a" />
     <!-- Aperçu du lien partagé (Facebook, WhatsApp, Messenger…) -->
     <meta property="og:title" content="SuiteFlow · Automatisation Facebook & Instagram avec l'IA" />
     <meta property="og:description" content="Un assistant IA qui répond à vos clients sur Facebook et Instagram, 24h/24." />
@@ -18,15 +18,28 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sora:wght@500;800&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400..800;1,400&family=Sora:wght@500;800&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet" />
     <script>
       // Pose le thème avant le premier rendu pour éviter un flash de la mauvaise couleur.
-      // Source de vérité : préférences serveur (synchronisées ici par useThemeAttrs à la connexion).
+      // Par défaut le thème suit l'appareil (clair / sombre) ; « replika:theme » = light | dark le force (voir lib/themePref.ts).
       (function () {
-        var theme = localStorage.getItem("replika:darkMode") === "1" ? "dark" : "light";
+        var pref = localStorage.getItem("replika:theme");
+        if (pref !== "light" && pref !== "dark") pref = "auto";
+        var theme = pref === "auto" ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : pref;
+        document.documentElement.setAttribute("data-theme-pref", pref);
         var accent = localStorage.getItem("replika:accentTheme") === "classic" ? "classic" : "whatsapp";
         document.documentElement.setAttribute("data-theme", theme);
         document.documentElement.setAttribute("data-accent", accent);
+        // Police du texte (réglage de cet appareil) : « satoshi » ou « system » ; sinon Inter
+        var font = localStorage.getItem("replika:font");
+        if (font === "satoshi" || font === "system") document.documentElement.setAttribute("data-font", font);
+        if (font === "satoshi") {
+          ["Satoshi-500", "CabinetGrotesk-800"].forEach(function (f) {
+            var l = document.createElement("link");
+            l.rel = "preload"; l.as = "font"; l.type = "font/woff2"; l.crossOrigin = "anonymous"; l.href = "/fonts/" + f + ".woff2";
+            document.head.appendChild(l);
+          });
+        }
       })();
     </script>
   </head>

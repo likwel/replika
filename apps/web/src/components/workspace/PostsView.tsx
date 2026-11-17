@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { createPortal } from "react-dom";
 import { LayoutGrid, List, MousePointerClick, Newspaper } from "lucide-react";
 import { theme } from "@/theme";
+import { plural } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { workspaceApi, type AccountError, type WsPost } from "@/lib/workspace.api";
 import { PostList } from "./PostList";
@@ -144,13 +146,12 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
   const viewButton = (v: ViewMode, Icon: typeof List, label: string) => (
     <button
       onClick={() => changeView(v)}
-      className="rounded-md p-1.5"
-      style={{ background: view === v ? theme.bgCard : "transparent", boxShadow: view === v ? "0 1px 2px rgba(0,0,0,0.06)" : "none" }}
+      className={`seg-b !min-h-[30px] !w-[30px] !px-0 ${view === v ? "on" : ""}`}
       title={label}
       aria-label={label}
       aria-pressed={view === v}
     >
-      <Icon size={14} style={{ color: view === v ? theme.gold : theme.textMuted }} />
+      <Icon size={15} style={{ color: view === v ? "var(--brand-ink)" : undefined }} />
     </button>
   );
 
@@ -165,18 +166,18 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
         />
       </div>
       <div className="flex items-center gap-2">
-        <select
+        <Select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="min-w-0 flex-1 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gold/40 sm:w-40 sm:flex-none"
-          style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
+          className="field-in h-9 min-w-0 flex-1 rounded-xl px-3 text-[13px] font-medium outline-none sm:w-44 sm:flex-none"
+          style={{ border: 0 }}
           aria-label="Type de publication"
         >
           {types.map((t) => (
             <option key={t.id} value={t.id}>{t.label}</option>
           ))}
-        </select>
-        <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
+        </Select>
+        <div className="seg !gap-0.5" role="group" aria-label="Affichage">
           {viewButton("list", List, "Vue liste")}
           {viewButton("grid", LayoutGrid, "Vue galerie")}
         </div>
@@ -186,13 +187,20 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
   );
 
   return (
-    <div className={active ? "flex flex-col gap-4" : "hidden"}>
+    <div className={active ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
       {active && toolbar && createPortal(filters, toolbar)}
-      <AccountErrors errors={errors} className={current ? "hidden lg:flex" : ""} />
+      <AccountErrors errors={errors} className={`mx-3 mt-3 sm:mx-5 ${current ? "hidden lg:flex" : ""}`} />
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,400px)_1fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,400px)_1fr]">
         {/* Liste */}
-        <section className={`${current ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-3`}>
+        <section className={`${current ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 max-h-[68dvh] flex-col gap-3 overflow-y-auto p-3 lg:max-h-none lg:[border-right:1px_solid_var(--line)]`}>
+          {/* En-tête de liste collant : le total reste visible pendant le défilement */}
+          {posts !== null && (
+            <div className="sticky -top-3 z-10 -mx-3 -mt-3 flex items-center justify-between gap-2 px-4 py-2 text-[12px] font-semibold" style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", color: theme.textMuted }}>
+              <span>{plural(visible.length, "publication")}{filtered ? " (filtré)" : ""}</span>
+              {pendingCount > 0 && <span className="chip brand">{pendingCount} à traiter</span>}
+            </div>
+          )}
           {notice && (
             <p className="rounded-xl px-3 py-2 text-xs" style={{ background: "#FDECEC", color: theme.red }}>{notice}</p>
           )}
@@ -211,7 +219,7 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
         </section>
 
         {/* Détail */}
-        <section className={`${current ? "" : "hidden lg:block"} min-w-0 lg:sticky lg:top-0 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto`}>
+        <section className={`${current ? "" : "hidden lg:block"} min-h-0 min-w-0 lg:overflow-y-auto`}>
           {current ? (
             <PostDetail
               key={`${current.accountId}:${current.id}`}
@@ -221,7 +229,7 @@ export function PostsView({ active, accountIds, toolbar, query, focus, onFocusDo
               onChange={(change) => patch(current, change)}
             />
           ) : (
-            <EmptyState icon={MousePointerClick} title="Sélectionnez une publication" dashed>
+            <EmptyState icon={MousePointerClick} title="Sélectionnez une publication" bare>
               Ses commentaires s'affichent ici : répondez, masquez ou supprimez sans quitter SuiteFlow.
             </EmptyState>
           )}

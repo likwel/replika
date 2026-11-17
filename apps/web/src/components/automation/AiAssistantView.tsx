@@ -1,18 +1,16 @@
-import { useEffect, useState, type FormEvent } from "react";
-import {
-  Sparkles, Cpu, AlertTriangle, ExternalLink, Loader2, Layers, MessageCircle, Mail,
-  Facebook, Instagram, Check, UserCheck, CircleSlash,
-} from "lucide-react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Select } from "@/components/ui/Select";
+import { AiModelPicker } from "@/components/automation/AiModelPicker";
+import { Sparkles, ExternalLink, Loader2, Layers, MessageCircle, Mail, Facebook, Instagram, Check, UserCheck, CircleSlash, FilePlus, FlaskConical, Save } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { CardTitle } from "@/components/ui/Dash";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Segmented } from "@/components/ui/Segmented";
 import { IntentChip } from "@/components/messages/IntentChip";
 import { ApiError } from "@/lib/api";
 import { offerReplyCredits } from "@/lib/replyCredits";
-import { timeAgo } from "@/lib/format";
 import { aiApi, type AiAccount, type AiLanguage, type AiOverview, type AiReply } from "@/lib/ai.api";
 import type { RuleChannel } from "@/lib/automation.api";
 
@@ -82,9 +80,7 @@ function LanguagePicker({ value, onChange }: { value: AiLanguage; onChange: (v: 
 
 const SAMPLES = ["C'est combien ?", "Vous livrez à Toamasina ?", "Colis reçu abîmé 😡", "Mbola misy ve ?", "Ohatrinona ny akanjo ?"];
 
-const inputClass = "w-full rounded-xl px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-gold/40";
 const inputStyle = { background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text };
-const card = { background: theme.bgCard, border: `1px solid ${theme.border}` };
 
 export function AiAssistantView() {
   const [overview, setOverview] = useState<AiOverview | null>(null);
@@ -108,7 +104,7 @@ export function AiAssistantView() {
   if (loading) return <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
   if (!overview) {
     return (
-      <div className="rounded-2xl p-8 text-center text-sm" style={{ ...card, color: theme.textMuted }}>
+      <div className="rounded-2xl p-8 text-center text-sm card-x" style={{ color: theme.textMuted }}>
         Impossible de charger la configuration de l'assistant IA.
       </div>
     );
@@ -119,9 +115,10 @@ export function AiAssistantView() {
   return (
     <div className="flex flex-col gap-5">
       <ModelStatus overview={overview} />
+      <AiModelPicker overview={overview} />
 
       {overview.accounts.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center text-sm" style={{ ...card, color: theme.textMuted }}>
+        <div className="rounded-2xl p-8 text-center text-sm card-x" style={{ color: theme.textMuted }}>
           Connectez une Page Facebook ou un compte Instagram pour configurer l'assistant.
         </div>
       ) : (
@@ -134,7 +131,7 @@ export function AiAssistantView() {
                 <button
                   key={a.id}
                   onClick={() => setSelectedId(a.id)}
-                  className="flex flex-shrink-0 items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm font-medium transition-all"
+                  className="flex h-9 flex-shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3.5 text-[13px] font-semibold transition-all"
                   style={{
                     background: active ? theme.bgDark : theme.bgCard,
                     color: active ? "#fff" : theme.text,
@@ -203,26 +200,22 @@ function ModelStatus({ overview }: { overview: AiOverview }) {
     );
   }
 
+  return null; // modèle configuré : il est présenté dans le sélecteur « Modèle IA »
+}
+
+// Section numérotée : le numéro, un titre, une phrase d'explication, puis le contenu aligné sous le titre
+function Step({ n, title, text, children }: { n: number; title: string; text: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl px-5 py-4" style={card}>
-      <div className="rounded-xl p-2.5" style={{ background: theme.goldSoft }}>
-        <Cpu size={18} style={{ color: theme.goldDark }} />
+    <section className="flex flex-col gap-3">
+      <div className="flex items-start gap-3">
+        <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-[12.5px] font-extrabold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{n}</span>
+        <div className="min-w-0">
+          <h4 className="text-[15px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>{title}</h4>
+          <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: theme.textMuted }}>{text}</p>
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold" style={{ color: theme.text }}>
-          {overview.provider} · <span className="font-normal">{overview.model}</span>
-        </p>
-        <p className="text-[11px]" style={{ color: theme.textMuted }}>
-          Utilisé pour les messages qu'aucune règle à mots-clés ne couvre.
-        </p>
-      </div>
-      {overview.lastError && (
-        <p className="flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-xs" style={{ background: "#FDECEC", color: theme.red }}>
-          <AlertTriangle size={13} className="mt-0.5 flex-shrink-0" />
-          {timeAgo(overview.lastError.at)} : {overview.lastError.message}
-        </p>
-      )}
-    </div>
+      <div className="flex flex-col gap-3 sm:pl-10">{children}</div>
+    </section>
   );
 }
 
@@ -268,106 +261,98 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
     }
   };
 
+  const field = "field-in w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium outline-none";
+
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
-      <div className="flex flex-col gap-4 rounded-2xl p-5 lg:col-span-2" style={card}>
-        <Title className="text-base">Assistant IA du Compte</Title>
-
-        <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
-          <div className="flex-1">
-            <p className="text-[13px] font-semibold" style={{ color: theme.text }}>Répondre avec l'IA sur {account.name}</p>
-            <p className="text-[11px]" style={{ color: theme.textMuted }}>
-              Pour les messages qu'aucune règle à mots-clés ne couvre. Les réponses par défaut « tout message » servent
-              de secours si le modèle est indisponible.
-            </p>
+      <div className="card-x flex flex-col gap-6 rounded-2xl p-5 lg:col-span-2">
+        {/* 1 · Activer */}
+        <Step n={1} title={`Activer l'assistant sur ${account.name}`} text="Pour les messages qu'aucune règle ne couvre. Les réponses par défaut « tout message » servent de secours si le modèle est indisponible.">
+          <div className="row-s !p-3.5">
+            <span className={`tr-ico ${draft.aiEnabled ? "ok-solid" : ""}`}>{draft.aiEnabled ? <Check strokeWidth={3} /> : <Sparkles />}</span>
+            <div className="min-w-0 flex-1">
+              <b className="block text-[13.5px] font-semibold" style={{ color: theme.text }}>{draft.aiEnabled ? "L'assistant est activé" : "L'assistant est désactivé"}</b>
+              <small className="block text-[12px]" style={{ color: theme.textMuted }}>{draft.aiEnabled ? "Il répond aux messages sans règle correspondante." : "Activez-le pour qu'il réponde à votre place."}</small>
+            </div>
+            <Toggle checked={draft.aiEnabled} onChange={(v) => set("aiEnabled", v)} label="Activer l'IA" />
           </div>
-          <Toggle checked={draft.aiEnabled} onChange={(v) => set("aiEnabled", v)} label="Activer l'IA" />
-        </div>
+        </Step>
 
-        <LanguagePicker value={draft.aiLanguage} onChange={(v) => set("aiLanguage", v)} />
-
-        <div className={draft.aiEnabled ? "flex flex-col gap-4" : "pointer-events-none flex flex-col gap-4 opacity-50"}>
+        {/* 2 · Ce qu'il doit savoir */}
+        <Step n={2} title="Ce qu'il doit savoir" text="L'IA ne répond qu'à partir de ces informations : elle n'invente ni prix, ni stock, ni délai.">
           <div>
-            <p className="mb-1.5 text-[13px] font-semibold" style={{ color: theme.text }}>Messages traités</p>
-            <Segmented options={CHANNELS} value={draft.aiChannel} onChange={(v) => set("aiChannel", v)} />
-          </div>
-
-          <div className="flex items-start gap-3 rounded-xl p-3" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
-            <div className="flex-1">
-              <p className="text-[13px] font-semibold" style={{ color: theme.text }}>Envoi automatique</p>
-              <p className="text-[11px]" style={{ color: theme.textMuted }}>
-                {draft.aiAutoSend
-                  ? "Publiée directement. Réclamations et questions sans réponse restent escaladées vers vous."
-                  : "Proposée dans la file d'attente : vous relisez avant l'envoi. Recommandé pour commencer."}
-              </p>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-[13px] font-semibold" style={{ color: theme.text }}>Informations sur votre activité</span>
+              {!draft.aiContext.trim() && <Button icon={FilePlus} size="sm" variant="soft" onClick={() => set("aiContext", CONTEXT_TEMPLATE)}>Insérer un modèle</Button>}
             </div>
-            <Toggle checked={draft.aiAutoSend} onChange={(v) => set("aiAutoSend", v)} label="Envoi automatique" />
+            <textarea
+              rows={9}
+              maxLength={8000}
+              className={field}
+              value={draft.aiContext}
+              onChange={(e) => set("aiContext", e.target.value)}
+              placeholder={"Produits et prix : panier S 25 000 Ar, panier M 35 000 Ar…\nLivraison : Tana 5 000 Ar sous 48 h…"}
+            />
+            <div className="mt-1 flex justify-between text-[11.5px]" style={{ color: theme.textMuted }}>
+              <span>{draft.aiEnabled && !draft.aiContext.trim() && "Sans ces informations, l'IA restera générique et escaladera les questions précises."}</span>
+              <span className="tabular">{draft.aiContext.length} / 8000</span>
+            </div>
           </div>
-        </div>
+          <div>
+            <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Consignes <span className="font-normal" style={{ color: theme.textMuted }}>(facultatif)</span></span>
+            <textarea
+              rows={3}
+              maxLength={2000}
+              className={field}
+              value={draft.aiInstructions}
+              onChange={(e) => set("aiInstructions", e.target.value)}
+              placeholder="Vouvoyer les clients, ton chaleureux, signer « L'équipe ShopRaphia »…"
+            />
+          </div>
+        </Step>
 
-        <div>
-          <div className="mb-1.5 flex items-end justify-between gap-2">
+        {/* 3 · Sa façon de répondre */}
+        <Step n={3} title="Sa façon de répondre" text="La langue, les messages concernés, et si vous relisez avant l'envoi.">
+          <LanguagePicker value={draft.aiLanguage} onChange={(v) => set("aiLanguage", v)} />
+          <div className={draft.aiEnabled ? "flex flex-col gap-3" : "pointer-events-none flex flex-col gap-3 opacity-50"}>
             <div>
-              <p className="text-[13px] font-semibold" style={{ color: theme.text }}>Informations sur votre activité</p>
-              <p className="text-[11px]" style={{ color: theme.textMuted }}>
-                L'IA ne répond qu'à partir de ces informations : elle n'invente ni prix, ni stock, ni délai.
-              </p>
+              <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Messages traités</span>
+              <Segmented options={CHANNELS} value={draft.aiChannel} onChange={(v) => set("aiChannel", v)} />
             </div>
-            {!draft.aiContext.trim() && (
-              <Button size="sm" variant="soft" onClick={() => set("aiContext", CONTEXT_TEMPLATE)}>Insérer un modèle</Button>
-            )}
+            <div className="row-s !p-3.5">
+              <div className="min-w-0 flex-1">
+                <b className="block text-[13.5px] font-semibold" style={{ color: theme.text }}>Envoi automatique</b>
+                <small className="block text-[12px] leading-snug" style={{ color: theme.textMuted }}>
+                  {draft.aiAutoSend
+                    ? "Publiée directement. Réclamations et questions sans réponse restent escaladées vers vous."
+                    : "Proposée dans « À traiter » : vous relisez avant l'envoi. Recommandé pour commencer."}
+                </small>
+              </div>
+              <Toggle checked={draft.aiAutoSend} onChange={(v) => set("aiAutoSend", v)} label="Envoi automatique" />
+            </div>
           </div>
-          <textarea
-            rows={9}
-            maxLength={8000}
-            className={inputClass}
-            style={inputStyle}
-            value={draft.aiContext}
-            onChange={(e) => set("aiContext", e.target.value)}
-            placeholder={"Produits et prix : panier S 25 000 Ar, panier M 35 000 Ar…\nLivraison : Tana 5 000 Ar sous 48 h…"}
-          />
-          <div className="mt-1 flex justify-between text-[11px]" style={{ color: theme.textMuted }}>
-            <span>
-              {draft.aiEnabled && !draft.aiContext.trim() &&
-                "Sans ces informations, l'IA restera générique et escaladera les questions précises."}
-            </span>
-            <span>{draft.aiContext.length} / 8000</span>
-          </div>
-        </div>
+        </Step>
 
-        <div>
-          <p className="mb-1.5 text-[13px] font-semibold" style={{ color: theme.text }}>Consignes (optionnel)</p>
-          <textarea
-            rows={3}
-            maxLength={2000}
-            className={inputClass}
-            style={inputStyle}
-            value={draft.aiInstructions}
-            onChange={(e) => set("aiInstructions", e.target.value)}
-            placeholder="Vouvoyer les clients, ton chaleureux, signer « L'équipe ShopRaphia »…"
-          />
-        </div>
+        {error && <p className="row-s text-[13px]" style={{ color: theme.red }}>{error}</p>}
 
-        {error && <p className="rounded-xl px-3 py-2 text-sm" style={{ background: "#FDECEC", color: theme.red }}>{error}</p>}
-
-        <div className="flex items-center justify-end gap-3">
+        {/* Barre d'enregistrement : reste visible pendant le défilement */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t px-5 py-3" style={{ borderColor: "var(--line)", background: "var(--surface-2)", borderRadius: "0 0 18px 18px", boxShadow: "0 -14px 16px -14px rgba(15,23,42,0.18)" }}>
           {dirty ? (
-            <span className="text-[11px]" style={{ color: theme.goldDark }}>Modifications non enregistrées</span>
+            <span className="mr-auto text-[12px] font-semibold" style={{ color: theme.amber }}>Modifications non enregistrées</span>
           ) : (
             justSaved && (
-              <span className="flex items-center gap-1 text-[11px]" style={{ color: theme.goldDark }}>
-                <Check size={12} /> Enregistré
+              <span className="mr-auto flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: theme.green }}>
+                <Check size={13} strokeWidth={3} /> Enregistré
               </span>
             )
           )}
-          <Button size="sm" onClick={save} disabled={!dirty || saving}>
-            {saving && <Loader2 size={14} className="animate-spin" />}
-            Enregistrer
-          </Button>
+          <Button size="sm" onClick={save} disabled={!dirty || saving} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Save}>Enregistrer</Button>
         </div>
       </div>
 
+      <div className="lg:sticky lg:top-0">
       <AiTester accountId={account.id} configured={configured} aiContext={draft.aiContext} aiInstructions={draft.aiInstructions} aiLanguage={draft.aiLanguage} />
+      </div>
     </div>
   );
 }
@@ -407,14 +392,8 @@ function AiTester({ accountId, configured, aiContext, aiInstructions, aiLanguage
   };
 
   return (
-    <div className="rounded-2xl p-5" style={card}>
-      <div className="mb-1 flex items-center gap-2">
-        <Sparkles size={16} style={{ color: theme.gold }} />
-        <Title className="text-base">Tester l'Assistant</Title>
-      </div>
-      <p className="mb-3 text-[11px]" style={{ color: theme.textMuted }}>
-        Utilise votre brouillon, même non enregistré. Rien n'est publié.
-      </p>
+    <div className="rounded-2xl p-5 card-x">
+      <CardTitle title="Tester l'Assistant" subtitle="Utilise votre brouillon, même non enregistré. Rien n'est publié." icon={Sparkles} tint="#8B5CF6" />
 
       <form onSubmit={run} className="flex flex-col gap-2">
         <textarea
@@ -440,7 +419,7 @@ function AiTester({ accountId, configured, aiContext, aiInstructions, aiLanguage
           ))}
         </div>
         <div className="flex gap-2">
-          <select
+          <Select
             value={kind}
             onChange={(e) => setKind(e.target.value as "COMMENT" | "DIRECT")}
             className="flex-1 rounded-xl px-2.5 py-2 text-xs outline-none"
@@ -448,11 +427,8 @@ function AiTester({ accountId, configured, aiContext, aiInstructions, aiLanguage
           >
             <option value="COMMENT">Commentaire public</option>
             <option value="DIRECT">Message privé</option>
-          </select>
-          <Button type="submit" size="sm" variant="dark" disabled={!configured || loading || !text.trim()}>
-            {loading && <Loader2 size={14} className="animate-spin" />}
-            Tester
-          </Button>
+          </Select>
+          <Button type="submit" size="sm" variant="dark" disabled={!configured || loading || !text.trim()} className={`${loading ? "[&>svg]:animate-spin" : ""}`} icon={loading ? Loader2 : FlaskConical}>Tester</Button>
         </div>
       </form>
 

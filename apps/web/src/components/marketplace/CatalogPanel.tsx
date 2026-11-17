@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Download, Facebook, Info, Link2, Loader2, RefreshCw, Unlink, Upload } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { Store, Download, Facebook, Info, Link2, Loader2, RefreshCw, Unlink, Upload } from "lucide-react";
 import { facebookApi } from "@/lib/facebook.api";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { CardTitle } from "@/components/ui/Dash";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
@@ -116,16 +117,19 @@ export function CatalogPanel({ onSynced }: Props) {
 
       {message && <Alert variant="error">{message.error}</Alert>}
 
-      <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <Title className="text-base">Catalogue par compte</Title>
-            <p className="text-[11px]" style={{ color: theme.textMuted }}>Un catalogue Facebook par Page connectée.</p>
-          </div>
-          <Button size="sm" variant="ghost" icon={loadingCatalogs ? Loader2 : RefreshCw} onClick={loadCatalogs} disabled={loadingCatalogs} className={loadingCatalogs ? "[&>svg]:animate-spin" : ""}>
+      <div>
+        <CardTitle
+          className="!mx-0 !px-0"
+          title="Catalogue par compte"
+          subtitle="Un catalogue Facebook par Page connectée."
+          icon={Store}
+          tint="#10B981"
+          action={
+            <Button size="sm" variant="ghost" icon={loadingCatalogs ? Loader2 : RefreshCw} onClick={loadCatalogs} disabled={loadingCatalogs} className={loadingCatalogs ? "[&>svg]:animate-spin" : ""}>
             Chercher mes catalogues
           </Button>
-        </div>
+          }
+        />
 
         {accounts === null ? (
           <ListSkeleton height={64} count={2} />
@@ -151,7 +155,7 @@ export function CatalogPanel({ onSynced }: Props) {
 
                 <div className="flex flex-wrap items-center gap-2">
                   {catalogs && catalogs.length > 0 && (
-                    <select
+                    <Select
                       value={a.catalogId ?? ""}
                       onChange={(e) => connect(a.id, catalogs.find((c) => c.id === e.target.value) ?? null)}
                       disabled={busy === a.id}
@@ -165,7 +169,7 @@ export function CatalogPanel({ onSynced }: Props) {
                           {c.name}{c.productCount !== null ? ` (${c.productCount})` : ""} · {c.businessName}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   )}
                   {a.catalogId ? (
                     <>

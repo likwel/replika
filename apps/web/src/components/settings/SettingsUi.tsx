@@ -1,18 +1,23 @@
 import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { Eye, EyeOff, Check } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import type { LucideIcon } from "lucide-react";
+import { CardTitle } from "@/components/ui/Dash";
 
 // Carte de section des paramètres ; `danger` pour les actions irréversibles
 export function SettingsCard({
   title,
   description,
   danger,
+  icon,
+  tint,
   children,
 }: {
   title: string;
   description?: string;
   danger?: boolean;
+  icon?: LucideIcon;
+  tint?: string;
   children: ReactNode;
 }) {
   return (
@@ -20,13 +25,8 @@ export function SettingsCard({
       className="rounded-2xl p-5"
       style={{ background: theme.bgCard, border: `1px solid ${danger ? "#F2C4BF" : theme.border}` }}
     >
-      {danger ? (
-        <h2 className="font-semibold tracking-tight" style={{ color: theme.red }}>{title}</h2>
-      ) : (
-        <Title className="text-base">{title}</Title>
-      )}
-      {description && <p className="mt-0.5 text-xs" style={{ color: theme.textMuted }}>{description}</p>}
-      <div className="mt-4">{children}</div>
+      <CardTitle title={title} subtitle={description} icon={icon} tint={tint} danger={danger} />
+      <div>{children}</div>
     </section>
   );
 }

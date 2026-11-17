@@ -165,7 +165,7 @@ export function CommentsFeed({ sessionId, active, onOrder }: Props) {
       ) : (
         <>
           {/* Grand écran : tableau */}
-          <div className="hidden overflow-x-auto rounded-2xl md:block" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+          <div className="tbl hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-sm">
               <thead style={{ background: theme.bg, color: theme.textMuted }}>
                 <tr>

@@ -152,9 +152,9 @@ export function PostDetail({ post, highlightId, onBack, onChange }: Props) {
   const longText = post.text.length > 280;
 
   return (
-    <article className="rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <article className="flex min-h-full flex-col">
       {/* En-tête */}
-      <header className="flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: theme.border }}>
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b px-4 py-3" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
         <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-black/5 lg:hidden" aria-label="Retour à la liste">
           <ArrowLeft size={18} style={{ color: theme.text }} />
         </button>

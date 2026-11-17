@@ -15,7 +15,45 @@ async function findOwned(userId: string, id: string) {
   return msg;
 }
 
+const TO_DO = ["PENDING", "ESCALATED"] as const; // « À traiter » : en attente ou escaladé
+
 export const messageService = {
+  // Bulle de notification : ce qui attend une action, avec ce qui est nouveau (jamais vu) mis en avant
+  async notifications(userId: string) {
+    const where = { account: { userId, isActive: true }, status: { in: [...TO_DO] } };
+    const [total, unseen, rows] = await Promise.all([
+      prisma.socialMessage.count({ where }),
+      prisma.socialMessage.count({ where: { ...where, seenAt: null } }),
+      prisma.socialMessage.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }],
+        take: 12,
+        select: {
+          id: true, kind: true, authorName: true, authorId: true, content: true, postId: true, externalId: true, status: true, intent: true, createdAt: true, seenAt: true, accountId: true,
+          account: { select: { name: true, platform: true, avatarUrl: true } },
+        },
+      }),
+    ]);
+    return {
+      total,
+      unseen,
+      items: rows.map(({ seenAt, content, ...m }) => ({ ...m, content: content.length > 160 ? `${content.slice(0, 157)}…` : content, seen: seenAt !== null })),
+    };
+  },
+
+  // Marque comme vus des messages précis (ouverture d'un message, de la page À traiter), ou tout ce qui est à traiter
+  async markSeen(userId: string, input: { ids?: string[]; all?: boolean }) {
+    const { count } = await prisma.socialMessage.updateMany({
+      where: {
+        account: { userId },
+        seenAt: null,
+        ...(input.all ? { status: { in: [...TO_DO] } } : { id: { in: input.ids ?? [] } }),
+      },
+      data: { seenAt: new Date() },
+    });
+    return { updated: count };
+  },
+
   // récupère les messages des comptes appartenant à l'utilisateur
   list(userId: string, filters: ListQuery) {
     return prisma.socialMessage.findMany({

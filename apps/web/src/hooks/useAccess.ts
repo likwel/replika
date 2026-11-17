@@ -3,11 +3,14 @@ import type { Access, TeamModule } from "@/lib/team.api";
 
 // Menu → module de permission d'équipe (null : toujours accessible, comme Paramètres)
 export const MENU_MODULE: Record<string, TeamModule | null> = {
+  dash: null,
   hub: "inbox",
+  queue: "inbox",
   live: "live",
   market: "marketplace",
   leads: "leads",
   plan: "schedule",
+  rules: "automation",
   auto: "automation",
   stat: "stats",
   hist: "history",

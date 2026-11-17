@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowLeftRight, Check, Copy, Crown, Eye, Loader2, LogOut, Mail, MoreHorizontal, Pause, Pencil, Play, Send, ShieldCheck, Sparkles,
-  Trash2, UserPlus, Users,
-} from "lucide-react";
+import { ArrowLeftRight, Check, Copy, Crown, Eye, Loader2, LogOut, Mail, MoreHorizontal, Pause, Pencil, Play, Send, ShieldCheck, Sparkles, Trash2, UserPlus, Users, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -27,7 +24,6 @@ const STATUS: Record<TeamMember["status"], { label: string; color: string; bg: s
   DISABLED: { label: "Suspendu", color: theme.textMuted, bg: theme.bg },
 };
 
-const card = { background: theme.bgCard, border: `1px solid ${theme.border}` };
 
 // Paramètres → Équipe : mon équipe (propriétaire), espaces rejoints et invitations reçues
 export function TeamSection() {
@@ -304,7 +300,7 @@ function MemberDialog({ team, member, onClose, onSaved }: { team: TeamOverview; 
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
           <Button size="sm" icon={saving ? Loader2 : member ? Check : Send} onClick={save} disabled={saving || !count || (!member && !/^\S+@\S+\.\S+$/.test(email.trim()))}>
             {member ? "Enregistrer" : "Envoyer l'invitation"}
           </Button>
@@ -443,7 +439,7 @@ function InvitedDialog({ result, onClose }: { result: InviteResult; onClose: () 
       title="Invitation prête"
       subtitle={result.member.email}
       onClose={onClose}
-      footer={<Button size="sm" onClick={onClose}>Terminé</Button>}
+      footer={<Button icon={Check} size="sm" onClick={onClose}>Terminé</Button>}
     >
       {result.emailSent ? (
         <Alert variant="success" className="mb-4">Un e-mail d'invitation a été envoyé à {result.member.email}.</Alert>
@@ -501,14 +497,14 @@ function Spaces({ spaces, onChange }: { spaces: Membership[]; onChange: () => vo
               <p className="text-sm font-semibold" style={{ color: theme.text }}>{s.ownerName} vous invite dans l'espace « {s.space} »</p>
               <p className="text-[12px]" style={{ color: theme.textMuted }}>Rôle : {s.roleLabel} · {Object.keys(s.permissions).length} modules</p>
             </div>
-            <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => run(s.id, () => teamApi.decline(s.id))}>Refuser</Button>
+            <Button icon={X} size="sm" variant="ghost" disabled={busy !== null} onClick={() => run(s.id, () => teamApi.decline(s.id))}>Refuser</Button>
             <Button size="sm" icon={busy === s.id ? Loader2 : Check} disabled={busy !== null} onClick={() => run(s.id, () => teamApi.accept(s.id), () => window.location.assign("/app"))}>
               Rejoindre
             </Button>
           </li>
         ))}
         {joined.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-3 py-3" style={card}>
+          <li key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl px-3 py-3 card-x">
             <Avatar name={s.space} src={s.ownerAvatarUrl} size={34} />
             <div className="min-w-0 flex-1 basis-56">
               <p className="flex flex-wrap items-center gap-2 text-sm font-medium" style={{ color: theme.text }}>

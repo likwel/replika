@@ -37,6 +37,10 @@ const settings = {
   recapMessage: template(1500),
   recapUpdateMessage: template(1500),
   deliveryFee: z.number().int().min(0).max(1_000_000_000),
+  // Autres commentaires (prix, questions…) : toutes les règles actives (défaut), seulement celles jointes à la session, ou aucune réponse
+  replyMode: z.enum(["ALL", "SELECTED", "NONE"]),
+  replyRuleIds: z.array(z.string().min(1).max(50)).max(50),
+  replyUseAi: z.boolean(),
 };
 
 export const createSessionSchema = z

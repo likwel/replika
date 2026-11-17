@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { graphClient, graphErrorDetails, graphErrorMessage } from "../facebook/graph.client.js";
 import { isPublicAddress, localUploadName, publicImageUrl, readUpload } from "../uploads/upload.service.js";
 import { getEntitlements } from "../billing/entitlements.js";
+import { runDueSources } from "./import.service.js";
 
 // Au-delà, une publication restée « en cours » vient d'un arrêt du serveur pendant l'envoi
 const STUCK_MS = 10 * 60 * 1000;
@@ -196,6 +197,11 @@ export function startScheduler() {
     .catch(() => {});
   const timer = setInterval(() => void runDueSchedules(), env.schedulerSeconds * 1000);
   void runDueSchedules();
+  // Tableurs d'import : relève chaque minute des sources dont l'intervalle est écoulé
+  const sources = setInterval(() => void runDueSources().catch((e) => console.error("❌ Sources d'import :", e)), 60_000);
   console.log(`🗓️  Planification : vérification toutes les ${env.schedulerSeconds} s`);
-  return () => clearInterval(timer);
+  return () => {
+    clearInterval(timer);
+    clearInterval(sources);
+  };
 }

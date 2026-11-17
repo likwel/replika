@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { Check, Clock, ImagePlus, Link2, Loader2, Search, Send, Trash2, Save, AlertTriangle, Tag, CalendarClock } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
@@ -397,11 +398,11 @@ export function ScheduleComposer({ initial, duplicate, defaultDate, defaultKind 
               <Label>Hors fenêtre de 24 h (Messenger)</Label>
               <div className="relative">
                 <Tag size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: theme.textMuted }} />
-                <select value={tag} onChange={(e) => setTag(e.target.value as MessageTag | "")} className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none" style={inputStyle}>
+                <Select value={tag} onChange={(e) => setTag(e.target.value as MessageTag | "")} className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none" style={inputStyle}>
                   {TAG_OPTIONS.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <p className="mt-1 text-[11px]" style={{ color: theme.textMuted }}>{tagHint}</p>
             </div>
@@ -444,7 +445,7 @@ export function ScheduleComposer({ initial, duplicate, defaultDate, defaultKind 
 
           <div>
             <Label>Aperçu</Label>
-            <div className="overflow-hidden rounded-xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+            <div className="overflow-hidden rounded-xl card-x">
               {kind === "POST" ? (
                 <>
                   <div className="flex items-center gap-2 px-3 pt-3">

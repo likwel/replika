@@ -1,17 +1,15 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import {
-  Bot, MessageCircle, BarChart3, CalendarDays, Radio, Check,
-  ArrowRight, Menu, X, Star, ShieldCheck, Target, Instagram, Facebook,
-  Plug, ChevronDown, Megaphone, Sparkles, Clock, Lock, Languages, Store,
-} from "lucide-react";
+import { Bot, MessageCircle, BarChart3, CalendarDays, Radio, Check, ArrowRight, Menu, X, Star, ShieldCheck, Target, Instagram, Facebook, Plug, ChevronDown, Megaphone, Sparkles, Clock, Lock, Languages, Store, BookOpen, LogIn, Mail, Workflow, Users, Minus } from "lucide-react";
 import { theme } from "@/theme";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 import { Reveal } from "@/components/marketing/Reveal";
 import { ChatDemo } from "@/components/marketing/ChatDemo";
-import { AI_PACK, MOBILE_MONEY, PLAN_DEFS, annualMonthly } from "@/data/plans";
+import { AI_PACK, COMPARE_ROWS, MOBILE_MONEY, PLAN_DEFS } from "@/data/plans";
+import { PeriodSwitch, PlanTile, catalogPrice, type Period } from "@/components/billing/PlanTile";
 
 // Même palette que les menus de l'application : chaque fonctionnalité garde sa couleur
 const features = [
@@ -21,6 +19,8 @@ const features = [
   { icon: Radio, c: "#EF4444", t: "Modération des Lives", d: "Détecte les commandes « JP » en direct et répond normalement aux autres commentaires (prix, questions…)." },
   { icon: Store, c: "#10B981", t: "Gestion commerciale", d: "Importe les produits publiés sur Marketplace depuis votre catalogue Facebook et suit les commandes de chaque acheteur." },
   { icon: CalendarDays, c: "#06B6D4", t: "Planification multi-réseaux", d: "Programmez vos publications Facebook et Instagram depuis un seul calendrier." },
+  { icon: Workflow, c: "#00A884", t: "Pipelines d'automatisation", d: "Un déclencheur, des conditions sur vos règles, des actions enchaînées : message privé, statut de lead, escalade. Chaque exécution est tracée." },
+  { icon: Users, c: "#6366F1", t: "Travail en équipe", d: "Invitez vos collaborateurs avec des droits par module, et passez d'un espace de travail à l'autre. Chaque action porte le nom de son auteur." },
   { icon: BarChart3, c: "#0EA5E9", t: "Statistiques & historique", d: "Engagement, performance par compte et par règle, et l'historique complet de chaque action automatisée." },
   { icon: Plug, c: "#3B82F6", t: "Toutes vos Pages réunies", d: "Publications, messages privés et file « à traiter » de chaque Page Facebook et compte Instagram, au même endroit." },
 ];
@@ -60,6 +60,9 @@ const faqs = [
   { q: "Est-ce que je garde le contrôle sur les réponses ?", a: "Oui. Chaque règle — à mots-clés ou par IA — peut être configurée en « envoi automatique » ou en « validation manuelle » avant publication." },
   { q: "Ça fonctionne aussi sur Instagram ?", a: "Oui, Facebook et Instagram sont tous les deux pris en charge, pour les commentaires comme pour les messages privés." },
   { q: "Puis-je limiter une règle à une seule publication ?", a: "Oui. Chaque règle peut s'appliquer à tout le compte, ou être ciblée sur une publication précise — utile pour une promo ou un lancement ponctuel." },
+  { q: "Que fait un pipeline ?", a: "Il enchaîne des étapes à partir d'un événement (nouveau commentaire, message ou lead) : vérifier une règle ou le score d'un lead, puis envoyer un message privé, changer le statut, vous alerter ou escalader. Tout est visible dans l'historique des exécutions, et l'interrupteur général des réponses automatiques le met en pause." },
+  { q: "Puis-je travailler à plusieurs ?", a: "Oui, avec les formules Business et Agence : vous invitez des membres par e-mail et choisissez, module par module, lecture ou écriture. Vous pouvez aussi être invité dans l'espace d'un autre utilisateur et basculer d'un espace à l'autre." },
+  { q: "Que se passe-t-il à la fin de l'essai ou de l'abonnement ?", a: "Votre compte et vos données restent accessibles, et les nouveaux messages arrivent dans « À traiter » pour que vous répondiez à la main. Les automatisations reprennent dès le paiement d'une nouvelle période, sans prélèvement automatique." },
   { q: "Que se passe-t-il pendant un live ?", a: "SuiteFlow détecte automatiquement les commandes (« JP » + code produit) en direct, et répond normalement aux autres commentaires comme les questions de prix." },
 ];
 
@@ -111,10 +114,14 @@ export function LandingPage() {
             <Link to="/contact" className="transition-opacity hover:opacity-60">Contact</Link>
           </nav>
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/connexion"><Button variant="ghost" size="sm">Connexion</Button></Link>
-            <Link to="/register"><Button variant="primary" size="sm">Essai gratuit</Button></Link>
+            <ThemeSwitch className="mr-1" />
+            <Link to="/connexion"><Button icon={LogIn} variant="ghost" size="sm">Connexion</Button></Link>
+            <Link to="/register"><Button icon={Sparkles} variant="primary" size="sm">Essai gratuit</Button></Link>
           </div>
-          <button className="md:hidden" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">{menuOpen ? <X /> : <Menu />}</button>
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeSwitch />
+            <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu">{menuOpen ? <X /> : <Menu />}</button>
+          </div>
         </div>
         {menuOpen && (
           <div className="md:hidden px-5 pb-4 flex flex-col gap-1.5">
@@ -124,8 +131,8 @@ export function LandingPage() {
             <a href="#faq" onClick={() => setMenuOpen(false)} className="py-2 text-sm font-medium" style={{ color: theme.text }}>FAQ</a>
             <Link to="/guide" className="py-2 text-sm font-medium" style={{ color: theme.text }}>Guide</Link>
             <Link to="/contact" className="py-2 text-sm font-medium" style={{ color: theme.text }}>Contact</Link>
-            <Link to="/connexion"><Button variant="ghost" size="sm" className="w-full justify-center">Connexion</Button></Link>
-            <Link to="/register"><Button variant="primary" size="sm" className="w-full justify-center">Essai gratuit</Button></Link>
+            <Link to="/connexion"><Button icon={LogIn} variant="ghost" size="sm" className="w-full justify-center">Connexion</Button></Link>
+            <Link to="/register"><Button icon={Sparkles} variant="primary" size="sm" className="w-full justify-center">Essai gratuit</Button></Link>
           </div>
         )}
       </header>
@@ -155,7 +162,7 @@ export function LandingPage() {
             </p>
             <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5 lg:justify-start">
               <Link to="/register"><Button variant="primary" size="lg" icon={ArrowRight}>Commencer gratuitement</Button></Link>
-              <Link to="/connexion"><Button variant="ghost" size="lg">J'ai déjà un compte</Button></Link>
+              <Link to="/connexion"><Button icon={LogIn} variant="ghost" size="lg">J'ai déjà un compte</Button></Link>
             </div>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 lg:justify-start">
               {[
@@ -207,7 +214,7 @@ export function LandingPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {steps.map((s, i) => (
             <Reveal key={s.t} delay={i * 110}>
-              <div className="relative h-full rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+              <div className="relative h-full rounded-2xl p-5 card-x">
                 <div className="mb-3 flex items-center gap-2.5">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${s.c}1A`, border: `1px solid ${s.c}33` }}>
                     <s.icon size={19} style={{ color: s.c }} />
@@ -235,9 +242,7 @@ export function LandingPage() {
           {features.map((f, i) => (
             <Reveal key={f.t} delay={(i % 4) * 90}>
               <div
-                className="group h-full rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
-              >
+                className="group h-full rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-md card-x">
                 <div
                   className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl transition-transform group-hover:scale-105"
                   style={{ background: `${f.c}1A`, border: `1px solid ${f.c}33` }}
@@ -291,7 +296,7 @@ export function LandingPage() {
               <Link to="/register"><Button variant="primary" size="lg" icon={ArrowRight}>Commencer gratuitement</Button></Link>
               <Link to="/guide">
                 {/* Bandeau toujours sombre : bouton clair sur fond sombre, quel que soit le thème */}
-                <Button
+                <Button icon={BookOpen}
                   variant="ghost"
                   size="lg"
                   style={{ background: "rgba(255,255,255,0.08)", color: "#fff", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.3)" }}
@@ -339,7 +344,7 @@ export function LandingPage() {
 }
 
 function PricingSection() {
-  const [annual, setAnnual] = useState(false);
+  const [period, setPeriod] = useState<Period>("MONTHLY");
 
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-5 py-14">
@@ -354,96 +359,28 @@ function PricingSection() {
           </p>
         </div>
 
-        <div className="mb-8 flex items-center justify-center gap-3">
-          <span className="text-[13px] font-semibold" style={{ color: annual ? theme.textMuted : theme.text }}>Mensuel</span>
-          <button
-            type="button"
-            onClick={() => setAnnual((v) => !v)}
-            className="relative h-6 rounded-full transition-colors"
-            style={{ background: annual ? theme.gold : theme.border, width: 46 }}
-            aria-label="Basculer facturation annuelle"
-            aria-pressed={annual}
-          >
-            <span
-              className="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform"
-              style={{ transform: annual ? "translateX(26px)" : "translateX(4px)" }}
-            />
-          </button>
-          <span className="text-[13px] font-semibold" style={{ color: annual ? theme.text : theme.textMuted }}>
-            Annuel <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: theme.greenSoft, color: theme.green }}>-15%</span>
-          </span>
-        </div>
+        <PeriodSwitch value={period} onChange={setPeriod} className="mx-auto mb-8" />
       </Reveal>
 
-      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PLAN_DEFS.map((pl, i) => {
-          const monthly = pl.base ? (annual ? annualMonthly(pl.base) : pl.base) : null;
-          return (
-            <Reveal key={pl.name} delay={i * 90}>
-              <div
-                className="relative h-full rounded-2xl p-5 transition-transform hover:-translate-y-0.5"
-                style={{
-                  background: pl.hl ? theme.bgDark : theme.bgCard,
-                  border: `1px solid ${pl.hl ? theme.bgDark : theme.border}`,
-                  boxShadow: pl.hl ? "0 12px 30px rgba(28,24,19,0.18)" : "none",
-                }}
-              >
-                {pl.hl && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-[10.5px] font-extrabold tracking-wide" style={{ background: theme.gold, color: theme.onAccent }}>
-                    POPULAIRE
-                  </span>
-                )}
-                <h3 className="text-[15px] font-bold" style={{ color: pl.hl ? "#fff" : theme.text }}>{pl.name}</h3>
-                <p className="mt-0.5 text-[11.5px]" style={{ color: pl.hl ? "#ffffff99" : theme.textMuted }}>{pl.tagline}</p>
-                <div className="mb-4 mt-3">
-                  {monthly ? (
-                    <>
-                      <span className="text-[1.75rem] font-extrabold" style={{ color: pl.hl ? theme.goldLight : theme.text }}>{fmt(monthly)}</span>
-                      <span className="text-[13px]" style={{ color: pl.hl ? "#ffffff99" : theme.textMuted }}> Ar/mois</span>
-                      {annual && <p className="mt-0.5 text-[11px]" style={{ color: pl.hl ? "#ffffff80" : theme.textMuted }}>facturé annuellement</p>}
-                    </>
-                  ) : (
-                    <span className="text-[1.75rem] font-extrabold" style={{ color: pl.hl ? theme.goldLight : theme.text }}>Sur devis</span>
-                  )}
-                </div>
-                {/* Volumes inclus : ce qui augmente d'une formule à l'autre, comparable d'un coup d'œil */}
-                <ul
-                  className="mb-4 flex flex-col gap-1.5 rounded-lg px-2.5 py-2 text-[12.5px] font-semibold"
-                  style={{ background: pl.hl ? "rgba(255,255,255,0.08)" : theme.goldSoft, color: pl.hl ? theme.goldLight : theme.goldDark }}
-                >
-                  {([
-                    [Plug, pl.limits.pages],
-                    [Sparkles, pl.limits.ai],
-                    [Radio, pl.limits.live],
-                  ] as const).map(([Icon, label]) => (
-                    <li key={label} className="flex items-start gap-1.5">
-                      <Icon size={14} className="mt-px flex-shrink-0" /> {label}
-                    </li>
-                  ))}
-                </ul>
-                <ul className="mb-5 flex flex-col gap-2">
-                  {pl.feats.map((ft) =>
-                    ft.endsWith(":") ? (
-                      <li key={ft} className="mt-1 text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: pl.hl ? "#ffffff80" : theme.textMuted }}>
-                        {ft.slice(0, -1).trim()}
-                      </li>
-                    ) : (
-                      <li key={ft} className="flex items-start gap-2 text-[13px]" style={{ color: pl.hl ? "#ffffffcc" : theme.text }}>
-                        <Check size={15} className="mt-0.5 flex-shrink-0" style={{ color: pl.hl ? theme.greenLight : theme.green }} /> {ft}
-                      </li>
-                    )
-                  )}
-                </ul>
-                {pl.base ? (
-                  <Link to="/register"><Button variant={pl.hl ? "primary" : "ghost"} size="sm" className="w-full justify-center">Essai gratuit 14 jours</Button></Link>
+      <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PLAN_DEFS.map((pl, i) => (
+          <Reveal key={pl.id} delay={i * 90}>
+            <PlanTile
+              def={pl}
+              price={catalogPrice(pl)}
+              period={period}
+              action={
+                pl.base ? (
+                  <Link to="/register"><Button icon={Sparkles} variant={pl.hl ? "primary" : "ghost"} size="sm" className="w-full justify-center">Essai gratuit 14 jours</Button></Link>
                 ) : (
-                  <Link to="/contact?sujet=agence"><Button variant="ghost" size="sm" className="w-full justify-center">Nous contacter</Button></Link>
-                )}
-              </div>
-            </Reveal>
-          );
-        })}
+                  <Link to="/contact?sujet=agence"><Button icon={Mail} variant="ghost" size="sm" className="w-full justify-center">Nous contacter</Button></Link>
+                )
+              }
+            />
+          </Reveal>
+        ))}
       </div>
+      <CompareTable />
       <div className="mx-auto mt-6 flex max-w-3xl flex-col gap-1.5 text-center text-[12.5px]" style={{ color: theme.textMuted }}>
         <p>
           <Sparkles size={13} className="mr-1 inline align-text-bottom" style={{ color: theme.goldDark }} />
@@ -456,6 +393,82 @@ function PricingSection() {
         </p>
       </div>
     </section>
+  );
+}
+
+// Comparatif détaillé : une colonne par formule, première colonne figée sur mobile, formule Pro mise en avant
+function CompareTable() {
+  const [open, setOpen] = useState(false);
+  const groups = [...new Set(COMPARE_ROWS.map((r) => r.group))];
+
+  return (
+    <div className="mx-auto mt-8 max-w-5xl">
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls="compare-table"
+          className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-80"
+          style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+        >
+          {open ? "Masquer le comparatif" : "Comparer les formules en détail"}
+          <ChevronDown size={15} className="transition-transform" style={{ transform: open ? "rotate(180deg)" : "none" }} />
+        </button>
+      </div>
+      <div id="compare-table" className="grid transition-all duration-300" style={{ gridTemplateRows: open ? "1fr" : "0fr" }}>
+        <div className="overflow-hidden">
+          <div className="mt-5 overflow-x-auto rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+            <table className="w-full min-w-[640px] border-collapse text-left text-[13px]">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 z-10 px-4 py-3 text-[11px] font-bold uppercase tracking-wide" style={{ background: theme.bgCard, color: theme.textMuted }}>Formule</th>
+                  {PLAN_DEFS.map((p) => (
+                    <th key={p.id} className="px-3 py-3 text-center" style={p.hl ? { background: theme.goldSoft } : undefined}>
+                      <span className="block text-[14px] font-bold" style={{ color: theme.text }}>{p.name}</span>
+                      <span className="block text-[11.5px] font-medium" style={{ color: theme.textMuted }}>{p.base ? `${fmt(p.base)} Ar/mois` : "Sur devis"}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <GroupRows key={g} group={g} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GroupRows({ group }: { group: string }) {
+  return (
+    <>
+      <tr>
+        <th colSpan={5} className="px-4 pb-1.5 pt-4 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: theme.goldDark, borderTop: `1px solid ${theme.border}` }}>
+          {group}
+        </th>
+      </tr>
+      {COMPARE_ROWS.filter((r) => r.group === group).map((r) => (
+        <tr key={r.label}>
+          <th scope="row" className="sticky left-0 z-10 w-[150px] min-w-[150px] px-3 py-2 text-[12.5px] font-medium sm:w-auto sm:px-4 sm:text-[13px]" style={{ background: theme.bgCard, color: theme.text }}>{r.label}</th>
+          {r.values.map((v, i) => (
+            <td key={PLAN_DEFS[i].id} className="px-3 py-2 text-center font-medium" style={{ color: theme.text, background: PLAN_DEFS[i].hl ? theme.goldSoft : undefined }}>
+              {v === true ? (
+                <Check size={16} className="mx-auto" style={{ color: theme.green }} aria-label="Inclus" />
+              ) : v === false ? (
+                <Minus size={16} className="mx-auto" style={{ color: theme.textMuted }} aria-label="Non inclus" />
+              ) : (
+                v
+              )}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
 

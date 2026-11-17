@@ -24,9 +24,10 @@ interface Props {
   message: InboxMessage;
   onChange: (m: InboxMessage) => void;
   context?: { label: string; onOpen: () => void }; // publication ou conversation d'origine
+  isNew?: boolean; // jamais vu avant cette visite : pastille « Nouveau »
 }
 
-export function MessageCard({ message: m, onChange, context }: Props) {
+export function MessageCard({ message: m, onChange, context, isNew }: Props) {
   const [draft, setDraft] = useState(m.aiReply ?? "");
   const [busy, setBusy] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +116,7 @@ export function MessageCard({ message: m, onChange, context }: Props) {
           </p>
         </div>
         <div className="flex flex-shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
+          {isNew && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" style={{ background: "var(--color-gold)", color: theme.onAccent }}>Nouveau</span>}
           {m.intent && <IntentChip intent={m.intent} />}
           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: status.bg, color: status.color }}>
             {status.label}

@@ -40,7 +40,7 @@ export function AccountBar({ accounts, selected, onChange }: Props) {
         type="button"
         onClick={() => scroll(dir)}
         disabled={!enabled}
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full shadow-sm transition-opacity disabled:opacity-30"
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full shadow-sm transition-opacity disabled:opacity-30"
         style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
         aria-label={dir < 0 ? "Pages précédentes" : "Pages suivantes"}
       >
@@ -79,7 +79,7 @@ export function AccountBar({ accounts, selected, onChange }: Props) {
       <div ref={scroller} onScroll={measure} className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto py-0.5" role="group" aria-label="Comptes affichés">
         <button
           onClick={() => onChange([])}
-          className="flex flex-shrink-0 items-center gap-2 rounded-full py-1.5 pl-2 pr-3.5 text-sm font-medium transition-all"
+          className="flex h-9 flex-shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3.5 text-[13px] font-semibold transition-all"
           style={chip(all)}
           aria-pressed={all}
         >
@@ -96,7 +96,7 @@ export function AccountBar({ accounts, selected, onChange }: Props) {
               <button
                 key={p.id}
                 onClick={() => onChange(active ? [] : idsOf(p.id))}
-                className="flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all"
+                className="flex h-9 flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition-all"
                 style={chip(active)}
                 aria-pressed={active}
                 title={`Tous les comptes ${p.label}`}
@@ -114,12 +114,12 @@ export function AccountBar({ accounts, selected, onChange }: Props) {
             <button
               key={a.id}
               onClick={() => toggle(a.id)}
-              className="flex flex-shrink-0 items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium transition-all"
+              className="flex h-9 flex-shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3 text-[13px] font-semibold transition-all"
               style={chip(active)}
               aria-pressed={active}
               title={a.syncError ?? a.accountName}
             >
-              <AccountAvatar name={a.accountName} src={a.accountAvatar} platform={a.platform} size={26} />
+              <AccountAvatar name={a.accountName} src={a.accountAvatar} platform={a.platform} size={24} />
               <span className="max-w-[140px] truncate">{a.accountName}</span>
               {a.syncError && <AlertTriangle size={13} style={{ color: active ? "#F5A097" : theme.red }} />}
               {a.pending > 0 && (

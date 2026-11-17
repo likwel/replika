@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, CloudOff, Download, Link2, Loader2, Package, Pencil, Plus, Search, ShoppingBag, Trash2, Upload } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { CheckCircle2, CloudOff, Download, Link2, Loader2, Package, Pencil, Plus, Search, ShoppingBag, Trash2, Upload, Archive, Globe, PackageX, X } from "lucide-react";
 import { theme } from "@/theme";
 import { timeAgo } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -93,21 +94,21 @@ export function ListingsGrid({ listings, filter, onFilterChange, search, onSearc
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Titre, catégorie…"
             className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-gold/40"
-            style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+            style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
           />
         </div>
         <div className="min-w-0 flex-1">
           <FilterChips items={FILTERS.map((f) => ({ ...f, count: counts[f.id] }))} value={filter} onChange={onFilterChange} />
         </div>
-        <select
+        <Select
           value={sort}
           onChange={(e) => setSort(e.target.value as Sort)}
           className="rounded-xl px-2.5 py-2 text-sm outline-none"
-          style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+          style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
           aria-label="Trier"
         >
           {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-        </select>
+        </Select>
         <Button size="sm" variant="ghost" icon={Download} onClick={() => exportListingsCsv(visible)} disabled={visible.length === 0}>
           Exporter CSV
         </Button>
@@ -118,10 +119,10 @@ export function ListingsGrid({ listings, filter, onFilterChange, search, onSearc
         <div className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 text-sm" style={{ background: theme.goldSoft, color: theme.goldDark }}>
           <span className="font-semibold">{selected.size} sélectionnée{selected.size > 1 ? "s" : ""}</span>
           <div className="ml-auto flex flex-wrap gap-1.5">
-            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("ACTIVE")}>En ligne</Button>
-            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("SOLD_OUT")}>Épuisé</Button>
-            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("ARCHIVED")}>Archiver</Button>
-            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelected(new Set())}>Désélectionner</Button>
+            <Button icon={Globe} size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("ACTIVE")}>En ligne</Button>
+            <Button icon={PackageX} size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("SOLD_OUT")}>Épuisé</Button>
+            <Button icon={Archive} size="sm" variant="ghost" disabled={bulkBusy} onClick={() => runBulk("ARCHIVED")}>Archiver</Button>
+            <Button icon={X} size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelected(new Set())}>Désélectionner</Button>
           </div>
         </div>
       )}

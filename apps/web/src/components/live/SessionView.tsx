@@ -4,6 +4,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
+import { Tabs } from "@/components/ui/Tabs";
+import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
@@ -50,6 +52,9 @@ const settingsOf = (s: LiveSession): LiveSettings => ({
   recapMessage: s.recapMessage,
   recapUpdateMessage: s.recapUpdateMessage,
   deliveryFee: s.deliveryFee,
+  replyMode: s.replyMode ?? "ALL",
+  replyRuleIds: s.replyRuleIds ?? [],
+  replyUseAi: s.replyUseAi ?? true,
 });
 
 export function SessionView({ sessionId, onBack, onDeleted }: Props) {
@@ -141,20 +146,13 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
   const confirmed = (stats.byStatus.CONFIRMED ?? 0) + (stats.byStatus.DELIVERED ?? 0);
   const isLive = session.liveStatus === "LIVE";
   const card = (label: string, value: string, Icon: LucideIcon, color: string, sub?: string) => (
-    <div className="rounded-2xl p-3.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="flex items-center gap-2">
-        <span className="rounded-lg p-1.5" style={{ background: `${color}1A` }}><Icon size={15} style={{ color }} /></span>
-        <span className="text-[11px]" style={{ color: theme.textMuted }}>{label}</span>
-      </div>
-      <p className="mt-1.5 text-xl font-bold" style={{ color: theme.text }}>{value}</p>
-      {sub && <p className="text-[11px]" style={{ color: theme.textMuted }}>{sub}</p>}
-    </div>
+    <StatCard icon={Icon} label={label} value={value} color={color} detail={sub} />
   );
 
   return (
     <div className="flex flex-col gap-4">
       {/* En-tête */}
-      <div className="flex flex-col gap-3 rounded-2xl p-4 lg:flex-row lg:items-center" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+      <div className="hd-line flex flex-col gap-3 pb-4 lg:flex-row lg:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <button onClick={onBack} className="rounded-lg p-1.5 hover:bg-black/5" aria-label="Retour aux sessions">
             <ArrowLeft size={18} style={{ color: theme.text }} />
@@ -213,20 +211,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
         {card("Chiffre d'affaires", formatAriary(stats.revenue), Wallet, "#166534", `${stats.items} article${stats.items > 1 ? "s confirmés" : " confirmé"}`)}
       </div>
 
-      <div className="no-scrollbar flex gap-1 overflow-x-auto rounded-xl p-1" style={{ background: theme.bg, border: `1px solid ${theme.border}` }} role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium"
-            style={{ background: tab === t.id ? theme.bgCard : "transparent", color: tab === t.id ? theme.text : theme.textMuted }}
-            role="tab"
-            aria-selected={tab === t.id}
-          >
-            <t.icon size={15} style={{ color: tab === t.id ? theme.gold : theme.textMuted }} /> {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs items={TABS.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))} value={tab} onChange={setTab} />
 
       {tab === "orders" && (
         <OrdersTable
@@ -241,7 +226,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
       {tab === "comments" && <CommentsFeed sessionId={sessionId} active={session.status === "ACTIVE"} onOrder={upsertOrder} />}
       {tab === "invoices" && <InvoicesPanel sessionId={sessionId} sessionEnded={session.status === "ENDED"} />}
       {tab === "products" && rows && (
-        <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+        <div>
           <ProductsEditor
             rows={rows}
             onChange={(r) => {
@@ -256,7 +241,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
         </div>
       )}
       {tab === "settings" && settings && (
-        <div className="rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+        <div>
           <label className="mb-5 block">
             <span className="mb-1 block text-sm font-semibold" style={{ color: theme.text }}>Nom de la session</span>
             <input

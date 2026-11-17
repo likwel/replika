@@ -36,7 +36,7 @@ export const passwordSchema = z.object({
     .max(128, "Mot de passe trop long"),
 });
 
-export const DEFAULT_PAGES = ["gestion", "automatisation", "statistiques"] as const;
+export const DEFAULT_PAGES = ["tableau-de-bord", "gestion", "automatisation", "statistiques"] as const;
 export const ACCENT_THEMES = ["whatsapp", "classic"] as const;
 
 export const preferencesSchema = z.object({

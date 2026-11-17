@@ -1,8 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Loader2, LogIn, KeyRound, Mail, UserPlus, MonitorSmartphone, ShieldCheck, ShieldOff, Trash2,
-} from "lucide-react";
+import { Loader2, LogIn, KeyRound, Mail, UserPlus, MonitorSmartphone, ShieldCheck, ShieldOff, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -101,8 +99,7 @@ function PasswordCard({ onDone }: { onDone: () => void }) {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Feedback error={error} />
-          <Button type="submit" size="sm" disabled={!valid || busy}>
-            {busy && <Loader2 size={14} className="animate-spin" />}
+          <Button type="submit" size="sm" icon={busy ? Loader2 : KeyRound} className={busy ? "[&>svg]:animate-spin" : ""} disabled={!valid || busy}>
             Changer le mot de passe
           </Button>
         </div>
@@ -222,11 +219,8 @@ function DeleteAccountCard() {
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <Feedback error={error} />
-            <Button type="button" size="sm" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Annuler</Button>
-            <Button type="submit" size="sm" variant="danger" disabled={busy || !password || confirm !== "SUPPRIMER"}>
-              {busy && <Loader2 size={14} className="animate-spin" />}
-              Supprimer définitivement
-            </Button>
+            <Button icon={X} type="button" size="sm" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Annuler</Button>
+            <Button type="submit" size="sm" variant="danger" disabled={busy || !password || confirm !== "SUPPRIMER"} className={`${busy ? "[&>svg]:animate-spin" : ""}`} icon={busy ? Loader2 : Trash2}>Supprimer définitivement</Button>
           </div>
         </form>
       )}

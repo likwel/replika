@@ -5,10 +5,12 @@ import { catchAsync } from "../../utils/catchAsync.js";
 import { AppError } from "../../utils/AppError.js";
 import { listQuerySchema, scheduleSchema } from "./schedule.schema.js";
 import { scheduleService } from "./schedule.service.js";
+import importRoutes from "./import.routes.js";
 
 // Planification : publications, commentaires et messages privés programmés
 const router = Router();
 router.use(authenticate);
+router.use(importRoutes); // /import/… et /sources/… avant /:id
 
 const uid = (req: Request) => req.user!.userId;
 

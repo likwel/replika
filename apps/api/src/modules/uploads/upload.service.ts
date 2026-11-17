@@ -15,6 +15,11 @@ const TYPES: Record<string, { ext: string; magic: (b: Buffer) => boolean }> = {
 const MIME_BY_EXT: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
 const FILE_NAME = /^[a-f0-9]{32}\.(jpg|png|webp)$/;
 
+// Type d'image d'après le contenu du fichier (et non l'en-tête, souvent faux : Google Drive renvoie octet-stream)
+export function sniffImageType(body: Buffer): string | null {
+  return Object.entries(TYPES).find(([, t]) => t.magic(body))?.[0] ?? null;
+}
+
 // Images jointes aux publications programmées : servies publiquement sur /uploads (Instagram les télécharge)
 export async function saveImage(body: unknown, contentType: string | undefined) {
   const type = TYPES[(contentType ?? "").split(";")[0].trim()];

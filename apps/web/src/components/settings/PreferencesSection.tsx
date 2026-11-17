@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Bot, BarChart3 } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, Bot, BarChart3, Monitor, Moon, Sun } from "lucide-react";
+import { Segmented } from "@/components/ui/Segmented";
+import { useThemeToggle } from "@/hooks/useThemeToggle";
+import type { ThemePref } from "@/lib/themePref";
+import { FONT_OPTIONS, applyFont, readFont, type FontPref } from "@/lib/fontPref";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
@@ -12,14 +16,17 @@ import { swal } from "@/lib/swal";
 
 // Connexions n'en fait pas partie : le serveur ne l'accepte pas comme page d'ouverture
 const PAGES: Array<{ value: DefaultPage; label: string; icon: LucideIcon }> = [
-  { value: "gestion", label: "Gestion", icon: LayoutDashboard },
-  { value: "automatisation", label: "Automatisation", icon: Bot },
-  { value: "statistiques", label: "Statistiques", icon: BarChart3 },
+  { value: "tableau-de-bord", label: "Tableau de bord", icon: LayoutGrid },
+  { value: "gestion", label: "Publications et messages", icon: LayoutDashboard },
+  { value: "automatisation", label: "Pipelines", icon: Bot },
+  { value: "statistiques", label: "Performances", icon: BarChart3 },
 ];
 
 const ACCENTS: Array<{ value: AccentTheme; label: string; swatch: string }> = [
-  { value: "whatsapp", label: "Vert WhatsApp", swatch: "#008069" },
-  { value: "classic", label: "Doré classique", swatch: "#E5AC5F" },
+  // La valeur « whatsapp » reste celle enregistrée en base (API inchangée) ; elle porte l'orange pr.social
+  { value: "whatsapp", label: "Orange", swatch: "linear-gradient(135deg, #ff8a3d, #f05a1a 48%, #dc2626)" },
+  // « classic » : valeur enregistrée en base, elle porte désormais le vert (ancien accent par défaut)
+  { value: "classic", label: "Vert", swatch: "linear-gradient(135deg, #25D366, #00A884 48%, #008069)" },
 ];
 
 const PERMISSION_HINT: Record<NotifyPermission, string | null> = {
@@ -35,6 +42,8 @@ export function PreferencesSection() {
   const [saving, setSaving] = useState<keyof Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [permission, setPermission] = useState<NotifyPermission>(notifyPermission());
+  const [font, setFont] = useState<FontPref>(readFont);
+  const { pref: themePref, choose: chooseTheme } = useThemeToggle();
 
   useEffect(() => {
     profileApi.get().then(setProfile).catch(() => setError("Impossible de charger vos préférences."));
@@ -80,7 +89,7 @@ export function PreferencesSection() {
 
   return (
     <>
-      <SettingsCard title="Réponses Automatiques">
+      <SettingsCard title="Réponses Automatiques" description="Active ou met en pause les règles et l'assistant IA sur tous vos comptes.">
         <SettingRow
           label="Activer les réponses automatiques"
           description="Interrupteur général des règles et de l'assistant IA. En pause, les commentaires et messages continuent d'arriver dans votre boîte de réception, sans réponse."
@@ -96,14 +105,23 @@ export function PreferencesSection() {
 
       <SettingsCard title="Apparence" description="Couleur d'accent et mode d'affichage de SuiteFlow.">
         <div className="flex flex-col gap-3">
-          <SettingRow label="Mode sombre" description="Bascule l'interface vers un fond sombre, plus confortable en faible luminosité.">
-            <Toggle
-              checked={profile.darkMode}
-              disabled={saving !== null}
-              onChange={(v) => save({ darkMode: v }, v ? "Mode sombre activé" : "Mode sombre désactivé")}
-              label="Mode sombre"
-            />
-          </SettingRow>
+          <div>
+            <p className="mb-0.5 text-[13px] font-semibold" style={{ color: theme.text }}>Thème</p>
+            <p className="mb-2 text-xs" style={{ color: theme.textMuted }}>
+              Automatique suit l'apparence de votre appareil (clair le jour, sombre la nuit si vous l'avez réglé ainsi). Ce choix vaut pour cet appareil.
+            </p>
+            <div className="max-w-md">
+              <Segmented
+                options={[
+                  { value: "auto" as ThemePref, label: "Automatique", icon: Monitor },
+                  { value: "light" as ThemePref, label: "Clair", icon: Sun },
+                  { value: "dark" as ThemePref, label: "Sombre", icon: Moon },
+                ]}
+                value={themePref}
+                onChange={chooseTheme}
+              />
+            </div>
+          </div>
           <div>
             <p className="mb-2 text-[13px] font-semibold" style={{ color: theme.text }}>Couleur d'accent</p>
             <div className="grid grid-cols-2 gap-2">
@@ -130,10 +148,43 @@ export function PreferencesSection() {
               })}
             </div>
           </div>
+          {/* Police du texte : réglage de cet appareil (comme sur Karama-Ko), appliqué aussitôt */}
+          <div>
+            <p className="mb-0.5 text-[13px] font-semibold" style={{ color: theme.text }}>Police du texte</p>
+            <p className="mb-2 text-xs" style={{ color: theme.textMuted }}>Appliquée tout de suite et mémorisée sur cet appareil.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {FONT_OPTIONS.map((f) => {
+                const on = font === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => {
+                      if (on) return;
+                      setFont(f.value);
+                      applyFont(f.value);
+                      swal.toast({ title: `Police « ${f.label} » appliquée` });
+                    }}
+                    className="flex flex-col items-start gap-1 rounded-xl px-3.5 py-3 text-left transition-all"
+                    style={{
+                      background: on ? theme.goldSoft : theme.bg,
+                      border: `1px solid ${on ? theme.gold : theme.border}`,
+                      color: on ? theme.goldDark : theme.text,
+                    }}
+                    aria-pressed={on}
+                  >
+                    <span className="text-[26px] font-extrabold leading-none tracking-[-0.02em]" style={{ fontFamily: f.sample }}>Aa</span>
+                    <span className="text-[13px] font-semibold" style={{ fontFamily: f.body }}>{f.label}</span>
+                    <span className="text-[11.5px] font-normal leading-snug" style={{ color: theme.textMuted, fontFamily: f.body }}>{f.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Alertes et Notifications">
+      <SettingsCard title="Alertes et Notifications" description="Soyez prévenu quand des messages attendent votre validation.">
         <SettingRow
           label="Notifications du navigateur"
           description={
@@ -156,7 +207,7 @@ export function PreferencesSection() {
       </SettingsCard>
 
       <SettingsCard title="Page d'Ouverture" description="La page affichée juste après la connexion.">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {PAGES.map((p) => {
             const active = profile.defaultPage === p.value;
             return (

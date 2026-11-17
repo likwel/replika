@@ -11,7 +11,7 @@ export interface AdminOverview {
   finance: {
     gross: number;
     fees: number;
-    feesEstimated: number; // paiements dont la commission est estimée (non transmise par Papi)
+    feesEstimated: number; // paiements dont la commission est estimée (non transmise par l'opérateur)
     feeRates: FeeRates;
     net: number;
     aiReplies: number;
@@ -111,7 +111,7 @@ export interface AdminPayment {
   liveHours: number | null;
   replyCredits: number | null;
   amount: number;
-  fee: number | null; // commission Papi (payés)
+  fee: number | null; // commission de paiement (payés)
   feeEstimated: boolean;
   net: number | null;
   status: PaymentStatus;
@@ -131,7 +131,7 @@ export type FeeMethod = "MVOLA" | "ORANGE_MONEY" | "AIRTEL_MONEY" | "BRED";
 export type FeeRates = Record<FeeMethod, number>;
 export interface FeeSettings {
   rates: FeeRates;
-  custom: boolean; // taux modifiés par l'administrateur (sinon tarifs publics Papi)
+  custom: boolean; // taux modifiés par l'administrateur (sinon tarifs publics)
   updatedAt: string | null;
   presets: { transit: FeeRates; direct: FeeRates };
 }

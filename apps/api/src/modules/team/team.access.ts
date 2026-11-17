@@ -75,7 +75,7 @@ export const allows = (perms: Permissions, module: TeamModule, level: Access) =>
 // Préfixes d'API qui portent sur les données de l'espace : un membre y agit pour le compte du propriétaire.
 // Les autres (/auth, /profile, /team, /admin…) restent ceux de la personne connectée.
 export const WORKSPACE_BASES = new Set([
-  "/accounts", "/messages", "/workspace", "/automation", "/ai", "/history", "/facebook", "/uploads",
+  "/accounts", "/messages", "/workspace", "/automation", "/pipelines", "/ai", "/history", "/facebook", "/uploads",
   "/schedules", "/lives", "/leads", "/stats", "/marketplace", "/billing",
 ]);
 
@@ -83,6 +83,7 @@ const BASE_MODULE: Record<string, TeamModule> = {
   "/messages": "inbox",
   "/workspace": "inbox",
   "/automation": "automation",
+  "/pipelines": "automation",
   "/ai": "automation",
   "/history": "history",
   "/schedules": "schedule",

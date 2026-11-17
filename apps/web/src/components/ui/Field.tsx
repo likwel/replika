@@ -28,7 +28,7 @@ export function Field({ icon: Icon, label, type = "text", name, placeholder, val
     <div>
       {(label || trailingLabel) && (
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          {label && <label htmlFor={id} className="text-[13px] font-medium" style={{ color: theme.text }}>{label}</label>}
+          {label && <label htmlFor={id} className="text-[13px] font-semibold" style={{ color: theme.text }}>{label}</label>}
           {trailingLabel}
         </div>
       )}
@@ -44,8 +44,8 @@ export function Field({ icon: Icon, label, type = "text", name, placeholder, val
           autoComplete={autoComplete}
           required={required}
           maxLength={maxLength}
-          className="h-11 w-full rounded-lg pl-11 pr-11 text-sm outline-none transition-shadow focus:ring-2 focus:ring-gold/30"
-          style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+          className="field-in h-12 w-full rounded-[14px] pl-11 pr-11 text-[15px] font-medium outline-none"
+          style={{ border: 0 }}
         />
         {isPw && toggle && (
           <button

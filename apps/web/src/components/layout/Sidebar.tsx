@@ -1,229 +1,173 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { BookOpen, ChevronRight, ChevronsLeft, History, Inbox, Search, Settings, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import type { ReactNode } from "react";
+import {
+  BookOpen, ChevronDown, ChevronsLeft, ChevronsRight, CreditCard, ExternalLink, LogOut, Monitor, Moon, ShieldCheck, Sparkles, Sun, Users, Lock, CheckCircle2, AlertTriangle,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { theme } from "@/theme";
+import { useAuth } from "@/context/AuthContext";
 import { LogoMark, Wordmark } from "@/components/ui/Logo";
-import { StatusDot } from "@/components/ui/StatusDot";
+import { Avatar } from "@/components/ui/Avatar";
 import { MENUS } from "@/data/menus";
-import { getRenderedSub } from "@/lib/menu";
-import { useOnline } from "@/hooks/useOnline";
 import { useAccess } from "@/hooks/useAccess";
+import { usePlan } from "@/hooks/usePlan";
+import { useThemeToggle } from "@/hooks/useThemeToggle";
+import { THEME_LABELS } from "@/lib/themePref";
+import { useSidebarCounts, type SidebarCount } from "@/hooks/useSidebarCounts";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import type { Menu } from "@/types";
+import type { Feature } from "@/lib/billing.api";
 
-const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-
-const SECTIONS: Array<{ label: string; ids: string[] }> = [
-  { label: "Espace de travail", ids: ["hub", "conn"] },
+// Groupes de la navigation (même découpage que pr.social : un lien par module, pas d'arborescence ;
+// les sous-pages s'ouvrent par les onglets de la page)
+export const SECTIONS: Array<{ label: string; ids: string[] }> = [
+  { label: "Espace de travail", ids: ["hub", "queue", "conn"] },
   { label: "Ventes", ids: ["live", "market", "leads"] },
-  { label: "Automatisation", ids: ["plan", "auto"] },
-  { label: "Analyse", ids: ["stat"] },
+  { label: "Automatisation", ids: ["plan", "rules", "auto"] },
+  { label: "Analyse", ids: ["stat", "hist"] },
 ];
+
+// Modules réservés à certaines formules : pastille cadenas tant qu'elle n'est pas souscrite
+const NEEDS_FEATURE: Record<string, Feature> = { leads: "leads", market: "marketplace" };
 
 interface Props {
   active: string;
   sub: number;
   attention: number;
+  collapsed: boolean; // rail d'icônes : libellés masqués, infobulle au survol
   onNavigate: (menuId: string, sub: number) => void;
-  onOpenSearch: () => void;
-  onCollapse: () => void;
+  onToggle: () => void;
 }
 
-export function Sidebar({ active, sub, attention, onNavigate, onOpenSearch, onCollapse }: Props) {
-  const online = useOnline();
-  const isAdmin = useAuth().user?.role === "ADMIN";
-  const { can, canMenu } = useAccess(); // membre d'équipe : seuls les modules autorisés apparaissent
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set([active]));
-
-  // Le menu ouvert est toujours déplié
-  useEffect(() => {
-    setExpanded((s) => (s.has(active) ? s : new Set(s).add(active)));
-  }, [active]);
-
-  const toggle = (id: string) =>
-    setExpanded((s) => {
-      const next = new Set(s);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+export function Sidebar({ active, sub, attention, collapsed, onNavigate, onToggle }: Props) {
+  const nav = useNavigate();
+  const { user, logout } = useAuth();
+  const { canMenu } = useAccess();
+  const { can: planCan, planName, status } = usePlan();
+  const { pref, toggle } = useThemeToggle();
+  const isAdmin = user?.role === "ADMIN";
+  const counts = useSidebarCounts();
+  // Badge de statistique à droite d'une entrée (rien tant que le compteur est à zéro ou inconnu)
+  const badge = (c?: SidebarCount) => (c && c.n > 0 ? <span className={`cnt ${c.tone ?? ""}`} title={c.label}>{c.n > 99 ? "99+" : c.n}</span> : null);
 
   const byId = (id: string) => MENUS.find((m) => m.id === id && !m.hidden && canMenu(m.id));
-  const listed = new Set(SECTIONS.flatMap((s) => s.ids));
-  const others = MENUS.filter((m) => !m.hidden && !listed.has(m.id) && canMenu(m.id));
-  const sections = [
-    ...SECTIONS.map((s) => ({ label: s.label, menus: s.ids.map(byId).filter((m): m is Menu => Boolean(m)) })),
-    ...(others.length ? [{ label: "Autres", menus: others }] : []),
-  ].filter((s) => s.menus.length);
+  const groups = SECTIONS.map((s) => ({ label: s.label, menus: s.ids.map(byId).filter((m): m is Menu => Boolean(m)) })).filter((g) => g.menus.length);
+
+  const lockOf = (id: string) => (NEEDS_FEATURE[id] && !planCan(NEEDS_FEATURE[id]) ? <span className="cnt vio"><Lock /></span> : null);
+
+  const handleLogout = async () => {
+    await logout();
+    nav("/connexion");
+  };
+
+  const expired = status === "EXPIRED";
 
   return (
-    <aside className="group flex h-full w-[248px] flex-col" style={{ background: theme.sidebar, borderRight: `1px solid ${theme.border}` }}>
-      {/* Espace de travail */}
-      <div className="flex items-center gap-1 px-2 pb-1 pt-2.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1">
-          <LogoMark size={22} />
-          <Wordmark size={15} />
+    <aside className={`side-surface group flex h-full w-full flex-col whitespace-nowrap ${collapsed ? "side-rail" : ""}`} style={{ borderRight: "1px solid var(--line)" }}>
+      {/* Marque : logo seul dans le rail, avec le bouton pour développer juste dessous */}
+      <div className={collapsed ? "flex flex-col items-center gap-2 pb-3 pt-[18px]" : "flex items-center gap-1 px-[18px] pb-3 pt-[18px]"}>
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <LogoMark size={34} />
+          {!collapsed && <Wordmark size={16} />}
         </div>
         <button
-          onClick={onCollapse}
-          className="rounded-md p-1 transition-opacity hover:bg-black/5 md:opacity-0 md:group-hover:opacity-100"
-          title="Masquer la barre latérale"
-          aria-label="Masquer la barre latérale"
+          onClick={onToggle}
+          className={`grid h-8 w-8 place-items-center rounded-[10px] transition-all hover:bg-black/5 ${collapsed ? "" : "md:opacity-0 md:group-hover:opacity-100"}`}
+          title={collapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
+          aria-label={collapsed ? "Développer la barre latérale" : "Réduire la barre latérale"}
         >
-          <ChevronsLeft size={17} style={{ color: theme.textMuted }} />
+          {collapsed ? <ChevronsRight size={17} style={{ color: theme.textMuted }} /> : <ChevronsLeft size={17} style={{ color: theme.textMuted }} />}
         </button>
       </div>
 
-      <WorkspaceSwitcher onOpenTeam={() => onNavigate("set", 3)} />
+      <WorkspaceSwitcher compact={collapsed} onOpenTeam={() => onNavigate("set", 3)} onOpenProfile={() => onNavigate("set", 0)} />
 
-      {/* Accès rapides */}
-      <div className="flex flex-col gap-px px-2">
-        <Row icon={Search} label="Rechercher" onClick={onOpenSearch} trailing={<Kbd>{IS_MAC ? "⌘K" : "Ctrl K"}</Kbd>} />
-        {can("inbox") && <Row
-          icon={Inbox}
-          label="À traiter"
-          active={active === "hub" && sub === 2}
-          onClick={() => onNavigate("hub", 2)}
-          trailing={
-            attention > 0 && (
-              <span className="rounded px-1.5 text-[11px] font-semibold leading-[18px]" style={{ background: theme.red, color: "#fff" }}>
-                {attention > 99 ? "99+" : attention}
-              </span>
-            )
-          }
-        />}
-        {can("history") && <Row icon={History} label="Historique" active={active === "hist"} onClick={() => onNavigate("hist", 0)} />}
-      </div>
+      <nav className={`flex flex-1 flex-col gap-px overflow-y-auto pb-3 pt-0.5 ${collapsed ? "px-2" : "px-2.5"}`}>
+        <Item rail={collapsed} icon={MENUS[0].icon} label={MENUS[0].label} on={active === "dash"} onClick={() => onNavigate("dash", 0)} />
 
-      {/* Arborescence */}
-      <nav className="mt-2 flex-1 overflow-y-auto px-2 pb-3">
-        {sections.map((section) => (
-          <div key={section.label} className="mt-3">
-            <p className="mb-0.5 px-2 text-[12px] font-medium" style={{ color: theme.textMuted }}>{section.label}</p>
-            {section.menus.map((m) => (
-              <TreeItem
+        {groups.map((g) => (
+          <div key={g.label} className="flex flex-col gap-px">
+            <p className="side-grp">{g.label}</p>
+            {g.menus.map((m) => (
+              <Item
                 key={m.id}
-                menu={m}
-                active={active}
-                sub={sub}
-                expanded={expanded.has(m.id)}
-                onToggle={() => toggle(m.id)}
-                onNavigate={onNavigate}
+                rail={collapsed}
+                icon={m.icon}
+                label={m.label}
+                on={active === m.id}
+                onClick={() => onNavigate(m.id, 0)}
+                trailing={m.id === "queue" ? (attention > 0 ? <span className="cnt hot" title={`${attention} à traiter`}>{attention > 99 ? "99+" : attention}</span> : null) : (lockOf(m.id) ?? badge(counts[m.id as keyof typeof counts]))}
               />
             ))}
           </div>
         ))}
+
+        <p className="side-grp">Compte</p>
+        {canMenu("set") && <Item rail={collapsed} icon={MENUS.find((m) => m.id === "set")!.icon} label="Profil et sécurité" on={active === "set" && sub < 3} onClick={() => onNavigate("set", 0)} />}
+        {canMenu("set", 3) && <Item rail={collapsed} icon={Users} label="Équipe" on={active === "set" && sub === 3} onClick={() => onNavigate("set", 3)} trailing={badge(counts.team)} />}
+        {canMenu("set", 4) && <Item rail={collapsed} icon={CreditCard} label="Facturation" on={active === "set" && sub === 4} onClick={() => onNavigate("set", 4)} />}
+        {isAdmin && <Item rail={collapsed} icon={ShieldCheck} label="Administration" on={active === "admin"} onClick={() => onNavigate("admin", 0)} />}
+
+        <p className="side-grp">Aide</p>
+        <a href="/guide" target="_blank" rel="noreferrer" className="side-item" title={collapsed ? "Guide d'utilisation" : undefined} aria-label="Guide d'utilisation">
+          <BookOpen />
+          {!collapsed && <span className="min-w-0 flex-1 truncate">Guide d'utilisation</span>}
+          {!collapsed && <ExternalLink className="!h-[13px] !w-[13px] opacity-50" />}
+        </a>
       </nav>
 
-      <div className="flex flex-col gap-px px-2 py-2" style={{ borderTop: `1px solid ${theme.border}` }}>
-        {isAdmin && <Row icon={ShieldCheck} label="Administration" active={active === "admin"} onClick={() => onNavigate("admin", 0)} />}
-        <Row icon={Settings} label="Paramètres" active={active === "set"} onClick={() => onNavigate("set", 0)} />
-        <a href="/guide" target="_blank" rel="noreferrer" className="block">
-          <Row icon={BookOpen} label="Guide d'utilisation" />
-        </a>
-        <p className="flex items-center gap-2 px-2.5 py-1 text-[12px]" style={{ color: online ? theme.green : theme.textMuted }}>
-          <StatusDot color={online ? theme.greenLight : theme.textMuted} size={7} pulse={online} />
-          {online ? "En ligne" : "Hors ligne"}
-        </p>
+      {/* Pied : formule et thème, puis le compte */}
+      <div className="side-foot">
+        <div className="foot-row">
+          {!collapsed && (
+            <button className="lang" onClick={() => onNavigate("set", 4)} aria-label={`Formule ${planName} : ouvrir la facturation`}>
+              <Sparkles />
+              <span>{planName ? `Formule ${planName}` : "Formule"}</span>
+              <ChevronDown />
+            </button>
+          )}
+          <button className="ibtn" onClick={toggle} aria-label={`Thème : ${THEME_LABELS[pref]}. Cliquer pour changer`} title={`Thème : ${THEME_LABELS[pref]} (cliquer pour changer)`}>
+            {pref === "auto" ? <Monitor size={17} /> : pref === "light" ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+        </div>
+        <div className="me">
+          <button className="flex min-w-0 flex-1 items-center gap-2.5" onClick={() => onNavigate("set", 0)} aria-label="Ouvrir mon profil" title={collapsed ? user?.name : undefined}>
+            <Avatar name={user?.name ?? ""} src={user?.avatarUrl} size={34} />
+            {!collapsed && (
+              <span className="who">
+                <b>{user?.name}</b>
+                {expired ? (
+                  <span className="warn"><AlertTriangle />Abonnement expiré</span>
+                ) : (
+                  <span className="ok"><CheckCircle2 />{user?.role === "ADMIN" ? "Administrateur" : "Compte actif"}</span>
+                )}
+              </span>
+            )}
+          </button>
+          <button className="ibtn" onClick={handleLogout} aria-label="Se déconnecter" title="Se déconnecter">
+            <LogOut size={17} />
+          </button>
+        </div>
       </div>
     </aside>
   );
 }
 
-// Raccourci clavier : inutile sur écran tactile (tiroir mobile), masqué en petit écran
-function Kbd({ children }: { children: ReactNode }) {
-  return (
-    <span className="hidden rounded px-1 text-[10.5px] font-medium md:inline" style={{ color: theme.textMuted, boxShadow: `inset 0 0 0 1px ${theme.border}` }}>
-      {children}
-    </span>
-  );
-}
-
-interface RowProps {
+interface ItemProps {
   icon: LucideIcon;
   label: string;
-  active?: boolean;
+  on?: boolean;
   onClick?: () => void;
   trailing?: ReactNode;
+  rail?: boolean; // rail d'icônes : le libellé passe en infobulle, le badge se pose sur l'icône
 }
 
-function Row({ icon: Icon, label, active, onClick, trailing }: RowProps) {
+function Item({ icon: Icon, label, on, onClick, trailing, rail }: ItemProps) {
   return (
-    <button
-      onClick={onClick}
-      className="flex h-[30px] w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[14px] transition-colors hover:bg-black/5"
-      style={{ background: active ? theme.active : undefined, color: active ? theme.text : theme.textMuted, fontWeight: active ? 500 : 400 }}
-    >
-      <Icon size={17} className="flex-shrink-0" />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+    <button onClick={onClick} className={`side-item ${on ? "on" : ""}`} aria-current={on ? "page" : undefined} aria-label={label} title={rail ? label : undefined}>
+      <Icon />
+      {!rail && <span className="min-w-0 flex-1 truncate text-left">{label}</span>}
       {trailing}
     </button>
-  );
-}
-
-interface TreeItemProps {
-  menu: Menu;
-  active: string;
-  sub: number;
-  expanded: boolean;
-  onToggle: () => void;
-  onNavigate: (menuId: string, sub: number) => void;
-}
-
-function TreeItem({ menu, active, sub, expanded, onToggle, onNavigate }: TreeItemProps) {
-  const isActive = active === menu.id;
-  const items = getRenderedSub(menu);
-  const leaf = items.length <= 1; // une seule vue : pas de sous-pages à déplier
-  const open = expanded && !leaf;
-  // Ouvert et déplié : la sous-page courante porte la surbrillance, pas le parent
-  const highlight = isActive && !open;
-
-  return (
-    <div>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onNavigate(menu.id, 0)}
-        onKeyDown={(e) => e.key === "Enter" && onNavigate(menu.id, 0)}
-        className="flex h-[30px] cursor-pointer items-center gap-1 rounded-md pl-1 pr-2 text-[14px] transition-colors hover:bg-black/5"
-        style={{ background: highlight ? theme.active : undefined, color: isActive ? theme.text : theme.textMuted, fontWeight: isActive ? 500 : 400 }}
-      >
-        {leaf ? (
-          <span className="h-5 w-5 flex-shrink-0" />
-        ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle();
-            }}
-            className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded hover:bg-black/5"
-            aria-label={open ? `Replier ${menu.label}` : `Déplier ${menu.label}`}
-            aria-expanded={open}
-          >
-            <ChevronRight size={13} className="transition-transform duration-150" style={{ transform: open ? "rotate(90deg)" : undefined }} />
-          </button>
-        )}
-        <menu.icon size={17} className="flex-shrink-0" style={{ color: isActive ? menu.color : undefined }} />
-        <span className="ml-1 min-w-0 flex-1 truncate">{menu.label}</span>
-      </div>
-
-      {open && (
-        <div className="flex flex-col gap-px pb-1">
-          {items.map((item) => {
-            const subActive = item.menuId === active && item.index === sub;
-            return (
-              <button
-                key={`${item.menuId}-${item.index}`}
-                onClick={() => onNavigate(item.menuId, item.index)}
-                className="flex h-[28px] w-full items-center rounded-md pl-[38px] pr-2 text-left text-[13.5px] transition-colors hover:bg-black/5"
-                style={{ background: subActive ? theme.active : undefined, color: subActive ? theme.text : theme.textMuted, fontWeight: subActive ? 500 : 400 }}
-              >
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }

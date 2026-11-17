@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MessagesSquare, MousePointerClick } from "lucide-react";
 import { theme } from "@/theme";
+import { plural } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { workspaceApi, type AccountError, type WsConversation } from "@/lib/workspace.api";
 import { ConversationList } from "./ConversationList";
@@ -117,7 +118,7 @@ export function ConversationsView({ active, accountIds, toolbar, query, focus, o
   const filtered = Boolean(q) || filter !== "all";
 
   return (
-    <div className={active ? "flex flex-col gap-4" : "hidden"}>
+    <div className={active ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
       {active &&
         toolbar &&
         createPortal(
@@ -129,10 +130,17 @@ export function ConversationsView({ active, accountIds, toolbar, query, focus, o
           </>,
           toolbar
         )}
-      <AccountErrors errors={errors} className={current ? "hidden lg:flex" : ""} />
+      <AccountErrors errors={errors} className={`mx-3 mt-3 sm:mx-5 ${current ? "hidden lg:flex" : ""}`} />
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(300px,400px)_1fr]">
-        <section className={`${current ? "hidden lg:flex" : "flex"} min-w-0 flex-col gap-3`}>
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(320px,400px)_1fr]">
+        <section className={`${current ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 max-h-[68dvh] flex-col gap-3 overflow-y-auto p-3 lg:max-h-none lg:[border-right:1px_solid_var(--line)]`}>
+          {/* En-tête de liste collant : le total reste visible pendant le défilement */}
+          {conversations !== null && (
+            <div className="sticky -top-3 z-10 -mx-3 -mt-3 flex items-center justify-between gap-2 px-4 py-2 text-[12px] font-semibold" style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", color: theme.textMuted }}>
+              <span>{plural(visible.length, "conversation")}{filtered ? " (filtré)" : ""}</span>
+              {(counts.pending ?? 0) > 0 && <span className="chip brand">{counts.pending} à traiter</span>}
+            </div>
+          )}
           {notice && (
             <p className="rounded-xl px-3 py-2 text-xs" style={{ background: "#FDECEC", color: theme.red }}>{notice}</p>
           )}
@@ -148,7 +156,7 @@ export function ConversationsView({ active, accountIds, toolbar, query, focus, o
           )}
         </section>
 
-        <section className={`${current ? "" : "hidden lg:block"} min-w-0 lg:sticky lg:top-0 lg:max-h-[calc(100vh-7.5rem)] lg:overflow-y-auto`}>
+        <section className={`${current ? "" : "hidden lg:block"} min-h-0 min-w-0 lg:overflow-y-auto`}>
           {current ? (
             <ConversationView
               key={keyOf(current)}
@@ -157,7 +165,7 @@ export function ConversationsView({ active, accountIds, toolbar, query, focus, o
               onSent={(text) => onSent(current, text)}
             />
           ) : (
-            <EmptyState icon={MousePointerClick} title="Sélectionnez une conversation" dashed>
+            <EmptyState icon={MousePointerClick} title="Sélectionnez une conversation" bare>
               Le fil de discussion s'affiche ici, avec une réponse proposée par l'IA si vous le souhaitez.
             </EmptyState>
           )}

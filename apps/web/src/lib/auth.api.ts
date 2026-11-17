@@ -21,6 +21,7 @@ export interface User {
 
 // Espace de travail : le sien, ou celui d'une équipe rejointe (current), avec les droits du membre
 export interface WorkspaceInfo {
+  own?: { space: string }; // nom de son propre espace (entreprise du profil, sinon son nom)
   current: { ownerId: string; space: string; role: string; roleLabel: string; permissions: Permissions } | null;
   unavailable: string | null; // espace ouvert devenu inaccessible (accès retiré, formule sans équipe…)
   spaces: Array<{ ownerId: string; space: string; roleLabel: string }>;

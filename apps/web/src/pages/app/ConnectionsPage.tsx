@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Facebook, Instagram, Film, MoreHorizontal, Plus,
-  CheckCircle2, AlertCircle, Trash2, Power, RefreshCw, ShieldCheck, Loader2, XCircle, Link2,
-} from "lucide-react";
+import { Plug, Facebook, Instagram, Film, MoreHorizontal, Plus, CheckCircle2, AlertCircle, Trash2, Power, RefreshCw, ShieldCheck, Loader2, XCircle, Link2, CreditCard } from "lucide-react";
 import { theme } from "@/theme";
-import { Title } from "@/components/ui/Title";
+import { CardTitle } from "@/components/ui/Dash";
 import { Button } from "@/components/ui/Button";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { AssistantCard } from "@/components/automation/AssistantCard";
+import { openAssociate } from "@/lib/associate";
 import { ReconnectDialog } from "@/components/connections/ReconnectDialog";
 import { accountApi, type AccountCheck, type SocialAccount } from "@/lib/account.api";
 import { isPermissionError, permissionLabel } from "@/lib/meta";
@@ -34,8 +32,6 @@ const CHECK_META: Record<AccountCheck["status"], { label: string; color: string;
   expired: { label: "Connexion expirée", color: theme.red, bg: "#FDECEC" },
   error: { label: "Vérification impossible", color: theme.textMuted, bg: theme.bg },
 };
-
-const available = [{ i: Film, n: "TikTok", d: "Vidéos et commentaires (limité)", c: "#000000", soon: true }];
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
@@ -139,7 +135,7 @@ export function ConnectionsPage() {
         <Alert
           variant="warning"
           className="mb-4"
-          action={<Button size="sm" onClick={() => nav("/app/facturation")}>Voir les formules</Button>}
+          action={<Button icon={CreditCard} size="sm" onClick={() => nav("/app/facturation")}>Voir les formules</Button>}
         >
           <p className="font-semibold">
             Limite de votre formule {planName} atteinte{limits?.pages ? ` (${limits.pages} Page${limits.pages > 1 ? "s" : ""} active${limits.pages > 1 ? "s" : ""})` : ""}
@@ -181,16 +177,23 @@ export function ConnectionsPage() {
         <div className="flex flex-col gap-5 lg:col-span-2">
           <AssistantCard showRulesLink />
 
-          <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <Title className="flex-1 text-base">Comptes Connectés</Title>
-              <Button size="sm" variant="ghost" icon={Link2} onClick={() => setReconnect({})} title="Renouveler l'accès, ajouter ou retirer des Pages">
-                Reconnecter / ajouter des Pages
-              </Button>
-              <button onClick={load} className="rounded-lg p-1.5 hover:bg-black/5" title="Rafraîchir">
-                <RefreshCw size={15} style={{ color: theme.textMuted }} className={loading ? "animate-spin" : ""} />
-              </button>
-            </div>
+          <div className="rounded-2xl p-5 card-x">
+            <CardTitle
+              title="Comptes Associés"
+              subtitle="Pages Facebook et comptes Instagram reliés à SuiteFlow, avec leur état."
+              icon={Plug}
+              tint="#3B82F6"
+              action={
+                <>
+                  <Button size="sm" variant="ghost" icon={Link2} onClick={() => setReconnect({})} title="Renouveler l'accès, ajouter ou retirer des Pages">
+                    Reconnecter / ajouter des Pages
+                  </Button>
+                  <button onClick={load} className="rounded-lg p-1.5 hover:bg-black/5" title="Rafraîchir">
+                    <RefreshCw size={15} style={{ color: theme.textMuted }} className={loading ? "animate-spin" : ""} />
+                  </button>
+                </>
+              }
+            />
 
             {loading && accounts.length === 0 ? (
               <ListSkeleton height={64} count={2} />
@@ -233,7 +236,7 @@ export function ConnectionsPage() {
                           )}
                         </div>
                         {broken ? (
-                          <Button size="sm" variant="danger" onClick={() => setReconnect({ name: acc.name })}>Reconnecter</Button>
+                          <Button icon={Plug} size="sm" variant="danger" onClick={() => setReconnect({ name: acc.name })}>Reconnecter</Button>
                         ) : (
                           <span
                             className="hidden items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:flex"
@@ -310,47 +313,13 @@ export function ConnectionsPage() {
         </div>
 
         {/* Ajouter une plateforme */}
-        <div className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-          <Title className="mb-4 text-base">Ajouter une Plateforme</Title>
-          <div className="flex flex-col gap-2.5">
-            <button
-              onClick={() => setReconnect({})}
-              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all hover:shadow-sm"
-              style={{ background: theme.bg, border: `1px solid ${theme.border}` }}
-            >
-              <Facebook size={20} color="#1877F2" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold" style={{ color: theme.text }}>Facebook</p>
-                <p className="text-[11px]" style={{ color: theme.textMuted }}>Pages, commentaires, Messenger, Lives, publication</p>
-              </div>
-              <Plus size={16} style={{ color: theme.gold }} />
-            </button>
-
-            {/* Instagram professionnel : importé via la Page Facebook à laquelle il est lié */}
-            <button
-              onClick={() => setReconnect({})}
-              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all hover:shadow-sm"
-              style={{ background: theme.bg, border: `1px solid ${theme.border}` }}
-            >
-              <Instagram size={20} color="#E4405F" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold" style={{ color: theme.text }}>Instagram</p>
-                <p className="text-[11px]" style={{ color: theme.textMuted }}>Compte pro lié à une Page · commentaires, DM, publication</p>
-              </div>
-              <Plus size={16} style={{ color: theme.gold }} />
-            </button>
-
-            {available.map((p, i) => (
-              <button key={i} disabled className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl p-3 text-left" style={{ background: theme.bg, border: `1px solid ${theme.border}`, opacity: 0.6 }}>
-                <p.i size={20} color={p.c} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold" style={{ color: theme.text }}>{p.n}</p>
-                  <p className="text-[11px]" style={{ color: theme.textMuted }}>{p.d}</p>
-                </div>
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: theme.border, color: theme.textMuted }}>Bientôt</span>
-              </button>
-            ))}
-          </div>
+        <div className="rounded-2xl p-5 card-x">
+          <CardTitle title="Associer un compte" subtitle="Facebook et Instagram professionnel." icon={Plus} tint="#f05a1a" />
+          <p className="mb-4 text-[13px] leading-relaxed" style={{ color: theme.textMuted }}>
+            Reliez une Page Facebook ou un compte Instagram professionnel : leurs commentaires et messages arrivent dans « À traiter », et l'assistant IA peut y répondre 24 h sur 24.
+          </p>
+          <Button icon={Plus} onClick={openAssociate} className="w-full">Associer un compte</Button>
+          <p className="mt-3 text-center text-[12px]" style={{ color: theme.textMuted }}>Facebook et Instagram · TikTok bientôt</p>
         </div>
       </div>
 

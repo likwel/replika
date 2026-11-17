@@ -5,6 +5,14 @@ import { messageService } from "./message.service.js";
 import { listQuerySchema } from "./message.schema.js";
 
 export const messageController = {
+  notifications: catchAsync(async (req: Request, res: Response) => {
+    res.json({ status: "success", data: await messageService.notifications(req.user!.userId) });
+  }),
+
+  markSeen: catchAsync(async (req: Request, res: Response) => {
+    res.json({ status: "success", data: await messageService.markSeen(req.user!.userId, req.body) });
+  }),
+
   list: catchAsync(async (req: Request, res: Response) => {
     const query = listQuerySchema.safeParse(req.query);
     if (!query.success) throw new AppError("Filtre invalide", 422);

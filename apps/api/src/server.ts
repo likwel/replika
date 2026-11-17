@@ -31,7 +31,7 @@ async function shutdown() {
   console.log("\n⏳ Arrêt en cours...");
   stopPoller();
   stopScheduler();
-  stopLivePoller();
+  await stopLivePoller(); // laisse finir la commande en cours : aucun JP n'est interrompu à mi-chemin
   stopBilling();
   await prisma.$disconnect();
   server.close(() => process.exit(0));

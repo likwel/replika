@@ -51,6 +51,7 @@ export async function sessionUser(u: User & { subscription: Subscription | null 
     ...base,
     subscription: workspace ? summarize(await getEntitlements(workspace.ownerId)) : base.subscription,
     workspace: {
+      own: { space: u.companyName?.trim() || u.name }, // nom de son propre espace : l'entreprise (Profil), sinon son nom
       current: workspace,
       unavailable, // accès retiré depuis l'ouverture de l'espace
       spaces: memberships.filter((m) => m.status === "ACTIVE").map((m) => ({ ownerId: m.ownerId, space: m.space, roleLabel: m.roleLabel })),

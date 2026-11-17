@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Facebook, Loader2 } from "lucide-react";
+import { Facebook, Loader2, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -37,7 +37,7 @@ export function ReconnectDialog({ accountName, connect = false, onClose }: Props
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
           <Button
             size="sm"
             onClick={() => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { computeNextSubscription, usageMonth } from "./billing.logic.js";
 import { computeEntitlements } from "./entitlements.js";
 import { PLANS, priceOf } from "./plans.js";
-import { PLAN_DEFS } from "../../../../web/src/data/plans.js";
+import { COMPARE_ROWS, PLAN_DEFS } from "../../../../web/src/data/plans.js";
 
 // npx tsx --test src/modules/billing/*.test.ts
 
@@ -25,6 +25,19 @@ test("la grille de la page d'accueil concorde avec celle de l'API", () => {
     assert.equal(def.base, api.monthly, `${def.id} : prix`);
     assert.deepEqual(def.quota, api.limits, `${def.id} : limites`);
   }
+});
+
+test("le tableau comparatif de la page d'accueil concorde avec les droits de l'API", () => {
+  PLAN_DEFS.forEach((def, i) => {
+    const api = PLANS[def.id];
+    for (const row of COMPARE_ROWS) {
+      if (row.feature) assert.equal(row.values[i], api.features[row.feature], `${def.id} : ${row.label}`);
+      if (row.team) {
+        const expected = api.teamSeats === 0 ? "—" : api.teamSeats === null ? "Illimités" : String(api.teamSeats);
+        assert.equal(row.values[i], expected, `${def.id} : ${row.label}`);
+      }
+    }
+  });
 });
 
 test("renouveler la même formule prolonge l'échéance en cours", () => {

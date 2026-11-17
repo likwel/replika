@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Loader2, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
+import { ExternalLink, Loader2, RefreshCw, ShieldCheck, Smartphone, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -12,11 +12,11 @@ import { fmtAr } from "@/hooks/usePlan";
 import { MOBILE_MONEY } from "@/data/plans";
 
 const POLL_MS = 4000;
-const CONFIRM_TIMEOUT_MS = 3 * 60_000; // Papi a dit « succès » mais la confirmation tarde
+const CONFIRM_TIMEOUT_MS = 3 * 60_000; // Le prestataire a dit « succès » mais la confirmation tarde
 
 type Phase = "waiting" | "closed" | "confirming" | "slow";
 
-// Suivi du paiement ouvert dans la fenêtre Papi : monté une fois dans AppLayout
+// Suivi du paiement ouvert dans la fenêtre de paiement : monté une fois dans AppLayout
 export function PaymentHost() {
   const { open, reference } = usePayment();
   if (!open || !reference) return null;
@@ -93,7 +93,7 @@ function PaymentTracker({ reference }: { reference: string }) {
     if (phase === "closed") void check();
   }, [phase, check]);
 
-  // Retour de Papi : message de la page /paiement/retour
+  // Retour du paiement : message de la page /paiement/retour
   useEffect(() => {
     const onResult = (data: unknown) => {
       const d = data as { type?: string; outcome?: string; ref?: string } | null;
@@ -134,9 +134,9 @@ function PaymentTracker({ reference }: { reference: string }) {
   };
 
   const text = {
-    waiting: "Terminez le paiement dans la fenêtre Papi. Cette page se met à jour toute seule dès que le paiement est confirmé.",
+    waiting: "Terminez le paiement dans la fenêtre de paiement. Cette page se met à jour toute seule dès que le paiement est confirmé.",
     closed: "La fenêtre de paiement a été fermée. Si le paiement n'est pas terminé, rouvrez-la ; s'il l'est, la confirmation arrive dans un instant.",
-    confirming: "Papi a reçu votre paiement : confirmation en cours…",
+    confirming: "Votre paiement est reçu : confirmation en cours…",
     slow: "La confirmation prend plus de temps que prévu. Vous pouvez fermer : votre formule sera activée automatiquement dès réception.",
   }[phase];
 
@@ -147,7 +147,7 @@ function PaymentTracker({ reference }: { reference: string }) {
       onClose={() => void cancel()}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={() => void cancel()}>
+          <Button icon={X} variant="ghost" size="sm" onClick={() => void cancel()}>
             {phase === "slow" || phase === "confirming" ? "Fermer" : "Annuler"}
           </Button>
           <Button variant="ghost" size="sm" icon={checking ? Loader2 : RefreshCw} onClick={() => void check()} disabled={checking} className={checking ? "[&>svg]:animate-spin" : ""}>
@@ -175,7 +175,7 @@ function PaymentTracker({ reference }: { reference: string }) {
         )}
         <p className="max-w-sm text-[13.5px] leading-relaxed" style={{ color: theme.text }}>{text}</p>
         <p className="flex items-center gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
-          <ShieldCheck size={13} style={{ color: theme.green }} /> {MOBILE_MONEY} · paiement traité par Papi.mg
+          <ShieldCheck size={13} style={{ color: theme.green }} /> {MOBILE_MONEY} · paiement sécurisé
         </p>
       </div>
     </Modal>

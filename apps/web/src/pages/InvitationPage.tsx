@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Check, Eye, Loader2, LogOut, Pencil, Users } from "lucide-react";
+import { Check, Eye, Loader2, LogOut, Pencil, Users, LogIn, UserPlus } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { AuthShell } from "@/components/auth/AuthShell";
@@ -46,7 +46,7 @@ export function InvitationPage() {
         {error ? (
           <>
             <Alert variant="error" className="mb-5">{error}</Alert>
-            <Link to="/connexion"><Button className="w-full justify-center">Aller à la connexion</Button></Link>
+            <Link to="/connexion"><Button icon={LogIn} className="w-full justify-center">Aller à la connexion</Button></Link>
           </>
         ) : (
           <p className="flex items-center justify-center gap-2 py-10 text-sm" style={{ color: theme.textMuted }}>
@@ -61,7 +61,7 @@ export function InvitationPage() {
 
   return (
     <AuthShell title={`Rejoindre « ${invite.space} »`} subtitle={`${invite.ownerName} vous invite dans son équipe SuiteFlow.`}>
-      <div className="mb-5 rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+      <div className="mb-5 rounded-2xl p-4 card-x">
         <div className="flex items-center gap-3">
           <Avatar name={invite.space} src={invite.ownerAvatarUrl} size={40} />
           <div className="min-w-0">
@@ -94,8 +94,8 @@ export function InvitationPage() {
         <p className="flex justify-center py-4"><Loader2 size={16} className="animate-spin" style={{ color: theme.textMuted }} /></p>
       ) : !user ? (
         <div className="flex flex-col gap-2">
-          <Link to={`/connexion${q}`}><Button className="w-full justify-center">J'ai déjà un compte : me connecter</Button></Link>
-          <Link to={`/register${q}`}><Button variant="ghost" className="w-full justify-center">Créer mon compte</Button></Link>
+          <Link to={`/connexion${q}`}><Button icon={LogIn} className="w-full justify-center">J'ai déjà un compte : me connecter</Button></Link>
+          <Link to={`/register${q}`}><Button icon={UserPlus} variant="ghost" className="w-full justify-center">Créer mon compte</Button></Link>
           <p className="text-center text-[12px]" style={{ color: theme.textMuted }}>Utilisez l'adresse {invite.email} pour rejoindre l'espace.</p>
         </div>
       ) : sameEmail ? (

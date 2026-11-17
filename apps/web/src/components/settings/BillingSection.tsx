@@ -1,21 +1,19 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Check, Clock, Coins, CreditCard, ExternalLink, Loader2, Minus, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles,
-} from "lucide-react";
+import { Clock, Coins, CreditCard, ExternalLink, Loader2, Plug, Radio, RefreshCw, ShieldCheck, Smartphone, Sparkles, Mail } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Segmented } from "@/components/ui/Segmented";
 import { SettingsCard } from "@/components/settings/SettingsUi";
 import { swal } from "@/lib/swal";
 import {
   billingApi, fmtHours, paidText, purchaseLabel, PAYMENT_METHOD_LABEL,
-  type BillingOverview, type BillingPeriod, type Quote, type Feature, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
+  type BillingOverview, type BillingPeriod, type Quote, type PaymentRow, type PaymentStatus, type PlanId, type PublicPlan,
 } from "@/lib/billing.api";
-import { MOBILE_MONEY } from "@/data/plans";
+import { MOBILE_MONEY, planDef } from "@/data/plans";
+import { PeriodSwitch, PlanTile } from "@/components/billing/PlanTile";
 import { ContactDialog } from "@/components/marketing/ContactDialog";
 import { liveHours } from "@/lib/liveHours";
 import { replyCredits } from "@/lib/replyCredits";
@@ -23,17 +21,6 @@ import { BILLING_UPDATED, payment } from "@/lib/payment";
 import { paymentSuccess } from "@/lib/paymentSuccess";
 import { CheckoutDialog } from "@/components/billing/CheckoutDialog";
 import { fmtAr, fmtDate, fmtNum } from "@/hooks/usePlan";
-
-const FEATURE_LABELS: Array<[Feature, string]> = [
-  ["postAiRules", "Règles IA par publication"],
-  ["leads", "Leads : détection et pipeline"],
-  ["marketplace", "Marketplace et catalogue"],
-  ["advancedStats", "Statistiques avancées"],
-];
-
-const EXTRAS: Partial<Record<PlanId, string[]>> = {
-  BUSINESS: ["Mise en place accompagnée", "Support prioritaire"],
-};
 
 const STATUS_BADGE: Record<PaymentStatus, { label: string; bg: string; color: string }> = {
   PAID: { label: "Payé", bg: theme.greenSoft, color: theme.green },
@@ -46,7 +33,7 @@ const PERIOD_LABEL: Record<BillingPeriod, string> = { MONTHLY: "mensuel", ANNUAL
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Paiement en attente : son lien Papi rouvert dans la fenêtre de paiement
+// Paiement en attente : son lien rouvert dans la fenêtre de paiement
 const resumePayment = (p: PaymentRow) =>
   payment
     .resume(p.reference, p.paymentLink!, {
@@ -58,7 +45,7 @@ const resumePayment = (p: PaymentRow) =>
 
 type Return = { kind: "confirming" | "paid" | "pending" | "failed"; payment?: PaymentRow };
 
-// Paramètres › Facturation : formule en cours, consommation, paiement Papi.mg, historique
+// Paramètres › Facturation : formule en cours, consommation, paiement en ligne, historique
 export function BillingSection() {
   const { refreshUser } = useAuth();
   const [data, setData] = useState<BillingOverview | null>(null);
@@ -85,13 +72,13 @@ export function BillingSection() {
 
   useEffect(() => {
     void load();
-    // Paiement terminé dans la fenêtre Papi (PaymentHost) : formule et historique relus
+    // Paiement terminé dans la fenêtre de paiement (PaymentHost) : formule et historique relus
     const onUpdated = () => void load();
     window.addEventListener(BILLING_UPDATED, onUpdated);
     return () => window.removeEventListener(BILLING_UPDATED, onUpdated);
   }, [load]);
 
-  // Retour depuis la page de paiement Papi : seul le statut relu côté serveur fait foi
+  // Retour depuis la page de paiement : seul le statut relu côté serveur fait foi
   useEffect(() => {
     const outcome = params.get("payment");
     const ref = params.get("ref");
@@ -120,7 +107,7 @@ export function BillingSection() {
             return;
           }
         } catch {
-          // réseau ou Papi indisponible : nouvel essai
+          // réseau ou prestataire indisponible : nouvel essai
         }
         await sleep(3000);
       }
@@ -132,7 +119,7 @@ export function BillingSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Récapitulatif et numéro du payeur dans une fenêtre, puis paiement Papi (CheckoutDialog)
+  // Récapitulatif et numéro du payeur dans une fenêtre, puis paiement (CheckoutDialog)
   const pay = async (plan: PublicPlan) => {
     setBusy(plan.id);
     try {
@@ -151,7 +138,7 @@ export function BillingSection() {
         swal.toast({ title: "Paiement confirmé", text: paidText(r.payment, r.subscription.periodEnd) });
         await refreshUser().catch(() => {});
       } else if (r.payment.status === "PENDING") {
-        swal.toast({ variant: "info", title: "Toujours en attente", text: r.payment.failureMessage ?? "Papi n'a pas encore reçu le paiement." });
+        swal.toast({ variant: "info", title: "Toujours en attente", text: r.payment.failureMessage ?? "Le paiement n'a pas encore été reçu." });
       }
       await load();
     } catch (e) {
@@ -161,7 +148,7 @@ export function BillingSection() {
 
   if (loadError && !data) {
     return (
-      <Alert variant="error" action={<Button size="sm" variant="ghost" onClick={() => void load()}>Réessayer</Button>}>
+      <Alert variant="error" action={<Button icon={RefreshCw} size="sm" variant="ghost" onClick={() => void load()}>Réessayer</Button>}>
         {loadError}
       </Alert>
     );
@@ -176,8 +163,6 @@ export function BillingSection() {
 
   const sub = data.subscription;
   const scrollToPlans = () => plansRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  const purchasable = data.plans.filter((p) => p.purchasable);
-  const agency = data.plans.find((p) => p.id === "AGENCY");
 
   return (
     <div className="flex flex-col gap-5">
@@ -190,16 +175,7 @@ export function BillingSection() {
       <div ref={plansRef} className="scroll-mt-4">
         <SettingsCard title="Changer ou renouveler" description="Paiement unique pour la période choisie : aucun prélèvement automatique.">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="w-full max-w-[260px]">
-              <Segmented
-                options={[
-                  { value: "MONTHLY", label: "Mensuel" },
-                  { value: "ANNUAL", label: "Annuel · -15 %" },
-                ]}
-                value={period}
-                onChange={setPeriod}
-              />
-            </div>
+            <PeriodSwitch value={period} onChange={setPeriod} />
             <p className="flex items-center gap-1.5 text-xs" style={{ color: theme.textMuted }}>
               <Smartphone size={14} style={{ color: theme.goldDark }} /> {MOBILE_MONEY}
             </p>
@@ -207,12 +183,12 @@ export function BillingSection() {
 
           {!data.papiConfigured && (
             <Alert variant="warning" className="mb-4">
-              Le paiement en ligne n'est pas encore activé sur ce serveur (clés Papi manquantes). Contactez-nous pour souscrire.
+              Le paiement en ligne n'est pas encore activé sur ce serveur (clés de paiement manquantes). Contactez-nous pour souscrire.
             </Alert>
           )}
           {data.papiConfigured && data.testMode && (
             <Alert variant="info" className="mb-4">
-              <strong>Mode test Papi</strong> : aucun débit réel. Numéros de test : MVola 034 12 300 01, Orange Money 032 12 300 01,
+              <strong>Mode test</strong> : aucun débit réel. Numéros de test : MVola 034 12 300 01, Orange Money 032 12 300 01,
               Airtel Money 033 12 300 01 ; carte 4242 4242 4242 4242.
             </Alert>
           )}
@@ -220,9 +196,9 @@ export function BillingSection() {
             <Alert variant="info" className="mb-4">Compte administrateur : toutes les fonctionnalités sont ouvertes, sans limite.</Alert>
           )}
 
-          <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
-            {purchasable.map((plan) => (
-              <PlanCard
+          <div className="grid grid-cols-1 items-stretch gap-4 pt-2 sm:grid-cols-2 min-[1380px]:grid-cols-4">
+            {data.plans.map((plan) => (
+              <BillingPlan
                 key={plan.id}
                 plan={plan}
                 period={period}
@@ -235,7 +211,6 @@ export function BillingSection() {
               />
             ))}
           </div>
-          {agency && <AgencyCard current={sub.plan === "AGENCY" && !sub.admin} />}
           <p className="mt-3 flex items-start gap-1.5 text-xs" style={{ color: theme.textMuted }}>
             <ShieldCheck size={14} className="mt-px flex-shrink-0" style={{ color: theme.goldDark }} />
             Prolonger la même formule ajoute la période à votre échéance. Changer de formule convertit les jours restants en jours sur la nouvelle.
@@ -247,7 +222,7 @@ export function BillingSection() {
         <CheckoutDialog plan={checkout.plan} period={period} quote={checkout.quote} onClose={() => setCheckout(null)} />
       )}
 
-      <SettingsCard title="Historique des paiements" description="Vos paiements Papi et leur statut.">
+      <SettingsCard title="Historique des paiements" description="Vos paiements et leur statut.">
         <PaymentHistory payments={data.payments} onVerify={verify} />
       </SettingsCard>
     </div>
@@ -261,7 +236,7 @@ function ReturnNotice({ ret, onRetry, onClose }: { ret: Return | null; onRetry: 
   if (ret.kind === "confirming") {
     return (
       <Alert variant="info" icon={Loader2} className="[&>svg]:animate-spin">
-        Confirmation de votre paiement auprès de Papi…
+        Confirmation de votre paiement auprès de l'opérateur…
       </Alert>
     );
   }
@@ -275,7 +250,7 @@ function ReturnNotice({ ret, onRetry, onClose }: { ret: Return | null; onRetry: 
   if (ret.kind === "pending") {
     return (
       <Alert variant="warning" onClose={onClose}>
-        Paiement en cours de confirmation par Papi : votre formule sera activée automatiquement dans quelques minutes.
+        Paiement en cours de confirmation par l'opérateur : votre formule sera activée automatiquement dans quelques minutes.
         Vous pouvez aussi cliquer sur « Vérifier » dans l'historique.
       </Alert>
     );
@@ -290,7 +265,7 @@ function ReturnNotice({ ret, onRetry, onClose }: { ret: Return | null; onRetry: 
             Réessayer le paiement
           </Button>
         ) : (
-          <Button size="sm" variant="ghost" onClick={onRetry}>Choisir à nouveau</Button>
+          <Button icon={RefreshCw} size="sm" variant="ghost" onClick={onRetry}>Choisir à nouveau</Button>
         )
       }
     >
@@ -340,7 +315,7 @@ function CurrentPlan({ data, onChoose }: { data: BillingOverview; onChoose: () =
           <p className="text-[13px]" style={{ color: theme.textMuted }}>{when}</p>
         </div>
         {!s.admin && s.plan !== "AGENCY" && (
-          <Button variant={s.active ? "soft" : "primary"} onClick={onChoose} className="w-full justify-center sm:w-auto">
+          <Button icon={CreditCard} variant={s.active ? "soft" : "primary"} onClick={onChoose} className="w-full justify-center sm:w-auto">
             {s.status === "TRIAL" ? "Choisir une formule" : s.active ? "Prolonger ou changer" : "Renouveler"}
           </Button>
         )}
@@ -436,7 +411,8 @@ function LiveCreditRow({ credit, used, price }: { credit: number; used: number; 
 
 // ─── Formules ────────────────────────────────────────────────────────────────
 
-function PlanCard({
+// Même carte que sur la page d'accueil (components/billing/PlanTile.tsx) : contenu du catalogue, prix lus de l'API
+function BillingPlan({
   plan, period, current, trial, active, busy, disabled, onPay,
 }: {
   plan: PublicPlan;
@@ -448,108 +424,36 @@ function PlanCard({
   disabled: boolean;
   onPay: () => void;
 }) {
-  const annual = period === "ANNUAL";
-  const perMonth = annual ? plan.annualMonthly! : plan.monthly!;
-  const saving = plan.monthly! * 12 - (plan.annual ?? 0);
-  const label = current && !trial ? (active ? "Prolonger" : "Renouveler") : `Choisir ${plan.name}`;
-  const highlight = plan.id === "PRO";
-
-  return (
-    <div
-      className="relative flex flex-col rounded-xl p-4"
-      style={{
-        background: theme.bgCard,
-        border: `1px solid ${current ? theme.gold : theme.border}`,
-        boxShadow: current ? `0 0 0 1px ${theme.gold}` : undefined,
-      }}
-    >
-      {(current || highlight) && (
-        <span
-          className="absolute -top-2.5 left-4 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em]"
-          style={current ? { background: theme.gold, color: theme.onAccent } : { background: theme.bgDark, color: "#fff" }}
-        >
-          {current ? (trial ? "Votre essai" : "Votre formule") : "Populaire"}
-        </span>
-      )}
-      <p className="text-[15px] font-semibold" style={{ color: theme.text }}>{plan.name}</p>
-      <p className="mt-1.5">
-        <span className="text-2xl font-bold tracking-tight" style={{ color: theme.text }}>{fmtNum(perMonth)}</span>
-        <span className="text-[13px]" style={{ color: theme.textMuted }}> Ar/mois</span>
-      </p>
-      <p className="flex min-h-[20px] flex-wrap items-center gap-x-1.5 text-[11.5px]" style={{ color: theme.textMuted }}>
-        {annual ? (
-          <>
-            {fmtAr(plan.annual!)} par an
-            <span className="rounded-full px-1.5 font-semibold" style={{ background: theme.greenSoft, color: theme.green }}>
-              -{fmtNum(saving)} Ar
-            </span>
-          </>
-        ) : (
-          "sans engagement"
-        )}
-      </p>
-
-      <ul className="my-3 flex flex-col gap-1.5 text-[12.5px]" style={{ color: theme.text }}>
-        <Line ok>{plan.limits.pages} Pages + Instagram</Line>
-        <Line ok>{fmtNum(plan.limits.aiReplies!)} réponses IA/mois</Line>
-        <Line ok>{plan.limits.liveHours} h de live/mois</Line>
-        {FEATURE_LABELS.map(([f, l]) => (
-          <Line key={f} ok={plan.features[f]}>{l}</Line>
-        ))}
-        <Line ok={plan.teamSeats !== 0}>{plan.teamSeats ? `Équipe : ${plan.teamSeats} membres avec droits` : "Équipe et droits par membre"}</Line>
-        {EXTRAS[plan.id]?.map((x) => <Line key={x} ok>{x}</Line>)}
-      </ul>
-
-      <Button
-        className="mt-auto w-full justify-center"
-        variant={current || highlight ? "primary" : "ghost"}
-        disabled={disabled || busy}
-        onClick={onPay}
-      >
-        {busy ? <Loader2 size={15} className="animate-spin" /> : null}
-        {label}
-      </Button>
-    </div>
-  );
-}
-
-// Agence : sur devis, activée par l'équipe SuiteFlow
-function AgencyCard({ current }: { current: boolean }) {
   const [contact, setContact] = useState(false);
-  return (
-    <div
-      className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-3"
-      style={{ background: theme.bg, border: `1px ${current ? "solid" : "dashed"} ${current ? theme.gold : theme.border}` }}
-    >
-      <div className="min-w-0 flex-1 basis-60">
-        <p className="flex items-center gap-2 text-[15px] font-semibold" style={{ color: theme.text }}>
-          Agence <span className="text-[13px] font-normal" style={{ color: theme.textMuted }}>· sur devis</span>
-          {current && (
-            <span className="rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide" style={{ background: theme.gold, color: theme.onAccent }}>
-              Votre formule
-            </span>
-          )}
-        </p>
-        <p className="text-[12.5px]" style={{ color: theme.textMuted }}>
-          Pages illimitées, volume IA sur mesure, lives illimités, tarif dégressif par marque et accompagnement dédié.
-        </p>
-      </div>
-      <Button variant="ghost" onClick={() => setContact(true)}>Nous contacter</Button>
-      {contact && <ContactDialog subject="AGENCY" title="Formule Agence : demande de devis" onClose={() => setContact(false)} />}
-    </div>
-  );
-}
+  const def = planDef(plan.id);
+  const label = current && !trial ? (active ? "Prolonger" : "Renouveler") : `Choisir ${plan.name}`;
 
-function Line({ ok, children }: { ok: boolean; children: ReactNode }) {
   return (
-    <li className="flex items-start gap-1.5" style={{ color: ok ? theme.text : theme.textMuted }}>
-      {ok ? (
-        <Check size={14} className="mt-px flex-shrink-0" style={{ color: theme.green }} />
-      ) : (
-        <Minus size={14} className="mt-px flex-shrink-0" style={{ opacity: 0.6 }} />
-      )}
-      <span className={ok ? undefined : "line-through decoration-1 opacity-70"}>{children}</span>
-    </li>
+    <PlanTile
+      def={def}
+      price={{ monthly: plan.monthly, perMonth: plan.annualMonthly, yearly: plan.annual }}
+      period={period}
+      current={current}
+      badge={current ? (trial ? "Votre essai" : "Votre formule") : undefined}
+      action={
+        plan.purchasable ? (
+          <Button
+            variant={current || def.hl ? "primary" : "ghost"}
+            icon={busy ? Loader2 : CreditCard}
+            className={`w-full justify-center ${busy ? "[&>svg]:animate-spin" : ""}`}
+            disabled={disabled || busy}
+            onClick={onPay}
+          >
+            {label}
+          </Button>
+        ) : (
+          <>
+            <Button icon={Mail} variant={current ? "primary" : "ghost"} className="w-full justify-center" onClick={() => setContact(true)}>Nous contacter</Button>
+            {contact && <ContactDialog subject="AGENCY" title="Formule Agence : demande de devis" onClose={() => setContact(false)} />}
+          </>
+        )
+      }
+    />
   );
 }
 

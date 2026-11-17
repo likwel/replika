@@ -1,27 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronsRight, CreditCard, LogOut, Menu as MenuIcon, Plus, ShieldCheck, SlidersHorizontal, User, Users } from "lucide-react";
+import { CircleHelp, CreditCard, LogOut, Plus, Search, ShieldCheck, SlidersHorizontal, User, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Avatar } from "@/components/ui/Avatar";
+import { LogoMark, Wordmark } from "@/components/ui/Logo";
 import { UsageBadge } from "@/components/billing/UsageBadge";
-import { ReconnectDialog } from "@/components/connections/ReconnectDialog";
+import { openAssociate } from "@/lib/associate";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { useAuth } from "@/context/AuthContext";
 import { useOnline } from "@/hooks/useOnline";
 import { useAccess } from "@/hooks/useAccess";
 import { MENUS } from "@/data/menus";
+import { NotificationBell } from "./NotificationBell";
+import { SECTIONS } from "./Sidebar";
+import { PageHelpModal } from "./PageHelpModal";
 import type { SubscriptionSummary } from "@/lib/billing.api";
 
 interface Props {
   active: string;
   sub: number;
-  attention: number; // messages à traiter : pastille sur le bouton de menu quand la barre latérale est masquée
-  sidebarCollapsed: boolean;
-  onExpandSidebar: () => void;
-  onOpenDrawer: () => void;
   onNavigate: (menuId: string, sub: number) => void;
   onOpenSettings: (sub: number) => void;
+  onOpenSearch: () => void;
 }
 
 const ACCOUNT_ITEMS: Array<{ label: string; icon: LucideIcon; sub: number }> = [
@@ -32,19 +33,20 @@ const ACCOUNT_ITEMS: Array<{ label: string; icon: LucideIcon; sub: number }> = [
   { label: "Facturation", icon: CreditCard, sub: 4 },
 ];
 
-// Barre du haut façon Notion : fil d'Ariane à gauche, compte à droite
-export function Header({ active, sub, attention, sidebarCollapsed, onExpandSidebar, onOpenDrawer, onNavigate, onOpenSettings }: Props) {
+// Barre du haut façon pr.social : fil d'Ariane (module + page) à gauche, actions et compte à droite
+export function Header({ active, onNavigate, onOpenSettings, onOpenSearch }: Props) {
   const { user, logout } = useAuth();
   const { can, canMenu } = useAccess();
   const nav = useNavigate();
   const online = useOnline();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const menu = MENUS.find((m) => m.id === active) ?? MENUS[0];
-  const subLabel = menu.sub.length > 1 ? menu.sub[sub] : undefined;
+  // Fil d'Ariane : groupe de la barre latérale en petit, module en grand (le titre de page n'est pas répété dessous)
+  const group = SECTIONS.find((g) => g.ids.includes(menu.id))?.label ?? "SuiteFlow";
 
   useEffect(() => {
     const main = document.querySelector("main");
@@ -72,108 +74,134 @@ export function Header({ active, sub, attention, sidebarCollapsed, onExpandSideb
     nav("/connexion");
   };
 
-  const dot = attention > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full" style={{ background: theme.red, boxShadow: `0 0 0 2px ${theme.canvas}` }} />;
-
   return (
     <header
-      className="flex h-12 flex-shrink-0 items-center gap-1 px-2 transition-colors sm:px-3"
-      style={{ background: theme.canvas, borderBottom: `1px solid ${scrolled ? theme.border : "transparent"}` }}
+      className="top-surface z-20 h-14 flex-shrink-0 px-3.5 md:h-[70px] md:px-8"
+      style={{ boxShadow: scrolled ? "0 1px 0 var(--line)" : "0 1px 0 transparent", transition: "box-shadow 0.2s var(--ease)" }}
     >
-      <button onClick={onOpenDrawer} className="relative rounded-md p-1.5 hover:bg-black/5 md:hidden" aria-label="Ouvrir le menu">
-        <MenuIcon size={18} style={{ color: theme.textMuted }} />
-        {dot}
-      </button>
-      {sidebarCollapsed && (
-        <button onClick={onExpandSidebar} className="relative hidden rounded-md p-1.5 hover:bg-black/5 md:block" title="Afficher la barre latérale" aria-label="Afficher la barre latérale">
-          <ChevronsRight size={18} style={{ color: theme.textMuted }} />
-          {dot}
-        </button>
-      )}
+      <div className="mx-auto flex h-full w-full max-w-[76rem] items-center gap-2">
+        {/* Mobile : marque (la navigation passe par la barre d'onglets) */}
+        <div className="flex min-w-0 items-center gap-2.5 md:hidden">
+          <LogoMark size={32} />
+          <Wordmark size={16} />
+        </div>
+        {/* Bureau : fil d'Ariane — groupe en petit, module en grand */}
+        <nav className="hidden min-w-0 flex-1 flex-col md:flex" aria-label="Fil d'Ariane">
+          <span className="truncate text-[12px] font-medium" style={{ color: theme.textMuted }}>{group}</span>
+          <p key={menu.id} className="page-in mt-px truncate text-[21px] font-extrabold leading-[1.15] tracking-[-0.025em]" style={{ color: theme.text }}>
+            {menu.label}
+          </p>
+        </nav>
+        <div className="flex-1 md:hidden" />
 
-      <nav className="flex min-w-0 flex-1 items-center gap-0.5 text-[14px]" aria-label="Fil d'Ariane">
-        <button onClick={() => onNavigate(menu.id, 0)} className="flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-black/5" style={{ color: theme.textMuted }}>
-          <menu.icon size={15} className="flex-shrink-0" style={{ color: menu.color }} />
-          <span className="truncate">{menu.label}</span>
-        </button>
-        {subLabel && (
-          <>
-            <span className="flex-shrink-0" style={{ color: theme.border }}>/</span>
-            <span className="truncate px-1.5 py-1" style={{ color: theme.text }}>{subLabel}</span>
-          </>
-        )}
-      </nav>
-
-
-      {/* Ajout d'une Page Facebook / d'un compte Instagram : ouvre directement la connexion Meta */}
-      {can("connections", "write") && <button
-        onClick={() => setConnectOpen(true)}
-        className="mr-1.5 flex h-8 w-8 items-center justify-center rounded-full transition-[filter,transform] hover:brightness-95 active:scale-95"
-        style={{ background: theme.gold, color: theme.onAccent, boxShadow: "0 1px 3px rgba(0,0,0,0.18)" }}
-        title="Connecter une Page Facebook ou un compte Instagram"
-        aria-label="Connecter une Page Facebook ou un compte Instagram"
-      >
-        <Plus size={18} strokeWidth={2.6} />
-      </button>}
-      {can("billing") && <UsageBadge />}
-      {connectOpen && <ReconnectDialog connect onClose={() => setConnectOpen(false)} />}
-
-      <div ref={menuRef} className="relative">
-        <button onClick={() => setMenuOpen((o) => !o)} className="relative flex rounded-full p-0.5 hover:bg-black/5" aria-label="Menu du compte" aria-expanded={menuOpen}>
-          <Avatar name={user?.name ?? ""} src={user?.avatarUrl} size={28} />
-          <span className="absolute bottom-0 right-0">
-            <StatusDot color={online ? theme.greenLight : theme.textMuted} size={8} ring={theme.canvas} />
-          </span>
-        </button>
-
-        {menuOpen && user && (
-          <div
-            className="animate-panel-in absolute right-0 top-10 z-[60] w-64 overflow-hidden rounded-xl py-1 shadow-xl"
-            style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
+        {/* Droite : outils (recherche, aide) · action principale (associer un compte) · formule */}
+        <div className="flex items-center gap-2">
+          {/* Recherche : un champ à partir de lg, une icône en dessous */}
+          <button
+            className="field-in hidden h-[38px] w-52 items-center gap-2 rounded-xl px-3 text-left text-[13px] font-medium lg:flex xl:w-60"
+            onClick={onOpenSearch}
+            aria-label="Rechercher (Ctrl K)"
+            style={{ color: theme.textMuted }}
           >
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <Avatar name={user.name} src={user.avatarUrl} size={34} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium" style={{ color: theme.text }}>{user.name}</p>
-                <p className="truncate text-xs" style={{ color: theme.textMuted }}>{user.email}</p>
-              </div>
-              {user.subscription && <PlanBadge sub={user.subscription} />}
-            </div>
-            <div className="mx-1 my-1" style={{ borderTop: `1px solid ${theme.border}` }} />
-            {ACCOUNT_ITEMS.filter((it) => canMenu("set", it.sub)).map((it) => (
-              <button
-                key={it.label}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenSettings(it.sub);
-                }}
-                className="mx-1 flex h-8 w-[calc(100%-8px)] items-center gap-2.5 rounded-md px-2.5 text-sm hover:bg-black/5"
-                style={{ color: theme.text }}
-              >
-                <it.icon size={16} style={{ color: theme.textMuted }} /> {it.label}
-              </button>
-            ))}
-            {user.role === "ADMIN" && (
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  onNavigate("admin", 0);
-                }}
-                className="mx-1 flex h-8 w-[calc(100%-8px)] items-center gap-2.5 rounded-md px-2.5 text-sm hover:bg-black/5"
-                style={{ color: theme.text }}
-              >
-                <ShieldCheck size={16} style={{ color: "#6366F1" }} /> Administration
-              </button>
-            )}
-            <div className="mx-1 my-1" style={{ borderTop: `1px solid ${theme.border}` }} />
-            <button
-              onClick={handleLogout}
-              className="mx-1 flex h-8 w-[calc(100%-8px)] items-center gap-2.5 rounded-md px-2.5 text-sm hover:bg-black/5"
-              style={{ color: theme.red }}
-            >
-              <LogOut size={16} /> Se déconnecter
+            <Search size={15} className="flex-shrink-0" />
+            <span className="flex-1 truncate">Rechercher…</span>
+            <kbd className="rounded-md px-1.5 py-px text-[10.5px] font-semibold" style={{ background: "var(--surface-3)", color: theme.textMuted }}>Ctrl K</kbd>
+          </button>
+          <span className="hidden md:contents lg:hidden">
+            <button className="ibtn" onClick={onOpenSearch} aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)">
+              <Search size={17} />
             </button>
+          </span>
+
+          {/* Notifications : bulle des nouveaux messages à traiter */}
+          {can("inbox") && <NotificationBell onNavigate={onNavigate} />}
+
+          {/* Aide de la page : icône seule, avec libellé sur grand écran */}
+          <button className="btn-soft inline-flex h-[38px] items-center justify-center gap-2 rounded-xl px-[11px] text-[13px] font-semibold xl:px-3.5" onClick={() => setHelpOpen(true)} aria-label="Comment fonctionne cette page" title="Comment fonctionne cette page">
+            <CircleHelp size={17} />
+            <span className="hidden xl:inline">Aide</span>
+          </button>
+
+          <span className="mx-0.5 hidden h-6 w-px md:block" style={{ background: "var(--line-2)" }} aria-hidden />
+
+          {/* Action principale : associer un compte */}
+          {can("connections", "write") && (
+            <button
+              onClick={openAssociate}
+              className="btn-brand inline-flex h-[38px] items-center justify-center gap-2 rounded-xl px-2.5 text-[13px] font-bold lg:px-3.5"
+              title="Associer un compte"
+              aria-label="Associer un compte"
+            >
+              <Plus size={17} strokeWidth={2.6} />
+              <span className="hidden lg:inline">Associer un compte</span>
+            </button>
+          )}
+          {can("billing") && <UsageBadge />}
+          {helpOpen && <PageHelpModal menuId={active} onClose={() => setHelpOpen(false)} />}
+
+          {/* Le compte vit dans la barre latérale sur bureau : le menu du compte ne sert qu'au mobile */}
+          <div ref={menuRef} className="relative md:hidden">
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="relative flex rounded-full p-0.5 transition-transform duration-150 ease-brand active:scale-95"
+              style={{ boxShadow: menuOpen ? "0 0 0 2px var(--color-gold)" : "0 0 0 2px transparent" }}
+              aria-label="Menu du compte"
+              aria-expanded={menuOpen}
+            >
+              <Avatar name={user?.name ?? ""} src={user?.avatarUrl} size={34} />
+              <span className="absolute bottom-0 right-0">
+                <StatusDot color={online ? theme.greenLight : theme.textMuted} size={9} ring={theme.bgCard} />
+              </span>
+            </button>
+
+            {menuOpen && user && (
+              <div className="pop absolute right-0 top-12 z-[60] w-72 overflow-hidden rounded-[18px] p-1.5">
+                <div className="flex items-center gap-3 px-2.5 py-2.5">
+                  <Avatar name={user.name} src={user.avatarUrl} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold" style={{ color: theme.text }}>{user.name}</p>
+                    <p className="truncate text-xs" style={{ color: theme.textMuted }}>{user.email}</p>
+                  </div>
+                  {user.subscription && <PlanBadge sub={user.subscription} />}
+                </div>
+                <div className="mx-1 my-1" style={{ borderTop: "1px solid var(--line)" }} />
+                {ACCOUNT_ITEMS.filter((it) => canMenu("set", it.sub)).map((it) => (
+                  <button
+                    key={it.label}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenSettings(it.sub);
+                    }}
+                    className="flex h-10 w-full items-center gap-3 rounded-[11px] px-2.5 text-[13.5px] font-medium transition-colors hover:bg-[var(--surface-3)]"
+                    style={{ color: theme.text }}
+                  >
+                    <it.icon size={17} style={{ color: theme.textMuted }} /> {it.label}
+                  </button>
+                ))}
+                {user.role === "ADMIN" && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onNavigate("admin", 0);
+                    }}
+                    className="flex h-10 w-full items-center gap-3 rounded-[11px] px-2.5 text-[13.5px] font-medium transition-colors hover:bg-[var(--surface-3)]"
+                    style={{ color: theme.text }}
+                  >
+                    <ShieldCheck size={17} style={{ color: "#6366F1" }} /> Administration
+                  </button>
+                )}
+                <div className="mx-1 my-1" style={{ borderTop: "1px solid var(--line)" }} />
+                <button
+                  onClick={handleLogout}
+                  className="flex h-10 w-full items-center gap-3 rounded-[11px] px-2.5 text-[13.5px] font-semibold transition-colors hover:bg-[var(--color-dangerBg)]"
+                  style={{ color: theme.red }}
+                >
+                  <LogOut size={17} /> Se déconnecter
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </header>
   );
@@ -184,11 +212,7 @@ function PlanBadge({ sub }: { sub: SubscriptionSummary }) {
   const expired = sub.status === "EXPIRED";
   const label = sub.status === "TRIAL" ? `Essai ${sub.planName}` : sub.planName;
   return (
-    <span
-      className="flex-shrink-0 self-start rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
-      style={expired ? { background: theme.dangerBg, color: theme.red } : { background: theme.goldSoft, color: theme.goldDark }}
-      title={expired ? "Abonnement expiré" : undefined}
-    >
+    <span className={`chip ${expired ? "bad" : "brand"} flex-shrink-0 self-start !text-[10.5px]`} title={expired ? "Abonnement expiré" : undefined}>
       {label}
     </span>
   );

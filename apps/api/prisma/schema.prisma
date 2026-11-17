@@ -51,8 +51,11 @@ model User {
   fbUserToken          String?
   accounts             SocialAccount[]
   rules                AutomationRule[]
+  pipelines            Pipeline[]
   logs                 ActivityLog[]
   schedules            Schedule[]
+  scheduleSources      ScheduleSource[]
+  liveProductLists     LiveProductList[]
   liveSessions         LiveSession[]
   leads                Lead[]
   marketplaceListings  MarketplaceListing[]
@@ -125,6 +128,7 @@ model SocialAccount {
   userId              String
   messages            SocialMessage[]
   rules               AutomationRule[]
+  pipelines           Pipeline[]
   scheduleTargets     ScheduleTarget[]
   liveSessions        LiveSession[]
   leads               Lead[]
@@ -149,6 +153,7 @@ model SocialMessage {
   status      MessageStatus   @default(PENDING)
   error       String? // dernière erreur d'envoi
   repliedAt   DateTime?
+  seenAt      DateTime? // vu par le propriétaire ou un membre (page À traiter, cloche) : null = nouveau, compté dans la bulle de notification
   rule        AutomationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
   ruleId      String?
   account     SocialAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
@@ -157,6 +162,7 @@ model SocialMessage {
 
   @@unique([accountId, externalId]) // garantit qu'un même message n'est traité qu'une fois
   @@index([accountId, status])
+  @@index([accountId, status, seenAt])
 }
 
 model AutomationRule {
@@ -274,6 +280,42 @@ model ScheduleTarget {
   doneAt     DateTime?
 }
 
+// Source d'import des publications à programmer : un tableur (Google Sheets, CSV en ligne) relu périodiquement.
+// Chaque ligne n'est importée qu'une fois (ScheduleSourceRow) ; les lignes ajoutées ensuite au tableur le sont à la relève suivante.
+model ScheduleSource {
+  id              String              @id @default(cuid())
+  name            String
+  url             String // lien du tableur tel que collé par l'utilisateur
+  accountIds      String[] // comptes visés quand la colonne « compte » est vide
+  asDraft         Boolean             @default(false) // enregistre en brouillon au lieu de programmer
+  autoSync        Boolean             @default(true)
+  intervalMinutes Int                 @default(60)
+  lastSyncAt      DateTime?
+  lastStatus      String? // OK | ERROR
+  lastMessage     String?
+  importedCount   Int                 @default(0)
+  rows            ScheduleSourceRow[]
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([userId])
+  @@index([autoSync, lastSyncAt])
+}
+
+// Ligne de tableur déjà traitée (empreinte date + texte + comptes) : évite tout doublon d'une relève à l'autre
+model ScheduleSourceRow {
+  id         String         @id @default(cuid())
+  source     ScheduleSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceId   String
+  rowKey     String
+  scheduleId String? // programmation créée (peut avoir été supprimée depuis)
+  createdAt  DateTime       @default(now())
+
+  @@unique([sourceId, rowKey])
+}
+
 enum ScheduleKind {
   POST
   COMMENT
@@ -321,6 +363,9 @@ model LiveSession {
   recapMessage       String            @default("") // message récapitulatif envoyé la première fois à un client
   recapUpdateMessage String            @default("") // renvoyé si le récapitulatif avait déjà été envoyé (commande modifiée) : pas de salutation répétée
   deliveryFee        Int               @default(0) // frais de livraison (Ar), ajoutés une fois par client dans le récapitulatif
+  replyMode          String            @default("ALL") // autres commentaires (non JP) : ALL = toutes les règles actives + IA, SELECTED = règles jointes, NONE = aucune réponse
+  replyRuleIds       String[] // règles jointes à la session (replyMode SELECTED)
+  replyUseAi         Boolean           @default(true) // SELECTED : l'assistant IA répond aussi aux questions sans règle
   cursor             DateTime? // date du dernier commentaire lu
   lastPolledAt       DateTime?
   activeSince        DateTime? // début de la tranche active pas encore décomptée du quota d'heures de live
@@ -374,6 +419,29 @@ model LiveProduct {
   @@unique([sessionId, code])
 }
 
+// Liste d'articles préparée avant un live (Google Sheets, CSV) : réutilisable, jointe à une session au démarrage.
+// `headers` + `rows` gardent le tableur lu (500 lignes max) : la correspondance des colonnes (mapping : champ → en-tête)
+// peut être corrigée sans relire le fichier ; `items` est le résultat prêt à joindre.
+model LiveProductList {
+  id         String    @id @default(cuid())
+  name       String
+  sourceUrl  String? // lien du tableur : « Actualiser » le relit ; null pour un fichier ou un texte collé
+  mapping    Json // { code, name, price, stock } : en-tête de la colonne choisie pour chaque champ (null : aucune)
+  headers    String[]
+  rows       Json // lignes du tableur (tableaux de cellules)
+  items      Json // [{ code, name, price, stock }]
+  itemCount  Int       @default(0)
+  lastSyncAt DateTime?
+  lastStatus String? // OK | ERROR
+  lastMessage String?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+}
+
 model LiveComment {
   id         String      @id @default(cuid())
   session    LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -410,6 +478,7 @@ model LiveOrder {
   status       LiveOrderStatus @default(NEW)
   reminders    Int             @default(0) // relances pour informations manquantes
   error        String? // dernier échec d'envoi
+  contactedAt  DateTime? // premier message privé tenté (réussi ou non) : null après un arrêt du serveur = message à envoyer au redémarrage
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -722,4 +791,51 @@ model ContactMessage {
 
   @@index([status, createdAt])
   @@index([ip, createdAt])
+}
+
+// ============================================================
+// Pipelines d'automatisation : un déclencheur, puis des étapes (conditions sur les règles, actions) exécutées dans l'ordre
+// ============================================================
+
+enum PipelineTrigger {
+  NEW_COMMENT // un commentaire arrive
+  NEW_MESSAGE // un message privé arrive
+  NEW_LEAD // un nouveau lead est détecté
+  HOT_LEAD // un message d'un lead chaud (note de 70 et plus)
+}
+
+model Pipeline {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  trigger     PipelineTrigger @default(NEW_MESSAGE)
+  isActive    Boolean         @default(false)
+  steps       Json // [{ id, type, config }] : voir modules/pipelines/pipeline.schema.ts
+  account     SocialAccount?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String? // null = tous les comptes
+  runCount    Int             @default(0)
+  lastRunAt   DateTime?
+  runs        PipelineRun[]
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, isActive, trigger])
+}
+
+// Une exécution : sur quoi elle a porté, ce que chaque étape a fait (trace) et son issue
+model PipelineRun {
+  id         String   @id @default(cuid())
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  pipelineId String
+  userId     String // espace concerné
+  status     String // SUCCESS, STOPPED (condition non remplie) ou FAILED
+  subject    String // auteur et extrait du message déclencheur
+  trace      Json // [{ stepId, type, label, status, detail }]
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([pipelineId, createdAt])
+  @@index([userId, createdAt])
 }

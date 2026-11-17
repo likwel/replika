@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Clock, Coins, Radio, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Clock, Coins, Radio, Sparkles, X, CreditCard } from "lucide-react";
 import { liveHours } from "@/lib/liveHours";
 import { replyCredits } from "@/lib/replyCredits";
 import { theme } from "@/theme";
@@ -36,7 +36,7 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
           <strong>La formule de l'espace {current.space} a expiré</strong>
           <span className="hidden md:inline"> : réponses automatiques, lives et publications programmées sont en pause jusqu'au renouvellement par son propriétaire.</span>
         </p>
-        {can("billing", "write") && <Button size="sm" variant="danger" onClick={onOpenBilling}>Renouveler</Button>}
+        {can("billing", "write") && <Button icon={CreditCard} size="sm" variant="danger" onClick={onOpenBilling}>Renouveler</Button>}
       </Bar>
     );
   }
@@ -62,7 +62,7 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
         <Button size="sm" variant="ghost" icon={Radio} onClick={() => liveHours.open()} className="hidden lg:inline-flex">
           Heures de live
         </Button>
-        <Button size="sm" variant="danger" onClick={onOpenBilling}>
+        <Button icon={CreditCard} size="sm" variant="danger" onClick={onOpenBilling}>
           {s.kind === "TRIAL" ? "Choisir une formule" : "Renouveler"}
         </Button>
       </Bar>
@@ -79,7 +79,7 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
           <strong>Essai {s.planName} : {days > 0 ? `${dayLabel} restant${days > 1 ? "s" : ""}` : "dernier jour"}</strong>
           <span className="hidden md:inline"> — toutes les fonctionnalités sont ouvertes jusqu'au {fmtDate(s.periodEnd!)}.</span>
         </p>
-        <Button size="sm" variant={days <= 3 ? "primary" : "soft"} onClick={onOpenBilling}>Choisir une formule</Button>
+        <Button icon={CreditCard} size="sm" variant={days <= 3 ? "primary" : "soft"} onClick={onOpenBilling}>Choisir une formule</Button>
         {days > 3 && (
           <button
             onClick={() => {
@@ -110,7 +110,7 @@ export function SubscriptionBanner({ onOpenBilling }: { onOpenBilling: () => voi
           <strong>Votre formule {s.planName} expire {days === 0 ? "aujourd'hui" : `le ${fmtDate(s.periodEnd)}`}</strong>
           <span className="hidden md:inline"> : renouvelez-la pour que l'assistant continue de répondre sans interruption.</span>
         </p>
-        <Button size="sm" onClick={onOpenBilling}>Renouveler</Button>
+        <Button icon={CreditCard} size="sm" onClick={onOpenBilling}>Renouveler</Button>
       </Bar>
     );
   }
@@ -128,7 +128,7 @@ function Bar({ tone, children }: { tone: keyof typeof TONES; children: React.Rea
   return (
     <div
       role={tone === "danger" ? "alert" : "status"}
-      className="animate-fade-in flex flex-shrink-0 items-center gap-2.5 px-3 py-2 text-[13px] sm:px-4"
+      className="animate-fade-in flex flex-shrink-0 items-center gap-2.5 px-3.5 py-2 text-[13px] md:px-8"
       style={{ background: t.bg, color: t.color, borderBottom: `1px solid ${theme.border}` }}
     >
       {children}

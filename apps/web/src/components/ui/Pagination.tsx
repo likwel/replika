@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 import { theme } from "@/theme";
 
 interface Props {
@@ -44,8 +45,8 @@ export function Pagination({ page, pageCount, onChange, total, pageSize, pageSiz
         {sizable && (
           <label className="flex items-center gap-1.5 text-xs" style={{ color: theme.textMuted }}>
             Lignes par page
-            <select
-              value={pageSize}
+            <Select
+              value={String(pageSize)}
               onChange={(e) => onPageSizeChange!(Number(e.target.value))}
               className="rounded-md px-1.5 py-1 text-xs outline-none"
               style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
@@ -53,7 +54,7 @@ export function Pagination({ page, pageCount, onChange, total, pageSize, pageSiz
               {pageSizes!.map((n) => (
                 <option key={n} value={n}>{n}</option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
       </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Download, KeyRound, Loader2, Mail, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
+import { Check, Copy, Download, KeyRound, Loader2, Mail, ShieldCheck, ShieldOff, Smartphone, Power, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -102,7 +102,7 @@ function Option({ icon: Icon, title, text, action, onClick, badge, disabled, hin
       </div>
       <p className="mt-1.5 flex-1 text-[12.5px]" style={{ color: theme.textMuted }}>{text}</p>
       {hint && <p className="mt-1 text-[11.5px]" style={{ color: theme.amber }}>{hint}</p>}
-      <Button size="sm" className="mt-3 w-fit" onClick={onClick} disabled={disabled}>{action}</Button>
+      <Button size="sm" icon={Icon} className="mt-3 w-fit" onClick={onClick} disabled={disabled}>{action}</Button>
     </div>
   );
 }
@@ -168,8 +168,8 @@ function TotpSetup({ onClose, onEnabled }: { onClose: () => void; onEnabled: () 
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={confirm} disabled={busy || code.length !== 6}>{busy && <Loader2 size={14} className="animate-spin" />} Activer</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={confirm} disabled={busy || code.length !== 6} className={`${busy ? "[&>svg]:animate-spin" : ""}`} icon={busy ? Loader2 : Power}>Activer</Button>
         </>
       }
     >
@@ -248,8 +248,8 @@ function EmailSetup({ onClose, onEnabled }: { onClose: () => void; onEnabled: ()
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={confirm} disabled={busy || !challenge || code.length !== 6}>{busy && <Loader2 size={14} className="animate-spin" />} Activer</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={confirm} disabled={busy || !challenge || code.length !== 6} className={`${busy ? "[&>svg]:animate-spin" : ""}`} icon={busy ? Loader2 : Power}>Activer</Button>
         </>
       }
     >
@@ -283,7 +283,7 @@ function RecoveryCodes({ codes, onClose }: { codes: string[]; onClose: () => voi
       title="Validation en deux étapes activée"
       subtitle="Conservez ces codes de secours en lieu sûr : ils ne seront plus affichés."
       onClose={() => saved && onClose()}
-      footer={<Button size="sm" onClick={onClose} disabled={!saved}>Terminer</Button>}
+      footer={<Button icon={Check} size="sm" onClick={onClose} disabled={!saved}>Terminer</Button>}
     >
       <div className="flex flex-col gap-4">
         <Alert variant="info" icon={KeyRound}>
@@ -349,8 +349,8 @@ function DisableDialog({ method, onClose, onDisabled }: { method: TwoFactorMetho
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" variant="danger" onClick={confirm} disabled={busy || code.trim().length < 6}>{busy && <Loader2 size={14} className="animate-spin" />} Désactiver</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" variant="danger" onClick={confirm} disabled={busy || code.trim().length < 6} className={`${busy ? "[&>svg]:animate-spin" : ""}`} icon={busy ? Loader2 : Power}>Désactiver</Button>
         </>
       }
     >

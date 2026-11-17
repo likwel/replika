@@ -58,6 +58,9 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
         recapMessage: d.recapMessage,
         recapUpdateMessage: d.recapUpdateMessage,
         deliveryFee: d.deliveryFee,
+        replyMode: "ALL",
+        replyRuleIds: [],
+        replyUseAi: true,
       })
     );
   }, []);
@@ -228,7 +231,7 @@ export function NewSessionWizard({ onClose, onCreated }: Props) {
         <div className="flex flex-col gap-3">
           <p className="text-sm" style={{ color: theme.textMuted }}>
             Facultatif : avec un catalogue, le nom et le prix de l'article sont repris dans le message au client, et le stock est
-            suivi (liste d'attente quand il est épuisé).
+            suivi (liste d'attente quand il est épuisé). Joignez une liste préparée à l'avance, ou importez-la depuis Google Sheets.
           </p>
           <ProductsEditor rows={rows} onChange={setRows} />
         </div>

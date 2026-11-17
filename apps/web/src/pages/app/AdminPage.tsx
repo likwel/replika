@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Select } from "@/components/ui/Select";
 import { Navigate, useOutletContext } from "react-router-dom";
-import {
-  AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, Coins, CreditCard, Gift, Hourglass, Languages, Loader2,
-  Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus,
-  Users, Wallet, XCircle,
-} from "lucide-react";
+import { AlertTriangle, BadgeCheck, Bot, CalendarClock, CheckCircle2, Clock, Coins, CreditCard, Gift, Hourglass, Languages, Loader2, Ban, LogOut, Mail, ShieldOff, MessageCircle, MoreHorizontal, PauseCircle, Percent, PiggyBank, PlayCircle, RotateCcw, UserX, Plug, Plus, Receipt, Repeat, Trash2, Radio, RefreshCw, Search, ShieldCheck, Smartphone, Sparkles, TrendingUp, UserPlus, Users, Wallet, XCircle, Save, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
@@ -15,6 +12,8 @@ import { Alert } from "@/components/ui/Alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Pagination } from "@/components/ui/Pagination";
 import { BarList, ColumnChart } from "@/components/admin/Charts";
+import { CardTitle, Hero, Panel as DashPanel, SkeletonCards } from "@/components/ui/Dash";
+import { StatCard } from "@/components/ui/StatCard";
 import { FloatingMenu, MenuItem, MenuSeparator } from "@/components/ui/FloatingMenu";
 import {
   EXPENSE_LABELS, adminApi, type AccountFilter, type AccountState, type AdminOverview, type AdminPayment, type AdminStatus, type AdminUser,
@@ -51,12 +50,11 @@ const PAY_STATUS: Record<PaymentStatus, { label: string; color: string; bg: stri
 
 const LANG_LABEL: Record<string, string> = { AUTO: "Langue du client", MG: "Malagasy", FR: "Français" };
 const pct = (n: number) => `${Math.round(n * 100)} %`;
-const card = { background: theme.bgCard, border: `1px solid ${theme.border}` };
 
 const DESCRIPTIONS = [
   "Suivi de la plateforme : inscriptions, encaissements et activité de vos clients.",
   "Tous les comptes SuiteFlow, leur formule, leur consommation et ce qu'ils ont payé.",
-  "Tous les paiements Papi.mg : montant brut, commission et net encaissé, numéro du payeur.",
+  "Tous les paiements : montant brut, commission et net encaissé, numéro du payeur.",
   "Vos dépenses (hébergement, IA, marketing…) : elles sont déduites du bénéfice.",
   "Modèle IA, consommation, coûts estimés et état des services.",
   "Demandes reçues par le formulaire « Nous contacter » (site et application).",
@@ -77,47 +75,33 @@ export function AdminPage() {
 
 // ─── Briques ─────────────────────────────────────────────────────────────────
 
-function Stat({ icon: Icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail?: ReactNode; tone?: "warn" | "bad" }) {
-  return (
-    <div className="rounded-2xl px-4 py-3.5" style={card}>
-      <p className="flex items-center gap-1.5 text-[12px]" style={{ color: theme.textMuted }}>
-        <Icon size={13} /> {label}
-      </p>
-      <p className="mt-1 text-[22px] font-semibold leading-tight tracking-tight tabular-nums" style={{ color: tone === "bad" ? theme.red : tone === "warn" ? theme.amber : theme.text }}>
-        {value}
-      </p>
-      {detail && <p className="mt-0.5 text-[11.5px]" style={{ color: theme.textMuted }}>{detail}</p>}
-    </div>
-  );
+// Couleur de la tuile d'icône selon le sujet (palette des modules de l'application)
+const TINT = new Map<LucideIcon, string>([
+  [Users, "#3B82F6"], [Plug, "#3B82F6"], [TrendingUp, "#10B981"], [BadgeCheck, "#8B5CF6"], [CreditCard, "#F59E0B"], [Smartphone, "#06B6D4"],
+  [Sparkles, "#f05a1a"], [Wallet, "#f05a1a"], [Coins, "#F59E0B"], [Receipt, "#10B981"], [AlertTriangle, "#F59E0B"], [Clock, "#06B6D4"],
+  [MessageCircle, "#8B5CF6"], [Languages, "#06B6D4"], [ShieldCheck, "#6366F1"], [UserPlus, "#3B82F6"],
+]);
+
+function Stat({ icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail?: ReactNode; tone?: "warn" | "bad" }) {
+  return <StatCard icon={icon} label={label} value={value} detail={detail} tone={tone} color={TINT.get(icon) ?? "#f05a1a"} />;
 }
 
-function Panel({ title, icon: Icon, children, action }: { title: string; icon?: LucideIcon; children: ReactNode; action?: ReactNode }) {
+function Panel({ title, subtitle, icon, children, action }: { title: string; subtitle?: ReactNode; icon?: LucideIcon; children: ReactNode; action?: ReactNode }) {
   return (
-    <section className="rounded-2xl p-5" style={card}>
-      <div className="mb-4 flex items-center gap-2">
-        {Icon && <Icon size={16} style={{ color: theme.textMuted }} />}
-        <h3 className="flex-1 text-[14px] font-semibold" style={{ color: theme.text }}>{title}</h3>
-        {action}
-      </div>
+    <DashPanel title={title} subtitle={subtitle} icon={icon} tint={icon ? TINT.get(icon) : undefined} action={action}>
       {children}
-    </section>
+    </DashPanel>
   );
 }
 
+// Choix de période : contrôle segmenté (piste en creux, choix en relief)
 function PeriodPicker({ value, onChange }: { value: number; onChange: (d: number) => void }) {
   return (
-    <div className="flex rounded-lg p-0.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }} role="radiogroup" aria-label="Période">
+    <div className="seg" role="radiogroup" aria-label="Période">
       {PERIODS.map((p) => {
         const on = p.days === value;
         return (
-          <button
-            key={p.days}
-            role="radio"
-            aria-checked={on}
-            onClick={() => onChange(p.days)}
-            className="rounded-md px-3 py-1 text-[12.5px] font-medium transition-colors"
-            style={{ background: on ? theme.bgDark : "transparent", color: on ? "#fff" : theme.textMuted }}
-          >
+          <button key={p.days} role="radio" aria-checked={on} onClick={() => onChange(p.days)} className={`seg-b ${on ? "on" : ""}`}>
             {p.label}
           </button>
         );
@@ -164,7 +148,7 @@ function OverviewView() {
   return (
     <div className="flex flex-col gap-5">
       {/* Filtre : une ligne, au-dessus de tout ce qu'il concerne */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="card-x flex flex-wrap items-center gap-2 rounded-2xl p-3">
         <PeriodPicker value={days} onChange={setDays} />
         <Button size="sm" variant="ghost" icon={loading ? Loader2 : RefreshCw} onClick={reload} disabled={loading} className={loading ? "[&>svg]:animate-spin" : ""}>
           Actualiser
@@ -172,36 +156,29 @@ function OverviewView() {
       </div>
       {error && <Alert variant="error">{error}</Alert>}
       {!data ? (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl" style={{ background: theme.bg }} />)}
-        </div>
+        <SkeletonCards count={4} height={104} className="grid grid-cols-2 gap-3 lg:grid-cols-4" />
       ) : (
         <div className="flex flex-col gap-5" style={{ opacity: loading ? 0.6 : 1, transition: "opacity .2s" }}>
-          {/* Chiffre principal : bénéfice net de la période, et le compte de résultat qui y mène */}
-          <section className="grid grid-cols-1 overflow-hidden rounded-2xl lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]" style={card}>
-            <div className="flex flex-col justify-between gap-5 px-6 py-5">
-              <div>
-                <p className="flex items-center gap-1.5 text-[13px]" style={{ color: theme.textMuted }}>
-                  <PiggyBank size={14} /> Bénéfice net · {periodLabel}
-                </p>
-                <p className="mt-1 text-[48px] font-semibold leading-none tracking-tight" style={{ color: data.finance.profit < 0 ? theme.red : theme.text }}>
-                  {fmtAr(data.finance.profit)}
-                </p>
-                <p className="mt-2 text-[12.5px]" style={{ color: theme.textMuted }}>
-                  Marge {pct(data.finance.margin)} · sur {fmtAr(data.finance.gross)} collectés (brut)
-                </p>
+          {/* Chiffre principal : bénéfice net de la période (carte héros), et le compte de résultat qui y mène */}
+          <section className="stagger grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-5">
+            <Hero
+              icon={PiggyBank}
+              label={`Bénéfice net · ${periodLabel}`}
+              value={fmtAr(data.finance.profit)}
+              tone={data.finance.profit < 0 ? "bad" : undefined}
+              caption={`Marge ${pct(data.finance.margin)} · sur ${fmtAr(data.finance.gross)} collectés (brut)`}
+            >
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                <Mini dark label="Revenu mensuel récurrent" value={fmtAr(data.subscriptions.mrr)} detail="estimé, formules payées en cours" />
+                <Mini dark label="Collecté depuis le début" value={fmtAr(data.revenue.total)} detail={`${fmtNum(data.revenue.totalCount)} paiements, brut`} />
+                <Mini dark label="En attente de paiement" value={fmtAr(data.revenue.pending.amount)} detail={`${data.revenue.pending.count} lien${data.revenue.pending.count > 1 ? "s" : ""}`} />
+                <Mini dark label="Paiements échoués" value={fmtNum(data.revenue.failed)} detail={periodLabel} />
               </div>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <Mini label="Revenu mensuel récurrent" value={fmtAr(data.subscriptions.mrr)} detail="estimé, formules payées en cours" />
-                <Mini label="Collecté depuis le début" value={fmtAr(data.revenue.total)} detail={`${fmtNum(data.revenue.totalCount)} paiements, brut`} />
-                <Mini label="En attente de paiement" value={fmtAr(data.revenue.pending.amount)} detail={`${data.revenue.pending.count} lien${data.revenue.pending.count > 1 ? "s" : ""}`} />
-                <Mini label="Paiements échoués" value={fmtNum(data.revenue.failed)} detail={periodLabel} />
-              </div>
-            </div>
+            </Hero>
             <Ledger finance={data.finance} periodLabel={periodLabel} count={data.revenue.periodCount} />
           </section>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5">
             <Stat icon={Users} label="Utilisateurs" value={fmtNum(data.users.total)} detail={`+${fmtNum(data.users.new)} sur ${periodLabel}`} />
             <Stat icon={TrendingUp} label="Actifs (7 derniers jours)" value={fmtNum(data.users.active7d)} detail={data.users.total ? `${pct(data.users.active7d / data.users.total)} des comptes` : undefined} />
             <Stat icon={BadgeCheck} label="Abonnés payants" value={fmtNum(data.subscriptions.paying)} detail={`${fmtNum(data.subscriptions.byStatus.TRIAL)} en essai`} />
@@ -209,12 +186,12 @@ function OverviewView() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <ColumnChart title="Montant collecté par jour" subtitle={`Paiements confirmés · ${periodLabel}`} data={data.revenue.daily} format={fmtAr} icon={Wallet} loading={loading} />
-            <ColumnChart title="Inscriptions par jour" subtitle={`Nouveaux comptes · ${periodLabel}`} data={data.users.signups} format={fmtNum} icon={UserPlus} loading={loading} integer />
+            <ColumnChart title="Montant collecté par jour" subtitle={`Paiements confirmés · ${periodLabel}`} data={data.revenue.daily} format={fmtAr} icon={Wallet} tint="#f05a1a" loading={loading} />
+            <ColumnChart title="Inscriptions par jour" subtitle={`Nouveaux comptes · ${periodLabel}`} data={data.users.signups} format={fmtNum} icon={UserPlus} tint="#3B82F6" loading={loading} integer />
           </div>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <Panel title="Comptes par statut" icon={Users}>
+            <Panel title="Comptes par statut" subtitle="Répartition des comptes selon leur abonnement" icon={Users}>
               <BarList
                 format={fmtNum}
                 rows={(["ACTIVE", "TRIAL", "EXPIRED"] as AdminStatus[]).map((s) => ({ key: s, label: STATUS_META[s].label, value: data.subscriptions.byStatus[s], icon: STATUS_META[s].icon }))}
@@ -225,7 +202,7 @@ function OverviewView() {
                   ` Modération : ${data.users.moderation.suspended} suspendu${data.users.moderation.suspended > 1 ? "s" : ""}, ${data.users.moderation.banned} banni${data.users.moderation.banned > 1 ? "s" : ""}, ${data.users.moderation.deleted} supprimé${data.users.moderation.deleted > 1 ? "s" : ""}.`}
               </p>
             </Panel>
-            <Panel title={`Revenus par formule · ${periodLabel}`} icon={CreditCard}>
+            <Panel title={`Revenus par formule · ${periodLabel}`} subtitle="Montants encaissés, formule par formule" icon={CreditCard}>
               <BarList
                 format={fmtAr}
                 empty="Aucun abonnement payé sur la période"
@@ -236,7 +213,7 @@ function OverviewView() {
                 ].sort((a, b) => b.value - a.value)}
               />
             </Panel>
-            <Panel title={`Moyens de paiement · ${periodLabel}`} icon={Smartphone}>
+            <Panel title={`Moyens de paiement · ${periodLabel}`} subtitle="Montants encaissés selon le moyen de paiement" icon={Smartphone}>
               <BarList
                 format={fmtAr}
                 empty="Aucun paiement sur la période"
@@ -247,7 +224,7 @@ function OverviewView() {
             </Panel>
           </div>
 
-          <Panel title={`Activité de la plateforme · ${periodLabel}`} icon={MessageCircle}>
+          <Panel title={`Activité de la plateforme · ${periodLabel}`} subtitle="Ce que font vos clients avec SuiteFlow" icon={MessageCircle}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
               <Mini label="Pages Facebook actives" value={fmtNum(data.usage.pages.active)} detail={`${data.usage.pages.total} connectées`} />
               <Mini label="Comptes Instagram actifs" value={fmtNum(data.usage.instagram.active)} />
@@ -268,7 +245,7 @@ function Ledger({ finance: f, periodLabel, count }: { finance: AdminOverview["fi
   const line = (label: ReactNode, value: number, opts: { sign?: "-" | "="; detail?: ReactNode; strong?: boolean } = {}) => (
     <div
       className="flex items-start justify-between gap-4 py-2"
-      style={{ borderTop: opts.sign === "=" ? `1px solid ${theme.border}` : undefined, fontWeight: opts.strong ? 600 : 400 }}
+      style={{ borderTop: opts.sign === "=" ? "1px solid var(--line-2)" : undefined, fontWeight: opts.strong ? 700 : 500 }}
     >
       <div className="min-w-0">
         <p style={{ color: theme.text }}>
@@ -284,14 +261,14 @@ function Ledger({ finance: f, periodLabel, count }: { finance: AdminOverview["fi
     </div>
   );
   return (
-    <div className="px-6 py-4 text-[13px]" style={{ background: theme.bg, borderLeft: `1px solid ${theme.border}` }}>
-      <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide" style={{ color: theme.textMuted }}>Compte de résultat · {periodLabel}</p>
+    <div className="card-s px-5 py-5 text-[13px]">
+      <CardTitle title="Compte de résultat" subtitle={`Du montant collecté au bénéfice · ${periodLabel}`} icon={Receipt} tint="#10B981" className="!mb-1.5" />
       {line("Montant collecté (brut)", f.gross, { detail: `${fmtNum(count)} paiement${count > 1 ? "s" : ""} confirmé${count > 1 ? "s" : ""}` })}
-      {line("Commissions Papi.mg", f.fees, {
+      {line("Commissions de paiement", f.fees, {
         sign: "-",
         detail: f.feesEstimated
           ? `${f.feesEstimated} estimée${f.feesEstimated > 1 ? "s" : ""} avec vos taux : MVola ${f.feeRates.MVOLA} %, Orange ${f.feeRates.ORANGE_MONEY} %, Airtel ${f.feeRates.AIRTEL_MONEY} %, carte ${f.feeRates.BRED} %`
-          : "transmises par Papi",
+          : "transmises par l'opérateur",
       })}
       {line("Encaissé net", f.net, { sign: "=", strong: true })}
       {line("Coût IA estimé", f.aiCost, { sign: "-", detail: `${fmtNum(f.aiReplies)} réponses IA sur la période` })}
@@ -306,12 +283,12 @@ function Ledger({ finance: f, periodLabel, count }: { finance: AdminOverview["fi
   );
 }
 
-function Mini({ label, value, detail }: { label: string; value: string; detail?: string }) {
+function Mini({ label, value, detail, dark }: { label: string; value: string; detail?: string; dark?: boolean }) {
   return (
-    <div>
-      <p className="text-[12px]" style={{ color: theme.textMuted }}>{label}</p>
-      <p className="text-[18px] font-semibold tabular-nums" style={{ color: theme.text }}>{value}</p>
-      {detail && <p className="text-[11.5px]" style={{ color: theme.textMuted }}>{detail}</p>}
+    <div className="min-w-0">
+      <p className="text-[12px] font-medium" style={{ color: dark ? "rgba(255,255,255,0.6)" : theme.textMuted }}>{label}</p>
+      <p className="tabular truncate text-[18px] font-extrabold tracking-[-0.02em]" style={{ color: dark ? "#fff" : theme.text }}>{value}</p>
+      {detail && <p className="text-[11.5px]" style={{ color: dark ? "rgba(255,255,255,0.5)" : theme.textMuted }}>{detail}</p>}
     </div>
   );
 }
@@ -362,31 +339,31 @@ function UsersView() {
           <Search size={14} style={{ color: theme.textMuted }} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nom ou e-mail…" className="min-w-0 flex-1 bg-transparent text-[13px] outline-none" style={{ color: theme.text }} />
         </label>
-        <select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Formule">
+        <Select value={plan} onChange={(e) => { setPlan(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Formule">
           <option value="">Toutes les formules</option>
           <option value="STARTER">Starter</option>
           <option value="PRO">Pro</option>
           <option value="BUSINESS">Business</option>
           <option value="AGENCY">Agence</option>
-        </select>
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Statut">
+        </Select>
+        <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className={select} style={selectStyle} aria-label="Statut">
           <option value="">Tous les statuts</option>
           <option value="ACTIVE">Actifs</option>
           <option value="TRIAL">En essai</option>
           <option value="EXPIRED">Expirés</option>
-        </select>
-        <select value={account} onChange={(e) => { setAccount(e.target.value as AccountFilter); setPage(1); }} className={select} style={selectStyle} aria-label="État du compte">
+        </Select>
+        <Select value={account} onChange={(e) => { setAccount(e.target.value as AccountFilter); setPage(1); }} className={select} style={selectStyle} aria-label="État du compte">
           <option value="current">Comptes non supprimés</option>
           <option value="active">Actifs</option>
           <option value="suspended">Suspendus</option>
           <option value="banned">Bannis</option>
           <option value="deleted">Supprimés</option>
           <option value="all">Tous, y compris supprimés</option>
-        </select>
+        </Select>
         {data && <span className="text-[12.5px]" style={{ color: theme.textMuted }}>{fmtNum(data.total)} compte{data.total > 1 ? "s" : ""}</span>}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl" style={{ ...card, opacity: loading && data ? 0.6 : 1 }}>
+      <div className="overflow-x-auto rounded-2xl card-x" style={{ opacity: loading && data ? 0.6 : 1 }}>
         <table className="w-full min-w-[1060px] text-[13px] [&_td]:whitespace-nowrap">
           <thead style={{ background: theme.bg, borderBottom: `1px solid ${theme.border}` }}>
             <tr>
@@ -590,20 +567,20 @@ function EditPlanModal({ user, onClose, onSaved }: { user: AdminUser; onClose: (
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 size={14} className="animate-spin" />} Enregistrer</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={save} disabled={saving} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Save}>Enregistrer</Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <label className="block">
           <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Formule</span>
-          <select value={plan} onChange={(e) => setPlan(e.target.value as PlanId)} className={inputClass} style={inputStyle}>
+          <Select value={plan} onChange={(e) => setPlan(e.target.value as PlanId)} className={inputClass} style={inputStyle}>
             <option value="STARTER">Starter</option>
             <option value="PRO">Pro</option>
             <option value="BUSINESS">Business</option>
             <option value="AGENCY">Agence (illimitée)</option>
-          </select>
+          </Select>
         </label>
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Échéance</span>
@@ -618,7 +595,7 @@ function EditPlanModal({ user, onClose, onSaved }: { user: AdminUser; onClose: (
           <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Note interne (optionnel)</span>
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="Geste commercial, contrat Agence…" className={inputClass} style={inputStyle} />
         </label>
-        <Alert variant="info">La formule passe en « manuelle » : elle ne dépend plus d'un paiement Papi. Les Pages en trop sont désactivées si la nouvelle formule en permet moins.</Alert>
+        <Alert variant="info">La formule passe en « manuelle » : elle ne dépend plus d'un paiement en ligne. Les Pages en trop sont désactivées si la nouvelle formule en permet moins.</Alert>
         {error && <Alert variant="error">{error}</Alert>}
       </div>
     </Modal>
@@ -672,7 +649,7 @@ function GiftModal({ user, kind, onClose, onSaved }: { user: AdminUser; kind: Gi
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
           <Button size="sm" icon={kind === "hours" ? Gift : Coins} onClick={save} disabled={saving || amount < 1}>Offrir {g.unit(amount)}</Button>
         </>
       }
@@ -734,7 +711,7 @@ function PaymentsView() {
         {data && <span className="ml-1 text-[12.5px]" style={{ color: theme.textMuted }}>{fmtNum(data.total)} paiement{data.total > 1 ? "s" : ""}</span>}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl" style={{ ...card, opacity: loading && data ? 0.6 : 1 }}>
+      <div className="overflow-x-auto rounded-2xl card-x" style={{ opacity: loading && data ? 0.6 : 1 }}>
         <table className="w-full min-w-[1150px] text-[13px] [&_td]:whitespace-nowrap">
           <thead style={{ background: theme.bg, borderBottom: `1px solid ${theme.border}` }}>
             <tr>
@@ -766,7 +743,7 @@ function PaymentsView() {
                           : `${p.planName} · ${p.period === "ANNUAL" ? "annuel" : "mensuel"}`}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.text }}>{fmtAr(p.amount)}</td>
-                    <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.textMuted }} title={p.feeEstimated ? "Estimée d'après les tarifs Papi" : "Transmise par Papi"}>
+                    <td className="px-3 py-2.5 tabular-nums" style={{ color: theme.textMuted }} title={p.feeEstimated ? "Estimée d'après les tarifs de l'opérateur" : "Transmise par l'opérateur"}>
                       {p.fee === null ? "—" : `${p.feeEstimated ? "≈ " : ""}− ${fmtAr(p.fee)}`}
                     </td>
                     <td className="px-3 py-2.5 font-semibold tabular-nums" style={{ color: theme.text }}>{p.net === null ? "—" : fmtAr(p.net)}</td>
@@ -864,7 +841,7 @@ function MessagesView() {
 
       <div className="flex flex-col gap-3" style={{ opacity: loading && data ? 0.6 : 1 }}>
         {data?.messages.length === 0 && (
-          <div className="rounded-2xl px-4 py-10 text-center text-[13px]" style={{ ...card, color: theme.textMuted }}>
+          <div className="rounded-2xl px-4 py-10 text-center text-[13px] card-x" style={{ color: theme.textMuted }}>
             {status === "NEW" ? "Aucun message à traiter." : "Aucun message."}
           </div>
         )}
@@ -872,7 +849,7 @@ function MessagesView() {
           const fresh = m.status === "NEW";
           const reply = `mailto:${m.email}?subject=${encodeURIComponent(`Re : ${m.subjectLabel} — SuiteFlow`)}`;
           return (
-            <article key={m.id} className="rounded-2xl p-4" style={{ ...card, borderLeft: `3px solid ${fresh ? theme.gold : theme.border}` }}>
+            <article key={m.id} className="rounded-2xl p-4 card-x" style={{ borderLeft: `3px solid ${fresh ? theme.gold : theme.border}` }}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-2 text-[14px] font-semibold" style={{ color: theme.text }}>
@@ -929,14 +906,14 @@ function MessagesView() {
 function AiView() {
   const { data, error } = useOverview(30);
   if (error) return <Alert variant="error">{error}</Alert>;
-  if (!data) return <div className="h-40 animate-pulse rounded-2xl" style={{ background: theme.bg }} />;
+  if (!data) return <SkeletonCards count={3} height={104} className="grid grid-cols-1 gap-3 sm:grid-cols-3" />;
   const ai = data.ai;
   const sys = data.system;
   const month = new Date(`${data.usage.month}-15`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
   return (
     <div className="flex flex-col gap-5">
-      <section className="flex flex-wrap items-center gap-4 rounded-2xl px-5 py-4" style={card}>
+      <section className="flex flex-wrap items-center gap-4 rounded-2xl px-5 py-4 card-x">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: ai.configured ? theme.goldSoft : theme.dangerBg }}>
           <Bot size={22} style={{ color: ai.configured ? theme.goldDark : theme.red }} />
         </span>
@@ -958,14 +935,14 @@ function AiView() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Panel title="Plus gros consommateurs d'IA ce mois-ci" icon={Users}>
+        <Panel title="Plus gros consommateurs d'IA ce mois-ci" subtitle="Les comptes qui génèrent le plus de réponses IA" icon={Users}>
           {ai.top.length === 0 ? (
             <p className="py-4 text-center text-[13px]" style={{ color: theme.textMuted }}>Aucune réponse IA ce mois-ci.</p>
           ) : (
             <BarList format={fmtNum} rows={ai.top.map((t) => ({ key: t.userId, label: `${t.name} · ${t.email}`, value: t.aiReplies, detail: "réponses" }))} />
           )}
         </Panel>
-        <Panel title="Langue des réponses IA" icon={Languages}>
+        <Panel title="Langue des réponses IA" subtitle="Langue choisie par compte pour les réponses" icon={Languages}>
           <BarList
             format={fmtNum}
             empty="Aucun compte n'utilise l'IA"
@@ -974,9 +951,9 @@ function AiView() {
         </Panel>
       </div>
 
-      <Panel title="Services" icon={ShieldCheck}>
+      <Panel title="Services" subtitle="État des services dont dépend la plateforme" icon={ShieldCheck}>
         <ul className="grid grid-cols-1 gap-x-8 gap-y-3 text-[13px] md:grid-cols-2">
-          <ServiceRow label="Paiement Papi.mg" ok={sys.papi.configured} value={sys.papi.configured ? (sys.papi.testMode ? "Configuré · mode test" : "Configuré · production") : "Clés absentes"} warn={sys.papi.testMode} />
+          <ServiceRow label="Paiement en ligne" ok={sys.papi.configured} value={sys.papi.configured ? (sys.papi.testMode ? "Configuré · mode test" : "Configuré · production") : "Clés absentes"} warn={sys.papi.testMode} />
           <ServiceRow label="Notifications de paiement" ok value={sys.papi.notifications ? "Adresse publique joignable" : "Adresse locale : paiements confirmés par vérification périodique"} warn={!sys.papi.notifications} />
           <li className="md:col-span-2"><MailTest mail={sys.mail} /></li>
           <ServiceRow label="Webhooks Meta" ok={sys.webhookConfigured} value={sys.webhookConfigured ? "Jeton défini" : "Non configurés"} warn={!sys.webhookConfigured} />
@@ -1052,13 +1029,13 @@ function ExpensesView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="card-x flex flex-wrap items-center gap-2 rounded-2xl p-3">
         <PeriodPicker value={days} onChange={setDays} />
         <Button size="sm" icon={Plus} onClick={() => setAdding(true)} className="ml-auto">Ajouter une dépense</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="overflow-x-auto rounded-2xl" style={card}>
+        <section className="overflow-x-auto rounded-2xl card-x">
           <table className="w-full min-w-[640px] text-[13px] [&_td]:whitespace-nowrap">
             <thead style={{ background: theme.bg, borderBottom: `1px solid ${theme.border}` }}>
               <tr>
@@ -1113,14 +1090,14 @@ function ExpensesView() {
         </section>
 
         <div className="flex flex-col gap-5">
-          <div className="rounded-2xl px-5 py-4" style={card}>
+          <div className="rounded-2xl px-5 py-4 card-x">
             <p className="flex items-center gap-1.5 text-[12.5px]" style={{ color: theme.textMuted }}><Receipt size={13} /> Total des dépenses · {periodLabel}</p>
             <p className="mt-1 text-[26px] font-semibold tabular-nums" style={{ color: theme.text }}>{fmtAr(data?.total ?? 0)}</p>
             <p className="mt-1 text-[11.5px]" style={{ color: theme.textMuted }}>
-              Déduit du bénéfice dans la vue d'ensemble, avec les commissions Papi et le coût IA estimé.
+              Déduit du bénéfice dans la vue d'ensemble, avec les commissions de paiement et le coût IA estimé.
             </p>
           </div>
-          <Panel title="Par catégorie" icon={Receipt}>
+          <Panel title="Par catégorie" subtitle="Répartition des dépenses de la période" icon={Receipt}>
             <BarList format={fmtAr} rows={byCategory} empty="Aucune dépense sur la période" />
           </Panel>
         </div>
@@ -1164,8 +1141,8 @@ function ExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={save} disabled={saving}>{saving && <Loader2 size={14} className="animate-spin" />} Ajouter</Button>
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={save} disabled={saving} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Plus}>Ajouter</Button>
         </>
       }
     >
@@ -1184,11 +1161,11 @@ function ExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
         </label>
         <label className="block sm:col-span-2">
           <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Catégorie</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className={inputClass} style={inputStyle}>
+          <Select value={category} onChange={(e) => setCategory(e.target.value as ExpenseCategory)} className={inputClass} style={inputStyle}>
             {(Object.keys(EXPENSE_LABELS) as ExpenseCategory[]).map((c) => (
               <option key={c} value={c}>{EXPENSE_LABELS[c]}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex items-start gap-2.5 sm:col-span-2">
           <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
@@ -1320,9 +1297,8 @@ function ModerationModal({ user, action, onClose, onDone }: { user: AdminUser; a
       onClose={onClose}
       footer={
         <>
-          <Button size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button size="sm" variant={copy.danger ? "danger" : "primary"} onClick={submit} disabled={saving}>
-            {saving && <Loader2 size={14} className="animate-spin" />}
+          <Button icon={X} size="sm" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button size="sm" icon={saving ? Loader2 : copy.danger ? Ban : ShieldCheck} className={saving ? "[&>svg]:animate-spin" : ""} variant={copy.danger ? "danger" : "primary"} onClick={submit} disabled={saving}>
             {copy.button}
           </Button>
         </>
@@ -1385,7 +1361,7 @@ function ModerationModal({ user, action, onClose, onDone }: { user: AdminUser; a
   );
 }
 
-// ─── Commissions Papi par opérateur ──────────────────────────────────────────
+// ─── Commissions par opérateur ──────────────────────────────────────────
 
 const FEE_FIELDS: Array<{ id: FeeMethod; label: string }> = [
   { id: "MVOLA", label: "MVola" },
@@ -1430,12 +1406,13 @@ function FeeRatesCard() {
 
   return (
     <Panel
-      title="Commissions Papi par opérateur"
+      title="Commissions par opérateur"
+      subtitle="Taux appliqués quand la commission n'est pas transmise"
       icon={Percent}
       action={
         settings && (
           <span className="text-[11.5px]" style={{ color: theme.textMuted }}>
-            {settings.custom && settings.updatedAt ? `Modifiées le ${fmtDate(settings.updatedAt)}` : "Tarifs publics Papi"}
+            {settings.custom && settings.updatedAt ? `Modifiées le ${fmtDate(settings.updatedAt)}` : "Tarifs publics"}
           </span>
         )
       }
@@ -1464,18 +1441,16 @@ function FeeRatesCard() {
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <p className="mr-auto max-w-xl text-[11.5px]" style={{ color: theme.textMuted }}>
-              Utilisées quand Papi ne transmet pas la commission d'un paiement (marquée « ≈ »). Une commission transmise par Papi n'est jamais remplacée.
+              Utilisées quand l'opérateur ne transmet pas la commission d'un paiement (marquée « ≈ »). Une commission transmise par l'opérateur n'est jamais remplacée.
             </p>
             {settings && (
               <>
-                {/* Préremplit les champs avec les tarifs publics Papi ; « Enregistrer » les applique */}
-                <Button size="sm" variant="ghost" onClick={() => setDraft(toDraft(settings.presets.transit))} disabled={saving}>Tarifs Transit</Button>
-                <Button size="sm" variant="ghost" onClick={() => setDraft(toDraft(settings.presets.direct))} disabled={saving}>Tarifs Direct</Button>
+                {/* Préremplit les champs avec les tarifs publics ; « Enregistrer » les applique */}
+                <Button icon={Percent} size="sm" variant="ghost" onClick={() => setDraft(toDraft(settings.presets.transit))} disabled={saving}>Tarifs Transit</Button>
+                <Button icon={Percent} size="sm" variant="ghost" onClick={() => setDraft(toDraft(settings.presets.direct))} disabled={saving}>Tarifs Direct</Button>
               </>
             )}
-            <Button size="sm" onClick={() => parsed && void save(parsed)} disabled={!dirty || invalid || saving}>
-              {saving && <Loader2 size={14} className="animate-spin" />} Enregistrer
-            </Button>
+            <Button size="sm" onClick={() => parsed && void save(parsed)} disabled={!dirty || invalid || saving} className={`${saving ? "[&>svg]:animate-spin" : ""}`} icon={saving ? Loader2 : Save}>Enregistrer</Button>
           </div>
           {invalid && <p className="mt-2 text-[12px]" style={{ color: theme.red }}>Chaque taux doit être compris entre 0 et 20 %.</p>}
           {error && <Alert variant="error" className="mt-3">{error}</Alert>}

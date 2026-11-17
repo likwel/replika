@@ -15,6 +15,8 @@ import {
   updateSessionSchema,
 } from "./live.schema.js";
 import { explain, liveService } from "./live.service.js";
+import { listService } from "./list.service.js";
+import { createListSchema, previewListSchema, readListSchema, updateListSchema } from "./list.schema.js";
 import { pollSession } from "./live.capture.js";
 
 // Lives : sessions de vente, commentaires capturés et commandes JP
@@ -23,6 +25,17 @@ router.use(authenticate);
 
 const uid = (req: Request) => req.user!.userId;
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ status: "success", data });
+
+// Listes d'articles (tableurs) à joindre aux sessions
+router.post("/lists/read", validate(readListSchema), catchAsync(async (req, res) => ok(res, await listService.read(req.body.source))));
+router.post("/lists/preview", validate(previewListSchema), catchAsync(async (req, res) => ok(res, await listService.preview(req.body.source, req.body.mapping))));
+router.get("/lists", catchAsync(async (req, res) => ok(res, await listService.list(uid(req)))));
+router.post("/lists", validate(createListSchema), catchAsync(async (req, res) => ok(res, await listService.create(uid(req), req.body), 201)));
+router.get("/lists/:id", catchAsync(async (req, res) => ok(res, await listService.get(uid(req), req.params.id))));
+router.get("/lists/:id/items", catchAsync(async (req, res) => ok(res, await listService.items(uid(req), req.params.id, req.query.refresh === "1"))));
+router.patch("/lists/:id", validate(updateListSchema), catchAsync(async (req, res) => ok(res, await listService.update(uid(req), req.params.id, req.body))));
+router.post("/lists/:id/refresh", catchAsync(async (req, res) => { const r = await listService.refresh(uid(req), req.params.id); ok(res, { list: r.list, issues: r.issues }); }));
+router.delete("/lists/:id", catchAsync(async (req, res) => { await listService.remove(uid(req), req.params.id); res.status(204).send(); }));
 
 router.get("/defaults", (_req, res) => ok(res, liveService.defaults()));
 router.post("/detect", validate(detectSchema), (req, res) => ok(res, liveService.detect(req.body.text, req.body.keywords, req.body.products)));
@@ -65,7 +78,7 @@ router.post(
   catchAsync(async (req, res) => {
     const session = await liveService.withAccount(uid(req), req.params.id);
     try {
-      ok(res, { created: await pollSession(session) });
+      ok(res, { created: (await pollSession(session)).orders });
     } catch (e) {
       throw new AppError(`Lecture des commentaires impossible : ${explain(e)}`, 502);
     }

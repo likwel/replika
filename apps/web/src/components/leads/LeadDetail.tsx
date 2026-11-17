@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { AlertTriangle, Loader2, Mail, MessageCircle, MessagesSquare, Phone, Radio, Save, Send, ShoppingBag, Trash2 } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
@@ -136,9 +137,9 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-xs font-medium" style={{ color: theme.textMuted }}>Statut</span>
-            <select value={form.status} onChange={set("status")} className={input} style={inputStyle}>
+            <Select value={form.status} onChange={set("status")} className={input} style={inputStyle}>
               {LEAD_STATUSES.map((s) => <option key={s} value={s}>{LEAD_STATUS[s].label}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="block">
             <span className="mb-1 block text-xs font-medium" style={{ color: theme.textMuted }}>Montant estimé (Ar)</span>

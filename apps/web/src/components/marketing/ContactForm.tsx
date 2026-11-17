@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import { Select } from "@/components/ui/Select";
 import { Building2, CheckCircle2, Loader2, Mail, Phone, Send, User } from "lucide-react";
 import { theme } from "@/theme";
 import { Field } from "@/components/ui/Field";
@@ -75,11 +76,11 @@ export function ContactForm({ defaultSubject = "SALES", prefill, onSent }: Props
       </div>
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Sujet</span>
-        <select value={form.subject} onChange={set("subject")} className={input} style={inputStyle}>
+        <Select value={form.subject} onChange={set("subject")} className={input} style={inputStyle}>
           {(Object.keys(CONTACT_SUBJECTS) as ContactSubject[]).map((k) => (
             <option key={k} value={k}>{CONTACT_SUBJECTS[k]}</option>
           ))}
-        </select>
+        </Select>
       </label>
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Message</span>

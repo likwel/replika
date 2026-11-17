@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Select } from "@/components/ui/Select";
+import { Loader2, Trash2, Save, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -86,11 +87,8 @@ export function MarketplaceOrderEditor({ order, listings, defaultListingId, onCl
               Supprimer
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
-          <Button size="sm" onClick={save} disabled={busy !== null}>
-            {busy === "save" && <Loader2 size={14} className="animate-spin" />}
-            Enregistrer
-          </Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button size="sm" onClick={save} disabled={busy !== null} className={`${busy === "save" ? "[&>svg]:animate-spin" : ""}`} icon={busy === "save" ? Loader2 : Save}>Enregistrer</Button>
         </>
       }
     >
@@ -98,9 +96,9 @@ export function MarketplaceOrderEditor({ order, listings, defaultListingId, onCl
         {!order && (
           <label className="block">
             <span className="mb-1 block text-[13px] font-semibold" style={{ color: theme.text }}>Annonce</span>
-            <select className={input} style={inputStyle} value={listingId} onChange={(e) => setListingId(e.target.value)}>
+            <Select className={input} style={inputStyle} value={listingId} onChange={(e) => setListingId(e.target.value)}>
               {listings.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
-            </select>
+            </Select>
           </label>
         )}
         <label className="block">
@@ -132,9 +130,9 @@ export function MarketplaceOrderEditor({ order, listings, defaultListingId, onCl
           </label>
           <label className="block">
             <span className="mb-1 block text-[13px] font-semibold" style={{ color: theme.text }}>Statut</span>
-            <select className={input} style={inputStyle} value={form.status} onChange={set("status")}>
+            <Select className={input} style={inputStyle} value={form.status} onChange={set("status")}>
               {STATUSES.map((s) => <option key={s} value={s}>{MARKETPLACE_ORDER_STATUS[s].label}</option>)}
-            </select>
+            </Select>
           </label>
         </div>
         <label className="block">

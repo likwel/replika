@@ -73,10 +73,10 @@ export function UsageBadge() {
   const bg = expired || pct === 0 ? theme.dangerBg : pct <= 20 ? theme.amberSoft : theme.greenSoft;
 
   return (
-    <div ref={ref} className="relative mr-1.5">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-semibold transition-[filter] hover:brightness-95"
+        className="flex h-[38px] items-center gap-1.5 rounded-xl px-3 text-[13px] font-bold transition-[filter] hover:brightness-95"
         style={{ background: bg, color: tone }}
         aria-expanded={open}
         aria-label="Usage de la formule"
@@ -89,7 +89,7 @@ export function UsageBadge() {
 
       {open && (
         <div
-          className="animate-panel-in absolute right-0 top-10 z-[60] w-[320px] max-w-[calc(100vw-24px)] rounded-xl p-4 shadow-xl"
+          className="animate-panel-in absolute right-0 top-12 z-[60] w-[320px] max-w-[calc(100vw-24px)] rounded-xl p-4 shadow-xl"
           style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}
         >
           <div className="flex items-center justify-between">

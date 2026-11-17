@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, Loader2, Minus, Plus, Radio, ShieldCheck, Smartphone } from "lucide-react";
+import { Clock, Loader2, Minus, Plus, Radio, ShieldCheck, Smartphone, X } from "lucide-react";
 import { theme } from "@/theme";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -43,7 +43,7 @@ function BuyLiveHoursDialog({ reason, onClose }: { reason: string | null; onClos
     setPaying(true);
     setError(null);
     try {
-      // Fenêtre Papi à part : la page reste ouverte et affiche le résultat
+      // Fenêtre de paiement à part : la page reste ouverte et affiche le résultat
       await payment.start(() => billingApi.buyLiveHours(hours), { label: `${hours} h de Live Manager`, amount: total });
       onClose();
     } catch (e) {
@@ -59,7 +59,7 @@ function BuyLiveHoursDialog({ reason, onClose }: { reason: string | null; onClos
       onClose={onClose}
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
+          <Button icon={X} variant="ghost" size="sm" onClick={onClose}>Annuler</Button>
           <Button size="sm" onClick={pay} disabled={!data || paying || !data.papiConfigured}>
             {paying ? <Loader2 size={15} className="animate-spin" /> : <Smartphone size={15} />}
             {data ? `Payer ${fmtAr(total)}` : "Payer"}

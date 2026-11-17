@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
-// Paiement Papi dans une fenêtre à part : la page principale reste ouverte, suit le paiement
-// (<PaymentHost /> dans AppLayout) et affiche le résultat. La fenêtre Papi revient sur /paiement/retour,
+// Paiement dans une fenêtre à part : la page principale reste ouverte, suit le paiement
+// (<PaymentHost /> dans AppLayout) et affiche le résultat. La fenêtre de paiement revient sur /paiement/retour,
 // qui prévient la page principale (postMessage + BroadcastChannel) puis se ferme.
 
 export const PAYMENT_CHANNEL = "suiteflow-payment";
@@ -42,8 +42,8 @@ function showLoading(win: Window) {
     win.document.title = "Paiement sécurisé…";
     win.document.body.innerHTML =
       '<div style="font-family:Inter,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#54656F;background:#F7F8FA">' +
-      '<div style="text-align:center"><div style="width:34px;height:34px;margin:0 auto 14px;border:3px solid #D1F4E0;border-top-color:#00A884;border-radius:50%;animation:s 0.8s linear infinite"></div>' +
-      "Ouverture du paiement sécurisé Papi…</div></div><style>@keyframes s{to{transform:rotate(360deg)}}</style>";
+      '<div style="text-align:center"><div style="width:34px;height:34px;margin:0 auto 14px;border:3px solid #FDE2D3;border-top-color:#F05A1A;border-radius:50%;animation:s 0.8s linear infinite"></div>' +
+      "Ouverture du paiement sécurisé…</div></div><style>@keyframes s{to{transform:rotate(360deg)}}</style>";
   } catch {
     // fenêtre déjà passée sur un autre domaine : rien à afficher
   }

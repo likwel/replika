@@ -34,7 +34,13 @@ export interface LiveSettings {
   recapMessage: string;
   recapUpdateMessage: string;
   deliveryFee: number;
+  // Autres commentaires (prix, questions…) : toutes les règles actives, seulement celles jointes à ce live, ou aucune réponse
+  replyMode: ReplyMode;
+  replyRuleIds: string[];
+  replyUseAi: boolean;
 }
+
+export type ReplyMode = "ALL" | "SELECTED" | "NONE";
 
 export interface LiveSession extends Omit<LiveSettings, "requiredFields"> {
   id: string;
@@ -145,7 +151,7 @@ type Res<T> = { status: string; data: T };
 const d = <T,>(p: Promise<Res<T>>) => p.then((r) => r.data);
 
 export const liveApi = {
-  defaults: () => d(api.get<Res<Omit<LiveSettings, "title" | "autoMessage" | "requiredFields"> & { requiredFields: string }>>("/lives/defaults")),
+  defaults: () => d(api.get<Res<Omit<LiveSettings, "title" | "autoMessage" | "requiredFields" | "replyMode" | "replyRuleIds" | "replyUseAi"> & { requiredFields: string }>>("/lives/defaults")),
   sources: (accountId: string) =>
     d(api.get<Res<{ lives: LiveSource[]; livesError: string | null; posts: LiveSource[]; postsError: string | null }>>(`/lives/sources?accountId=${encodeURIComponent(accountId)}`)),
   detect: (text: string, keywords?: string, products?: LiveProduct[]) => d(api.post<Res<Detection>>("/lives/detect", { text, keywords, products })),

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { AlertTriangle, Download, MessageSquare, Package, Phone, Plus, Search, ShoppingBag, Users, List, MapPin } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -36,7 +37,7 @@ function StatusSelect({ order, onChanged }: { order: LiveOrder; onChanged: (o: L
   const [busy, setBusy] = useState(false);
   const meta = ORDER_STATUS[order.status];
   return (
-    <select
+    <Select
       value={order.status}
       disabled={busy}
       onClick={(e) => e.stopPropagation()}
@@ -56,7 +57,7 @@ function StatusSelect({ order, onChanged }: { order: LiveOrder; onChanged: (o: L
       {ORDER_STATUSES.map((s) => (
         <option key={s} value={s}>{ORDER_STATUS[s].label}</option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -137,7 +138,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Client, téléphone, article…"
             className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-gold/40"
-            style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+            style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
           />
         </div>
         <div className="flex-1 sm:max-w-sm">
@@ -170,7 +171,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
       ) : group === "orders" ? (
         <>
           {/* Grand écran : tableau */}
-          <div className="hidden overflow-x-auto rounded-2xl md:block" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+          <div className="tbl hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead style={{ background: theme.bg, color: theme.textMuted }}>
                 <tr>
@@ -248,7 +249,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
       ) : group === "customers" ? (
         <>
           {/* Grand écran : tableau */}
-          <div className="hidden overflow-x-auto rounded-2xl md:block" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+          <div className="tbl hidden overflow-x-auto md:block">
             <table className="w-full min-w-[720px] text-sm">
               <thead style={{ background: theme.bg, color: theme.textMuted }}>
                 <tr>
@@ -313,7 +314,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
           {/* Mobile : cartes */}
           <ul className="grid gap-2 md:hidden">
           {customersPage.pageItems.map((c) => (
-            <li key={c.key} className="rounded-2xl p-3.5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+            <li key={c.key} className="rounded-2xl p-3.5 card-x">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold" style={{ color: theme.text }}>{c.fullName ?? c.name}</p>
@@ -349,7 +350,7 @@ export function OrdersTable({ orders, products = [], showSession, exportName, on
           </ul>
         </>
       ) : (
-        <div className="overflow-x-auto rounded-2xl" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+        <div className="tbl overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead style={{ background: theme.bg, color: theme.textMuted }}>
               <tr>

@@ -3,6 +3,7 @@ import { AlertTriangle, Facebook, RefreshCw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
+import { IconTile } from "@/components/ui/Dash";
 import { facebookApi } from "@/lib/facebook.api";
 import { isPermissionError } from "@/lib/meta";
 import type { AccountError } from "@/lib/workspace.api";
@@ -26,7 +27,7 @@ export function FilterChips<T extends string>({
           <button
             key={f.id}
             onClick={() => onChange(f.id)}
-            className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium"
+            className="flex h-9 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors"
             style={{
               background: active ? theme.goldSoft : "transparent",
               color: active ? theme.goldDark : theme.textMuted,
@@ -51,8 +52,7 @@ export function RefreshButton({ loading, onClick, title = "Actualiser" }: { load
   return (
     <button
       onClick={onClick}
-      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg hover:bg-black/5"
-      style={{ border: `1px solid ${theme.border}`, background: theme.bgCard }}
+      className="btn-soft flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
       title={title}
       aria-label={title}
     >
@@ -101,7 +101,16 @@ export function ListSkeleton({ height = 88, count = 4 }: { height?: number; coun
   );
 }
 
-export function EmptyState({ icon: Icon, title, children, dashed }: { icon: LucideIcon; title: string; children?: ReactNode; dashed?: boolean }) {
+export function EmptyState({ icon: Icon, title, children, dashed, bare }: { icon: LucideIcon; title: string; children?: ReactNode; dashed?: boolean; bare?: boolean }) {
+  // Volet d'une carte : pas de carte dans la carte, le message est centré dans toute la hauteur du volet
+  if (bare)
+    return (
+      <div className="flex h-full min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center">
+        <IconTile icon={Icon} size="lg" />
+        <p className="mt-4 text-[15px] font-bold" style={{ color: theme.text }}>{title}</p>
+        {children && <div className="mt-1 max-w-sm text-[13px] leading-snug" style={{ color: theme.textMuted }}>{children}</div>}
+      </div>
+    );
   return (
     <div
       className="flex flex-col items-center rounded-2xl px-6 py-10 text-center"

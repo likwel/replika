@@ -4,7 +4,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { theme } from "@/theme";
 import { PAYMENT_CHANNEL, PAYMENT_MESSAGE } from "@/lib/payment";
 
-// Retour de Papi (/paiement/retour?payment=success|failed&ref=…), dans la fenêtre de paiement :
+// Retour du paiement (/paiement/retour?payment=success|failed&ref=…), dans la fenêtre de paiement :
 // prévient la page principale puis se ferme. Ouverte sans fenêtre principale (redirection), elle
 // renvoie vers Paramètres › Facturation qui affiche le résultat.
 export function PaymentReturnPage() {

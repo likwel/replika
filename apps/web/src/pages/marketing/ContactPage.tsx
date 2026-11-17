@@ -21,7 +21,7 @@ export function ContactPage() {
       subtitle={subject === "AGENCY" ? "Parlez-nous de vos marques : nous préparons un devis Agence adapté à votre volume." : "Une question sur SuiteFlow, une formule ou votre compte ? Écrivez-nous."}
     >
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section className="rounded-2xl p-6 sm:p-8" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+        <section className="rounded-2xl p-6 sm:p-8 card-x">
           <ContactForm key={subject} defaultSubject={subject} prefill={{ name: user?.name, email: user?.email }} />
         </section>
         <aside className="flex flex-col gap-3">
@@ -37,7 +37,7 @@ export function ContactPage() {
 
 function Info({ icon: Icon, title, text }: { icon: LucideIcon; title: string; text: React.ReactNode }) {
   return (
-    <div className="flex gap-3 rounded-2xl p-4" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+    <div className="flex gap-3 rounded-2xl p-4 card-x">
       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: theme.goldSoft }}>
         <Icon size={17} style={{ color: theme.goldDark }} />
       </span>

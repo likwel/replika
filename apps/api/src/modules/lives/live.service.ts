@@ -197,6 +197,7 @@ async function contactCustomer(session: LiveSession, account: SocialAccount, ord
     data: {
       recipientId,
       error: errors.length ? errors.join(" · ") : null,
+      contactedAt: new Date(), // tentative faite (réussie ou non) : ne sera pas rejouée au redémarrage
       ...(newStatus !== order.status ? { status: newStatus } : {}),
     },
   });
@@ -289,6 +290,56 @@ export async function ingestLiveComment(session: SessionWithAccount, comment: Li
   if (!detection?.isJp) return { status: "other" };
   await createOrder(session, session.account, comment, detection);
   return { status: "jp" };
+}
+
+// ============================================================
+// Reprise après un arrêt du serveur (accident ou volontaire)
+// ============================================================
+
+const IN_FLIGHT_MS = 90 * 1000; // un JP plus récent est peut-être en cours de traitement : on ne le reprend pas
+const RECOVERY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // le message privé en réponse à un commentaire reste possible 7 jours
+
+// Chaque JP lu doit aller jusqu'au bout des étapes de Live Manager : commentaire → commande → message privé.
+// Un arrêt entre deux étapes laisserait un JP sans commande, ou une commande sans message : on les reprend ici.
+export async function recoverSession(session: SessionWithAccount): Promise<{ orders: number; messages: number }> {
+  const now = Date.now();
+  const stats = { orders: 0, messages: 0 };
+  const recent = new Date(now - RECOVERY_WINDOW_MS);
+  const settled = new Date(now - IN_FLIGHT_MS);
+
+  // 1. JP enregistrés sans commande (arrêt entre la lecture du commentaire et la création de la commande)
+  const jp = await prisma.liveComment.findMany({ where: { sessionId: session.id, isJp: true, createdAt: { gt: recent } } });
+  if (jp.length) {
+    const have = new Set(
+      (await prisma.liveOrder.findMany({ where: { sessionId: session.id, commentId: { in: jp.map((c) => c.externalId) } }, select: { commentId: true } })).map((o) => o.commentId)
+    );
+    const products = await productsOf(session.id);
+    const keywords = parseKeywords(session.keywords);
+    for (const c of jp.filter((c) => !have.has(c.externalId))) {
+      const detection = detectJp(c.text, keywords, products);
+      if (!detection?.isJp) continue;
+      const order = await createOrder(session, session.account, { id: c.externalId, text: c.text, authorId: c.authorId, authorName: c.authorName, createdAt: c.createdAt }, detection).catch((e) => {
+        console.error(`❌ Reprise du JP ${c.externalId} :`, e);
+        return null;
+      });
+      if (order) stats.orders++;
+    }
+  }
+
+  // 2. Commandes sans message privé tenté (arrêt entre la création de la commande et l'envoi du message)
+  if (session.autoMessage) {
+    const pending = await prisma.liveOrder.findMany({
+      where: { sessionId: session.id, contactedAt: null, commentId: { not: null }, createdAt: { gt: recent, lt: settled } },
+      orderBy: { createdAt: "asc" },
+      take: 50,
+    });
+    for (const o of pending) {
+      await contactCustomer(session, session.account, o, "new")
+        .then(() => stats.messages++)
+        .catch((e) => console.error(`❌ Reprise du message de la commande ${o.id} :`, e));
+    }
+  }
+  return stats;
 }
 
 // Session active qui suit cette publication : elle capture les JP de ses commentaires
@@ -621,6 +672,9 @@ export const liveService = {
         recapMessage: input.recapMessage ?? DEFAULT_TEMPLATES.recapMessage,
         recapUpdateMessage: input.recapUpdateMessage ?? DEFAULT_TEMPLATES.recapUpdateMessage,
         deliveryFee: input.deliveryFee ?? 0,
+        replyMode: input.replyMode ?? "ALL",
+        replyRuleIds: input.replyRuleIds ?? [],
+        replyUseAi: input.replyUseAi ?? true,
         activeSince: new Date(), // décompte des heures de live
         // Sans reprise de l'existant : seuls les commentaires publiés à partir de maintenant comptent
         cursor: input.includeExisting ? null : new Date(),
@@ -778,6 +832,8 @@ export const liveService = {
   async removeOrder(userId: string, id: string) {
     const existing = await findOrder(userId, id);
     await prisma.liveOrder.delete({ where: { id } });
+    // Commande retirée volontairement : le commentaire n'est plus un JP, la reprise après arrêt ne la recréera pas
+    if (existing.commentId) await prisma.liveComment.updateMany({ where: { sessionId: existing.sessionId, externalId: existing.commentId }, data: { isJp: false } });
     await syncProductStock(existing.sessionId, existing.code, consumesStock(existing.status), false, existing.quantity, existing.quantity);
   },
 

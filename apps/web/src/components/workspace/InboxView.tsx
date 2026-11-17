@@ -7,6 +7,7 @@ import { MessageCard } from "@/components/messages/MessageCard";
 import { automationApi } from "@/lib/automation.api";
 import { plural } from "@/lib/format";
 import { messageApi, type InboxMessage, type MessageKind, type MessageStatus } from "@/lib/message.api";
+import { refreshNotifications } from "@/hooks/useNotifications";
 import type { WsAccount } from "@/lib/workspace.api";
 import { AccountErrors, EmptyState, FilterChips, ListSkeleton, RefreshButton } from "./WorkspaceUi";
 import type { Focus } from "./helpers";
@@ -44,6 +45,8 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  // Messages jamais vus avant cette visite : gardés « Nouveau » le temps de la visite, puis marqués comme vus
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
   const request = useRef(0);
 
   const key = `${accountIds.join(",")}|${status}|${kind}`;
@@ -57,7 +60,12 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
         kind: kind || undefined,
         status: STATUS_FILTERS.find((f) => f.id === status)?.statuses,
       })
-      .then((list) => id === request.current && setMessages(list))
+      .then((list) => {
+        if (id !== request.current) return;
+        setMessages(list);
+        const unseen = list.filter((m) => !m.seenAt && (m.status === "PENDING" || m.status === "ESCALATED"));
+        if (unseen.length) setFresh((f) => new Set([...f, ...unseen.map((m) => m.id)]));
+      })
       .catch(() => id === request.current && setMessages((m) => m ?? []))
       .finally(() => {
         if (id !== request.current) return;
@@ -73,6 +81,18 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
   useEffect(() => {
     if (active) onDetailChange(false);
   }, [active]);
+
+  // Affichés depuis 1,5 s : les nouveaux messages sont comptés comme vus (la bulle de notification baisse)
+  useEffect(() => {
+    if (!active || !messages) return;
+    const ids = messages.filter((m) => !m.seenAt && (m.status === "PENDING" || m.status === "ESCALATED")).map((m) => m.id);
+    if (!ids.length) return;
+    const t = setTimeout(() => {
+      setMessages((list) => list?.map((m) => (ids.includes(m.id) ? { ...m, seenAt: new Date().toISOString() } : m)) ?? null);
+      messageApi.markSeen({ ids: ids.slice(0, 200) }).then(refreshNotifications).catch(() => undefined);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [active, messages]);
 
   // Relève d'abord les nouveautés côté Meta, puis recharge la liste
   const refresh = async () => {
@@ -91,7 +111,10 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
   const update = (m: InboxMessage) => {
     const before = messages?.find((x) => x.id === m.id);
     setMessages((list) => list?.map((x) => (x.id === m.id ? m : x)) ?? null);
-    if (before?.status !== m.status) onChanged();
+    if (before?.status !== m.status) {
+      onChanged();
+      refreshNotifications();
+    }
   };
 
   const contextOf = (m: InboxMessage) => {
@@ -123,7 +146,7 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
     .map((a) => ({ accountId: a.id, accountName: a.accountName, message: a.syncError! }));
 
   return (
-    <div className={active ? "mx-auto flex w-full max-w-7xl flex-col gap-4" : "hidden"}>
+    <div className={active ? "flex max-h-[75dvh] min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 sm:p-5 lg:max-h-none" : "hidden"}>
       {active &&
         toolbar &&
         createPortal(
@@ -153,18 +176,18 @@ export function InboxView({ active, accounts, accountIds, toolbar, query, onOpen
         <ListSkeleton height={128} count={3} />
       ) : visible.length === 0 ? (
         status === "open" && !q ? (
-          <EmptyState icon={CheckCircle2} title="Tout est traité">
+          <EmptyState bare icon={CheckCircle2} title="Tout est traité">
             Aucun commentaire ni message en attente sur les comptes sélectionnés. Les nouveaux arrivent ici automatiquement.
           </EmptyState>
         ) : (
-          <EmptyState icon={Inbox} title="Aucun élément">
+          <EmptyState bare icon={Inbox} title="Aucun élément">
             {q ? "Aucun résultat pour cette recherche." : "Rien dans cette catégorie pour les comptes sélectionnés."}
           </EmptyState>
         )
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map((m) => (
-            <MessageCard key={m.id} message={m} onChange={update} context={contextOf(m)} />
+            <MessageCard key={m.id} message={m} onChange={update} context={contextOf(m)} isNew={fresh.has(m.id)} />
           ))}
         </div>
       )}

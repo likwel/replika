@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Title } from "@/components/ui/Title";
@@ -12,20 +12,18 @@ interface Props {
   className?: string;
 }
 
+const TILE = { "--a": "var(--brand-1)", "--b": "var(--brand-3)" } as CSSProperties;
+
 // Carte centrée icône + titre + texte : écrans "aucune donnée" et "bientôt disponible"
 export function StateCard({ icon: Icon, title, children, badge, action, className = "" }: Props) {
   return (
-    <div className={`rounded-2xl p-10 text-center ${className}`} style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: theme.goldSoft }}>
-        <Icon size={26} style={{ color: theme.gold }} />
-      </div>
-      <Title className="text-xl">{title}</Title>
+    <div className={`card-s items-center p-10 text-center ${className}`}>
+      <span className="ico-tile lg mb-4" style={{ ...TILE, color: theme.onAccent }}>
+        <Icon size={25} strokeWidth={2.1} />
+      </span>
+      <Title className="text-[19px] !font-extrabold !tracking-[-0.02em]">{title}</Title>
       {children && <p className="mx-auto mt-2 max-w-md text-sm" style={{ color: theme.textMuted }}>{children}</p>}
-      {badge && (
-        <span className="mt-4 inline-block rounded-full px-3 py-1 text-xs font-semibold" style={{ background: theme.border, color: theme.textMuted }}>
-          {badge}
-        </span>
-      )}
+      {badge && <span className="chip off mt-4">{badge}</span>}
       {action && <div className="mt-5 flex justify-center">{action}</div>}
     </div>
   );

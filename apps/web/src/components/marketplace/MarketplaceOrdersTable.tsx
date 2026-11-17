@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select } from "@/components/ui/Select";
 import { Phone, MapPin, Plus, Search, ShoppingBag } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +18,7 @@ function StatusSelect({ order, onChanged }: { order: MarketplaceOrder; onChanged
   const [busy, setBusy] = useState(false);
   const meta = MARKETPLACE_ORDER_STATUS[order.status];
   return (
-    <select
+    <Select
       value={order.status}
       disabled={busy}
       onClick={(e) => e.stopPropagation()}
@@ -33,7 +34,7 @@ function StatusSelect({ order, onChanged }: { order: MarketplaceOrder; onChanged
       style={{ background: meta.bg, color: meta.color }}
     >
       {STATUSES.map((s) => <option key={s} value={s}>{MARKETPLACE_ORDER_STATUS[s].label}</option>)}
-    </select>
+    </Select>
   );
 }
 
@@ -68,7 +69,7 @@ export function MarketplaceOrdersTable({ orders, onOpen, onChanged, onAdd }: Pro
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Client, téléphone, annonce…"
             className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-gold/40"
-            style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, color: theme.text }}
+            style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
           />
         </div>
         <div className="min-w-0 flex-1">
@@ -85,7 +86,7 @@ export function MarketplaceOrdersTable({ orders, onOpen, onChanged, onAdd }: Pro
         </EmptyState>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-2xl md:block" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
+          <div className="tbl hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead style={{ background: theme.bg, color: theme.textMuted }}>
                 <tr>

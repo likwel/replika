@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Table2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import type { DayPoint } from "@/lib/admin.api";
+import { Panel, ProgressRow } from "@/components/ui/Dash";
 
 // Graphiques du tableau de bord : une seule série par graphique (couleur d'accent), marques fines,
 // valeur au survol de chaque colonne, maximum étiqueté, et vue tableau pour lire chaque valeur.
@@ -34,9 +35,11 @@ interface ColumnProps {
   height?: number;
   loading?: boolean;
   integer?: boolean; // comptage : graduations entières seulement
+  tint?: string; // couleur de la tuile d'icône
 }
 
-export function ColumnChart({ title, subtitle, data, format, icon: Icon, height = 220, loading, integer }: ColumnProps) {
+export function ColumnChart({ title, subtitle, data, format, icon: Icon, height = 220, loading, integer, tint }: ColumnProps) {
+  const gid = `col${useId().replace(/:/g, "")}`;
   const wrap = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   const [hover, setHover] = useState<number | null>(null);
@@ -64,27 +67,26 @@ export function ColumnChart({ title, subtitle, data, format, icon: Icon, height 
   const total = data.reduce((s, d) => s + d.value, 0);
 
   return (
-    <section className="rounded-2xl p-5" style={{ background: theme.bgCard, border: `1px solid ${theme.border}` }}>
-      <div className="mb-3 flex items-start gap-2">
-        {Icon && <Icon size={16} className="mt-0.5" style={{ color: theme.textMuted }} />}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-[14px] font-semibold" style={{ color: theme.text }}>{title}</h3>
-          {subtitle && <p className="text-[12px]" style={{ color: theme.textMuted }}>{subtitle}</p>}
-        </div>
+    <Panel
+      title={title}
+      subtitle={subtitle}
+      icon={Icon}
+      tint={tint}
+      action={
         <button
           onClick={() => setTable((t) => !t)}
-          className="flex items-center gap-1 rounded-md px-2 py-1 text-[12px] hover:bg-black/5"
-          style={{ color: theme.textMuted }}
+          className="btn-soft flex h-8 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-semibold"
           aria-pressed={table}
         >
           <Table2 size={13} /> {table ? "Graphique" : "Tableau"}
         </button>
-      </div>
+      }
+    >
 
       {table ? (
-        <div className="max-h-[260px] overflow-y-auto rounded-lg" style={{ border: `1px solid ${theme.border}` }}>
+        <div className="max-h-[260px] overflow-y-auto rounded-[14px]" style={{ background: "var(--surface-2)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
           <table className="w-full text-[12.5px]">
-            <thead className="sticky top-0" style={{ background: theme.bg }}>
+            <thead className="sticky top-0" style={{ background: "var(--surface-3)" }}>
               <tr>
                 <th className="px-3 py-1.5 text-left font-medium" style={{ color: theme.textMuted }}>Jour</th>
                 <th className="px-3 py-1.5 text-right font-medium" style={{ color: theme.textMuted }}>Valeur</th>
@@ -103,10 +105,16 @@ export function ColumnChart({ title, subtitle, data, format, icon: Icon, height 
       ) : (
         <div ref={wrap} className="relative" style={{ opacity: loading ? 0.5 : 1, transition: "opacity .2s" }}>
           <svg width={width} height={height} role="img" aria-label={`${title} : ${format(total)} au total sur ${data.length} jours`} className="block">
+            <defs>
+              <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="var(--brand-1)" />
+                <stop offset="1" stopColor="var(--brand-2)" />
+              </linearGradient>
+            </defs>
             {/* Grille : filets fins, discrets */}
             {ticks.map((t) => (
               <g key={t}>
-                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke={theme.border} strokeWidth={1} />
+                <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke="var(--line-2)" strokeWidth={1} strokeDasharray={t === 0 ? undefined : "3 5"} />
                 <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" fontSize={11} fill={theme.textMuted}>
                   {compact.format(t)}
                 </text>
@@ -117,7 +125,14 @@ export function ColumnChart({ title, subtitle, data, format, icon: Icon, height 
               const x = pad.left + i * band + (band - barW) / 2;
               return (
                 <g key={d.date}>
-                  {h > 0 && <path d={columnPath(x, y(d.value), barW, h)} fill={hover === i ? theme.goldDark : theme.gold} />}
+                  {h > 0 && (
+                    <path
+                      d={columnPath(x, y(d.value), barW, h)}
+                      fill={`url(#${gid})`}
+                      className="grow"
+                      style={{ animationDelay: `${Math.min(i * 14, 420)}ms`, opacity: hover === null || hover === i ? 1 : 0.5, transition: "opacity .15s", filter: hover === i ? `drop-shadow(0 4px 8px var(--brand-glow))` : undefined }}
+                    />
+                  )}
                   {/* Zone de survol : toute la hauteur de la bande, plus large que la colonne */}
                   <rect
                     x={pad.left + i * band}
@@ -164,21 +179,19 @@ export function ColumnChart({ title, subtitle, data, format, icon: Icon, height 
           )}
           {hover !== null && data[hover] && (
             <div
-              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg px-2.5 py-1.5 shadow-lg"
+              className="tip pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap px-2.5 py-1.5"
               style={{
                 left: Math.min(width - 60, Math.max(60, pad.left + hover * band + band / 2)),
                 top: Math.max(4, y(data[hover].value) - 8),
-                background: theme.bgCard,
-                border: `1px solid ${theme.border}`,
               }}
             >
-              <p className="text-[13px] font-semibold tabular-nums" style={{ color: theme.text }}>{format(data[hover].value)}</p>
-              <p className="text-[11px]" style={{ color: theme.textMuted }}>{dayLabel(data[hover].date, true)}</p>
+              <p className="text-[13px] font-bold tabular-nums">{format(data[hover].value)}</p>
+              <p className="text-[11px] opacity-60">{dayLabel(data[hover].date, true)}</p>
             </div>
           )}
         </div>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -195,21 +208,10 @@ export function BarList({ rows, format, empty = "Aucune donnée" }: { rows: BarR
   const max = Math.max(0, ...rows.map((r) => r.value));
   if (!rows.length || max === 0) return <p className="py-4 text-center text-[13px]" style={{ color: theme.textMuted }}>{empty}</p>;
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="stagger flex flex-col gap-3.5">
       {rows.map((r) => (
         <li key={r.key} title={`${r.label} : ${format(r.value)}${r.detail ? ` · ${r.detail}` : ""}`}>
-          <div className="mb-1 flex items-center gap-1.5 text-[12.5px]">
-            {r.icon && <r.icon size={13} style={{ color: theme.textMuted }} />}
-            <span className="min-w-0 flex-1 truncate" style={{ color: theme.text }}>{r.label}</span>
-            <span className="font-semibold tabular-nums" style={{ color: theme.text }}>{format(r.value)}</span>
-            {r.detail && <span className="text-[11.5px]" style={{ color: theme.textMuted }}>{r.detail}</span>}
-          </div>
-          <div className="h-2 overflow-hidden rounded-full" style={{ background: theme.goldSoft }}>
-            <div
-              className="h-full rounded-full transition-[width] duration-500"
-              style={{ width: `${Math.max(2, (r.value / max) * 100)}%`, background: theme.gold }}
-            />
-          </div>
+          <ProgressRow label={r.label} icon={r.icon} pct={(r.value / max) * 100} value={format(r.value)} detail={r.detail} />
         </li>
       ))}
     </ul>
