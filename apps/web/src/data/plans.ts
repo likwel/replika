@@ -13,7 +13,8 @@ export const PLAN_DEFS = [
   {
     id: "STARTER",
     name: "Starter",
-    base: 49000,
+    base: 49000, // prix promotionnel, facturé
+    list: 59000, // prix public habituel, affiché barré
     tagline: "Pour un vendeur qui démarre",
     quota: { pages: 2, aiReplies: 1000, liveHours: 30 },
     limits: { pages: "2 Pages + leurs comptes Instagram", ai: "1 000 réponses IA / mois", live: "30 h de live / mois (≈ 1 h par jour)" },
@@ -31,7 +32,8 @@ export const PLAN_DEFS = [
   {
     id: "PRO",
     name: "Pro",
-    base: 129000,
+    base: 99000,
+    list: 129000,
     tagline: "Le plus choisi par les vendeurs actifs",
     quota: { pages: 5, aiReplies: 5000, liveHours: 90 },
     limits: { pages: "5 Pages + leurs comptes Instagram", ai: "5 000 réponses IA / mois", live: "90 h de live / mois (≈ 3 h par jour)" },
@@ -47,7 +49,8 @@ export const PLAN_DEFS = [
   {
     id: "BUSINESS",
     name: "Business",
-    base: 249000,
+    base: 199000,
+    list: 249000,
     tagline: "Pour les boutiques à fort volume",
     quota: { pages: 15, aiReplies: 15000, liveHours: 300 },
     limits: { pages: "15 Pages + leurs comptes Instagram", ai: "15 000 réponses IA / mois", live: "300 h de live / mois (≈ 10 h par jour)" },
@@ -63,6 +66,7 @@ export const PLAN_DEFS = [
     id: "AGENCY",
     name: "Agence",
     base: null,
+    list: null,
     tagline: "Pour les agences qui gèrent plusieurs marques",
     quota: { pages: null, aiReplies: null, liveHours: null },
     limits: { pages: "Pages illimitées", ai: "Volume IA sur mesure", live: "Lives illimités" },

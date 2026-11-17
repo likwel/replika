@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ExternalLink, MessageCircle, Package, Pause, Play, Receipt, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
+  AlertTriangle, ArrowLeft, Check, ExternalLink, MessageCircle, Package, Pause, Play, Radio, Receipt, RefreshCw, Save, Settings2, ShoppingBag, Square, Trash2, Users, Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Tabs } from "@/components/ui/Tabs";
 import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
+import { IconTile } from "@/components/ui/Dash";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { ApiError } from "@/lib/api";
@@ -68,6 +69,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ error: string } | null>(null);
   const dirty = useRef(false);
+  const [unsaved, setUnsaved] = useState(false); // réglages modifiés mais pas encore enregistrés
 
   const load = () => {
     liveApi.session(sessionId).then((s) => {
@@ -115,6 +117,7 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
       async () => {
         const updated = await liveApi.updateSession(sessionId, settings!);
         dirty.current = false;
+        setUnsaved(false);
         setSession(updated);
       },
       "Réglages enregistrés : ils s'appliquent aux prochains JP."
@@ -248,29 +251,39 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
       )}
       {tab === "settings" && settings && (
         <div>
-          <label className="mb-5 block">
-            <span className="mb-1 block text-sm font-semibold" style={{ color: theme.text }}>Nom de la session</span>
-            <input
-              value={settings.title}
-              onChange={(e) => {
-                dirty.current = true;
-                setSettings({ ...settings, title: e.target.value });
-              }}
-              className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-              style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text }}
-            />
-          </label>
+          <div className="mb-4 flex items-center gap-3 rounded-2xl p-4" style={{ background: "var(--surface-2)", border: "1px solid var(--line)" }}>
+            <IconTile icon={Radio} tint="#EF4444" size="sm" />
+            <label className="min-w-0 flex-1">
+              <span className="block text-xs font-semibold" style={{ color: theme.textMuted }}>Nom de la session</span>
+              <input
+                value={settings.title}
+                onChange={(e) => {
+                  dirty.current = true;
+                  setUnsaved(true);
+                  setSettings({ ...settings, title: e.target.value });
+                }}
+                className="mt-0.5 w-full bg-transparent text-[16px] font-bold outline-none"
+                style={{ color: theme.text }}
+                aria-label="Nom de la session"
+              />
+            </label>
+          </div>
           <SessionSettingsForm
+            layout="split"
             accountId={session.account.id}
             value={settings}
             onChange={(v) => {
               dirty.current = true;
+              setUnsaved(true);
               setSettings(v);
             }}
             products={session.products ?? []}
           />
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button size="sm" icon={Save} onClick={saveSettings} disabled={busy !== null}>Enregistrer les réglages</Button>
+          {/* Barre d'action collée en bas : l'enregistrement reste à portée, quelle que soit la longueur du formulaire */}
+          <div className="sticky bottom-0 -mx-1 mt-4 flex flex-wrap items-center gap-2 rounded-2xl px-4 py-3" style={{ background: "var(--surface)", border: "1px solid var(--line)", boxShadow: "0 -8px 24px -12px rgba(0,0,0,0.25)" }}>
+            <p className="mr-auto flex items-center gap-1.5 text-xs font-medium" style={{ color: unsaved ? theme.amber : theme.textMuted }}>
+              {unsaved ? <><AlertTriangle size={13} /> Modifications non enregistrées</> : <><Check size={13} style={{ color: theme.green }} /> Réglages enregistrés</>}
+            </p>
             <Button
               size="sm"
               variant="ghost"
@@ -284,8 +297,9 @@ export function SessionView({ sessionId, onBack, onDeleted }: Props) {
               }}
               disabled={busy !== null}
             >
-              Supprimer la session
+              Supprimer
             </Button>
+            <Button size="sm" icon={Save} onClick={saveSettings} disabled={busy !== null || !unsaved}>Enregistrer les réglages</Button>
           </div>
         </div>
       )}

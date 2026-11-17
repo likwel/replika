@@ -431,7 +431,7 @@ function BillingPlan({
   return (
     <PlanTile
       def={def}
-      price={{ monthly: plan.monthly, perMonth: plan.annualMonthly, yearly: plan.annual }}
+      price={{ monthly: plan.monthly, perMonth: plan.annualMonthly, yearly: plan.annual, list: plan.listMonthly, listPerMonth: plan.listAnnualMonthly }}
       period={period}
       current={current}
       badge={current ? (trial ? "Votre essai" : "Votre formule") : undefined}

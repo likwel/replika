@@ -29,13 +29,17 @@ export function PeriodSwitch({ value, onChange, className = "" }: { value: Perio
 
 export interface TilePrice {
   monthly: number | null; // prix mensuel (formule mensuelle) ; null = sur devis
+  list?: number | null; // prix public habituel : affiché barré à côté du prix promotionnel
+  listPerMonth?: number | null; // le même en formule annuelle
   perMonth?: number | null; // prix par mois en formule annuelle
   yearly?: number | null; // total payé pour un an
 }
 
 // Prix d'une formule du catalogue du site (sans appel à l'API)
 export const catalogPrice = (def: PlanDef): TilePrice =>
-  def.base ? { monthly: def.base, perMonth: annualMonthly(def.base), yearly: annualMonthly(def.base) * 12 } : { monthly: null };
+  def.base
+    ? { monthly: def.base, perMonth: annualMonthly(def.base), yearly: annualMonthly(def.base) * 12, list: def.list, listPerMonth: def.list ? annualMonthly(def.list) : null }
+    : { monthly: null };
 
 interface Props {
   def: PlanDef;
@@ -52,6 +56,9 @@ export function PlanTile({ def, price, period, badge, current, action }: Props) 
   const shown = annual ? (price.perMonth ?? price.monthly) : price.monthly;
   const saving = annual && price.monthly !== null && price.yearly ? price.monthly * 12 - price.yearly : 0;
   const muted = hl ? "#ffffff99" : theme.textMuted;
+  // Prix promotionnel : le prix public habituel reste visible, barré, avec le pourcentage d'économie
+  const list = annual ? (price.listPerMonth ?? null) : (price.list ?? null);
+  const promo = list && shown !== null && list > shown ? { list, off: Math.round(((list - shown) / list) * 100) } : null;
   const label = badge ?? (hl ? "Populaire" : null);
 
   return (
@@ -74,9 +81,15 @@ export function PlanTile({ def, price, period, badge, current, action }: Props) 
       <h3 className="text-[15px] font-bold" style={{ color: hl ? "#fff" : theme.text }}>{def.name}</h3>
       <p className="mt-0.5 text-[11.5px]" style={{ color: muted }}>{def.tagline}</p>
 
-      <div className="mb-4 mt-3 min-h-[84px]">
+      <div className="mb-4 mt-3 min-h-[104px]">
         {shown !== null ? (
           <>
+            {promo && (
+              <p className="mb-1 flex items-center gap-2">
+                <span className="text-[13px] font-semibold line-through decoration-2" style={{ color: muted }}>{fmt(promo.list)} Ar</span>
+                <span className="rounded-full px-1.5 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide" style={{ background: "#22C55E", color: "#fff" }}>Promo −{promo.off} %</span>
+              </p>
+            )}
             <p className="flex flex-wrap items-baseline gap-x-1">
               <span className="text-[1.75rem] font-extrabold leading-none" style={{ color: hl ? theme.goldLight : theme.text }}>{fmt(shown)}</span>
               <span className="text-[13px]" style={{ color: muted }}>Ar/mois</span>
@@ -84,8 +97,7 @@ export function PlanTile({ def, price, period, badge, current, action }: Props) 
             <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11.5px]" style={{ color: muted }}>
               {annual && price.yearly ? (
                 <>
-                  <span className="line-through">{fmt(price.monthly!)}</span>
-                  <span>· Facturé {fmt(price.yearly)} Ar par an</span>
+                  <span>Facturé {fmt(price.yearly)} Ar par an</span>
                   {saving > 0 && (
                     <span className="rounded-full px-1.5 font-semibold" style={hl ? { background: "rgba(34,197,94,0.2)", color: theme.greenLight } : { background: theme.greenSoft, color: theme.green }}>-{fmt(saving)} Ar</span>
                   )}

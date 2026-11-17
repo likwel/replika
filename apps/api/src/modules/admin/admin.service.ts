@@ -1,4 +1,5 @@
 import { revenueBySource } from "./finance.logic.js";
+import { getAiUsageSettings } from "../ai/ai.usage.js";
 import { Prisma, type PaymentStatus, type PlanId } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { env } from "../../config/env.js";
@@ -95,17 +96,21 @@ const feeOf = (rates: FeeRates, p: { amount: number; fee: number | null; feeEsti
 
 // Résultat d'une période : brut − commissions Papi − coût IA − dépenses = bénéfice
 async function finance(since: Date, now: Date) {
-  const [paid, aiDays, expenses, rates] = await Promise.all([
+  const [paid, aiDays, expenses, rates, tokenCost, aiSettings] = await Promise.all([
     prisma.payment.findMany({ where: { status: "PAID", paidAt: { gte: since } }, select: { kind: true, amount: true, fee: true, feeEstimated: true, paymentMethod: true } }),
     prisma.aiDailyUsage.aggregate({ where: { day: { gte: usageDay(since) } }, _sum: { replies: true } }),
     prisma.expense.findMany({ where: { date: { lte: now }, OR: [{ recurring: true }, { date: { gte: since } }] } }),
     feeRates(),
+    prisma.aiTokenDaily.aggregate({ where: { day: { gte: usageDay(since) } }, _sum: { costUsd: true } }),
+    getAiUsageSettings(),
   ]);
   const gross = paid.reduce((n, p) => n + p.amount, 0);
   const fees = paid.reduce((n, p) => n + feeOf(rates, p), 0);
   const feesEstimated = paid.filter((p) => p.fee === null || p.feeEstimated).length;
   const aiReplies = aiDays._sum.replies ?? 0;
-  const aiCost = Math.round(aiReplies * env.ai.costPerReply);
+  // Coût IA : celui des tokens réellement consommés quand le suivi en a enregistré, sinon l'estimation par réponse
+  const trackedUsd = tokenCost._sum.costUsd ?? 0;
+  const aiCost = trackedUsd > 0 ? Math.round(trackedUsd * aiSettings.settings.usdToAr) : Math.round(aiReplies * env.ai.costPerReply);
   const byCategory: Record<string, number> = {};
   let other = 0;
   for (const e of expenses) {

@@ -4,6 +4,7 @@ import { AppError } from "../../utils/AppError.js";
 import { graphClient, graphErrorMessage } from "../facebook/graph.client.js";
 import { workspaceService } from "../workspace/workspace.service.js";
 import { extractContact } from "./live.ai.js";
+import { isPlaceholderName } from "../autoreply/autoreply.matcher.js";
 import { recordFromLiveOrder } from "../leads/lead.service.js";
 import {
   detectJp,
@@ -84,7 +85,8 @@ export function explain(e: unknown): string {
   return raw;
 }
 
-const firstName = (name: string) => name.replace(/^@/, "").trim().split(/\s+/)[0] || name;
+// Prénom pour les messages du live ; vide si seul un nom de repli (« Utilisateur Facebook ») est connu : la salutation s'en passe
+const firstName = (name: string) => (isPlaceholderName(name) ? "" : name.replace(/^@/, "").trim().split(/\s+/)[0] || name);
 const isOwnComment = (acc: SocialAccount, c: { authorId?: string | null; authorName: string }) =>
   (c.authorId && c.authorId === acc.externalId) || (acc.platform === "INSTAGRAM" && `@${c.authorName.replace(/^@/, "")}` === acc.name);
 

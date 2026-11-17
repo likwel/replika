@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Avatar } from "@/components/ui/Avatar";
 import { Pagination } from "@/components/ui/Pagination";
 import { BarList, ColumnChart, Sparkline } from "@/components/admin/Charts";
+import { AiTokens } from "@/components/admin/AiTokens";
 import { FilterChips } from "@/components/workspace/WorkspaceUi";
 import { CardTitle, Hero, Panel as DashPanel, SkeletonCards } from "@/components/ui/Dash";
 import { StatCard } from "@/components/ui/StatCard";
@@ -1230,6 +1231,8 @@ function AiView() {
         </div>
         <Health ok={ai.configured} label={ai.configured ? "Configuré" : "Non configuré"} />
       </section>
+
+      <AiTokens />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat icon={Sparkles} label={`Réponses IA · ${month}`} value={fmtNum(ai.repliesThisMonth)} />

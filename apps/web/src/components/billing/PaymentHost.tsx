@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { swal } from "@/lib/swal";
 import { billingApi, type PaymentRow, type SubscriptionSummary } from "@/lib/billing.api";
 import { paymentSuccess } from "@/lib/paymentSuccess";
-import { BILLING_UPDATED, PAYMENT_CHANNEL, PAYMENT_MESSAGE, payment, usePayment } from "@/lib/payment";
+import { BILLING_UPDATED, PAYMENT_CHANNEL, PAYMENT_MESSAGE, SUCCESS_CLOSE_DELAY_MS, payment, usePayment } from "@/lib/payment";
 import { fmtAr } from "@/hooks/usePlan";
 import { MOBILE_MONEY } from "@/data/plans";
 
@@ -36,7 +36,7 @@ function PaymentTracker({ reference }: { reference: string }) {
       if (settled.current) return;
       if (p.status === "PAID") {
         settled.current = true;
-        payment.finish();
+        payment.finish(SUCCESS_CLOSE_DELAY_MS); // succès : la fenêtre de paiement se ferme après un court délai
         await refreshUser().catch(() => {});
         window.dispatchEvent(new Event(BILLING_UPDATED));
         await paymentSuccess.show({ payment: p, subscription: sub! });

@@ -167,7 +167,33 @@ type Res<T> = { status: string; data: T };
 const qs = (o: Record<string, string | number | undefined>) =>
   new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => [k, String(v)])).toString();
 
+// Suivi des tokens du modèle IA (apps/api/src/modules/ai/ai.usage.ts)
+export interface AiUsageSettings {
+  inputPerM: number; // dollars par million de tokens d'entrée
+  outputPerM: number;
+  cachedPerM: number | null;
+  usdToAr: number;
+  monthlyBudgetUsd: number | null;
+  monthlyTokenLimit: number | null;
+  alertPercent: number;
+}
+export interface AiUsageReport {
+  days: number;
+  provider: string;
+  model: string;
+  month: { key: string; inputTokens: number; outputTokens: number; costUsd: number; calls: number; percent: number | null; alertLevelSent: number };
+  totals: { calls: number; inputTokens: number; outputTokens: number; costUsd: number };
+  daily: Array<{ day: string; inputTokens: number; outputTokens: number; costUsd: number; calls: number }>;
+  byModel: Array<{ model: string; calls: number; inputTokens: number; outputTokens: number; cachedTokens: number; reasoningTokens: number; costUsd: number }>;
+  settings: AiUsageSettings;
+  customSettings: boolean;
+  pricesSet: boolean;
+}
+
 export const adminApi = {
+  aiUsage: (days: number) => api.get<Res<AiUsageReport>>(`/admin/ai-usage?days=${days}`).then((r) => r.data),
+  saveAiUsageSettings: (settings: AiUsageSettings | null) => api.put<Res<AiUsageReport>>("/admin/settings/ai-usage", { settings }).then((r) => r.data),
+  testAiAlert: () => api.post<Res<{ to: string }>>("/admin/ai-usage/test-alert").then((r) => r.data),
   overview: (days: number) => api.get<Res<AdminOverview>>(`/admin/overview?days=${days}`).then((r) => r.data),
   users: (q: { search?: string; plan?: string; status?: string; account?: AccountFilter; page?: number; pageSize?: number }) =>
     api.get<Res<Paged & { users: AdminUser[] }>>(`/admin/users?${qs(q)}`).then((r) => r.data),

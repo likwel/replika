@@ -15,7 +15,8 @@ export interface Limits {
 export interface PlanDef {
   id: PlanId;
   name: string;
-  monthly: number | null; // Ar ; null = sur devis
+  monthly: number | null; // Ar ; null = sur devis. Prix promotionnel : c'est celui qui est facturé
+  listMonthly: number | null; // prix public habituel, affiché barré à côté du prix promotionnel (jamais facturé)
   limits: Limits;
   features: Record<Feature, boolean>;
   teamSeats: number | null; // membres d'équipe invitables (0 = pas d'équipe, null = illimité)
@@ -29,6 +30,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "STARTER",
     name: "Starter",
     monthly: 49_000,
+    listMonthly: 59_000,
     limits: { pages: 2, aiReplies: 1_000, liveHours: 30 },
     features: { postAiRules: false, leads: false, marketplace: false, advancedStats: false },
     teamSeats: 0,
@@ -37,7 +39,8 @@ export const PLANS: Record<PlanId, PlanDef> = {
   PRO: {
     id: "PRO",
     name: "Pro",
-    monthly: 129_000,
+    monthly: 99_000,
+    listMonthly: 129_000,
     limits: { pages: 5, aiReplies: 5_000, liveHours: 90 },
     features: PRO_FEATURES,
     teamSeats: 0,
@@ -46,7 +49,8 @@ export const PLANS: Record<PlanId, PlanDef> = {
   BUSINESS: {
     id: "BUSINESS",
     name: "Business",
-    monthly: 249_000,
+    monthly: 199_000,
+    listMonthly: 249_000,
     limits: { pages: 15, aiReplies: 15_000, liveHours: 300 },
     features: PRO_FEATURES,
     teamSeats: 5,
@@ -56,6 +60,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "AGENCY",
     name: "Agence",
     monthly: null,
+    listMonthly: null,
     limits: { pages: null, aiReplies: null, liveHours: null },
     features: PRO_FEATURES,
     teamSeats: null,
@@ -96,6 +101,8 @@ export function publicPlans() {
       id: p.id,
       name: p.name,
       monthly: p.monthly,
+      listMonthly: p.listMonthly,
+      listAnnualMonthly: p.listMonthly !== null ? annualMonthly(p.listMonthly) : null,
       annual: p.purchasable && p.monthly !== null ? annualMonthly(p.monthly) * 12 : null,
       annualMonthly: p.monthly !== null ? annualMonthly(p.monthly) : null,
       limits: p.limits,

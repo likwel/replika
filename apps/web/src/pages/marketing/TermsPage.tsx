@@ -164,7 +164,7 @@ export function TermsPage() {
               <p className="font-bold">
                 {p.name}
                 <span className="ml-2 font-semibold" style={{ color: theme.goldDark }}>
-                  {p.base ? `${fmt(p.base)} Ar/mois · ${fmt(annualMonthly(p.base))} Ar/mois en annuel` : "Sur devis"}
+                  {p.base ? `${fmt(p.base)} Ar/mois${p.list ? ` (au lieu de ${fmt(p.list)})` : ""} · ${fmt(annualMonthly(p.base))} Ar/mois en annuel` : "Sur devis"}
                 </span>
               </p>
               <p className="mt-1 text-[13px]" style={{ color: theme.textMuted }}>

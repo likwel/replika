@@ -723,6 +723,20 @@ model AiDailyUsage {
   replies Int    @default(0)
 }
 
+// Consommation de tokens du modèle IA, par jour et par modèle : entrée, sortie, coût estimé (suivi OpenAI de la page admin)
+model AiTokenDaily {
+  day             String // "2026-11-18" (heure de Madagascar)
+  model           String
+  calls           Int    @default(0)
+  inputTokens     Int    @default(0) // tokens envoyés au modèle (dont cachedTokens)
+  outputTokens    Int    @default(0) // tokens générés (dont reasoningTokens)
+  cachedTokens    Int    @default(0) // tokens d'entrée servis par le cache du fournisseur (tarif réduit)
+  reasoningTokens Int    @default(0)
+  costUsd         Float  @default(0) // coût estimé avec les prix saisis par l'administrateur
+
+  @@id([day, model])
+}
+
 // Dépenses de l'entreprise saisies par l'administrateur (hébergement, marketing…) ; mensuelles si recurring
 model Expense {
   id          String   @id @default(cuid())

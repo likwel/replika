@@ -54,18 +54,28 @@ export function candidateRules<R extends MatchableRule>(
     .sort((a, b) => Number(a.matchType === "ANY") - Number(b.matchType === "ANY"));
 }
 
+// Nom de repli quand Meta ne transmet pas l'auteur (« Utilisateur Facebook »…) : ce n'est pas un vrai nom, on ne s'en sert jamais pour saluer
+export const isPlaceholderName = (name: string | null | undefined) => !name?.trim() || /^utilisateur(\s+(facebook|instagram|messenger))?$/i.test(name.trim());
+
+// Prénom pour « Bonjour {nom} » ; vide quand le vrai nom est inconnu (la salutation s'en passe, voir renderReply)
 export function firstName(fullName: string): string {
+  if (isPlaceholderName(fullName)) return "";
   return fullName.trim().split(/\s+/)[0] ?? "";
 }
 
-// Choisit une variante au hasard (séparateur ||) et remplace {nom} / {prenom} / {page}
+// Choisit une variante au hasard (séparateur ||) et remplace {nom} / {prenom} / {page}.
+// Sans nom connu, « Bonjour {nom}, merci » devient « Bonjour, merci » (jamais « Bonjour Utilisateur »).
 export function renderReply(template: string, vars: { nom: string; page: string }): string {
   const variants = template.split("||").map((v) => v.trim()).filter(Boolean);
-  const chosen = variants[Math.floor(Math.random() * variants.length)] ?? "";
-  return chosen
-    .replace(/\{\s*(nom|prenom|prénom|page)\s*\}/gi, (_, key: string) =>
-      key.toLowerCase() === "page" ? vars.page : vars.nom
-    )
+  let chosen = variants[Math.floor(Math.random() * variants.length)] ?? "";
+  const named = vars.nom.trim() !== "";
+  if (!named) chosen = chosen.replace(/\s*\{\s*(nom|prenom|prénom)\s*\}/gi, "");
+  const out = chosen
+    .replace(/\{\s*(nom|prenom|prénom|page)\s*\}/gi, (_, key: string) => (key.toLowerCase() === "page" ? vars.page : vars.nom))
     .replace(/[ \t]{2,}/g, " ")
     .trim();
+  if (named) return out;
+  // Reste de ponctuation orpheline en tête (« {nom}, merci » → « , merci »)
+  const tidy = out.replace(/^[,;:\s]+/, "");
+  return tidy.charAt(0).toUpperCase() + tidy.slice(1);
 }

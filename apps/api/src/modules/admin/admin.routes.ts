@@ -9,6 +9,9 @@ import { defaultFeeRates, getFeeRates, setFeeRates } from "../billing/feeRates.j
 import { prisma } from "../../config/prisma.js";
 import { sendTestMail } from "../mail/mail.service.js";
 import { contactService } from "../contact/contact.service.js";
+import { aiBudgetAlertMail, aiUsageReport, checkAiBudget, defaultAiUsageSettings, getAiUsageSettings, monthTotals, saveAiUsageSettings } from "../ai/ai.usage.js";
+import { sendMail } from "../mail/mail.service.js";
+import { env } from "../../config/env.js";
 
 // Tableau de bord administrateur : réservé au rôle ADMIN (le premier compte inscrit)
 const router = Router();
@@ -111,6 +114,54 @@ router.put(
     const r = await setFeeRates(req.body.rates);
     await prisma.activityLog.create({ data: { userId: req.user!.userId, action: "FEE_RATES_UPDATED", meta: { rates: r.rates } } });
     ok(res, r);
+  }),
+);
+
+// Suivi des tokens du modèle IA : consommation, coût, limite mensuelle et alertes par e-mail
+router.get(
+  "/ai-usage",
+  catchAsync(async (req, res) => {
+    const days = Number(req.query.days ?? 30);
+    if (![7, 30, 90].includes(days)) throw new AppError("Période invalide", 422);
+    ok(res, await aiUsageReport(days));
+  }),
+);
+const positive = (label: string) => z.number({ invalid_type_error: `${label} invalide` }).min(0, `${label} invalide`).max(1_000_000_000, `${label} trop élevé`);
+router.put(
+  "/settings/ai-usage",
+  validate(
+    z.object({
+      settings: z
+        .object({
+          inputPerM: positive("Prix d'entrée"),
+          outputPerM: positive("Prix de sortie"),
+          cachedPerM: positive("Prix du cache").nullable(),
+          usdToAr: positive("Taux de change").refine((v) => v > 0, "Taux de change invalide"),
+          monthlyBudgetUsd: positive("Budget").nullable(),
+          monthlyTokenLimit: positive("Limite de tokens").nullable(),
+          alertPercent: z.number().min(1, "Seuil invalide").max(99, "Seuil entre 1 et 99 %"),
+        })
+        .nullable(),
+    }),
+  ),
+  catchAsync(async (req: Request, res) => {
+    await saveAiUsageSettings(req.body.settings);
+    await prisma.activityLog.create({ data: { userId: req.user!.userId, action: "AI_USAGE_SETTINGS_UPDATED", meta: { reset: req.body.settings === null } } });
+    // Une limite abaissée sous la consommation du mois prévient tout de suite
+    void checkAiBudget();
+    ok(res, await aiUsageReport(30));
+  }),
+);
+// E-mail d'essai de l'alerte : le message exact qu'un administrateur recevrait, envoyé à celui qui clique
+router.post(
+  "/ai-usage/test-alert",
+  catchAsync(async (req: Request, res) => {
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.userId }, select: { email: true, name: true } });
+    const { settings } = await getAiUsageSettings();
+    const totals = await monthTotals();
+    const mail = aiBudgetAlertMail(me.name, { level: Math.round(settings.alertPercent), percent: settings.alertPercent, month: "essai", totals, settings: settings ?? defaultAiUsageSettings(), model: env.ai.model });
+    await sendMail(me.email, `[Essai] ${mail.subject}`, mail.text, mail.html);
+    ok(res, { to: me.email });
   }),
 );
 

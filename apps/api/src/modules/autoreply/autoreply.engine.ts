@@ -13,6 +13,7 @@ import { AppError } from "../../utils/AppError.js";
 import {
   candidateRules,
   firstName,
+  isPlaceholderName,
   renderReply,
   ruleMatchesText,
   type IncomingKind,
@@ -268,6 +269,25 @@ export async function handleIncoming(account: SocialAccount, ev: IncomingEvent) 
   return msg;
 }
 
+// Quand Meta ne donne pas l'auteur d'un commentaire, son vrai nom est cherché : d'abord dans ses messages précédents,
+// puis auprès de Meta (un échec n'est pas réessayé pendant une heure). Sans nom, la salutation se passe de prénom.
+const nameMisses = new Map<string, number>();
+async function withRealName(account: SocialAccount, msg: SocialMessage): Promise<SocialMessage> {
+  if (!isPlaceholderName(msg.authorName) || !msg.authorId) return msg;
+  const known = await prisma.socialMessage.findFirst({
+    where: { accountId: account.id, authorId: msg.authorId, NOT: { authorName: { startsWith: "Utilisateur" } } },
+    orderBy: { createdAt: "desc" },
+    select: { authorName: true },
+  });
+  let name = known?.authorName ?? null;
+  const key = `${account.id}:${msg.authorId}`;
+  if (!name && Date.now() - (nameMisses.get(key) ?? 0) > 3_600_000) {
+    name = await graphClient.getSenderName(msg.authorId, account.platform === "INSTAGRAM" ? "INSTAGRAM" : "FACEBOOK", account.accessToken).catch(() => null);
+    if (!name) nameMisses.set(key, Date.now());
+  }
+  return name && !isPlaceholderName(name) ? prisma.socialMessage.update({ where: { id: msg.id }, data: { authorName: name } }) : msg;
+}
+
 // Réponse, dans cet ordre : règles à mots-clés → assistant IA du compte → réponse par défaut (« tout message »).
 // Abonnement expiré : les réponses continuent tant qu'il reste des crédits de réponses (une réponse = un crédit) ;
 // sinon le message est enregistré (il arrive dans « À traiter ») mais rien n'est automatisé.
@@ -320,6 +340,8 @@ async function processIncoming(account: SocialAccount, ev: IncomingEvent, ent: E
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return null;
     throw e;
   }
+
+  msg = await withRealName(account, msg);
 
   // Réponse d'un client à une commande JP (coordonnées) : traitée par la session live
   if (liveOk && ev.kind === "DIRECT") {

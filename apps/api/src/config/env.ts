@@ -76,6 +76,15 @@ export const env = {
     model: process.env.AI_MODEL ?? "llama-3.3-70b-versatile",
     // Coût estimé d'une réponse IA en ariary (tableau de bord administrateur) ; ~1 Ar avec gpt-oss-20b
     costPerReply: Number(process.env.AI_COST_PER_REPLY ?? 1),
+    // Suivi des tokens (valeurs initiales : l'administrateur les modifie ensuite dans la page Administration › IA & système)
+    // Prix du fournisseur en dollars par million de tokens, à lire dans sa grille tarifaire
+    priceInputPerM: Number(process.env.AI_PRICE_INPUT_USD_PER_M ?? 0),
+    priceOutputPerM: Number(process.env.AI_PRICE_OUTPUT_USD_PER_M ?? 0),
+    priceCachedPerM: process.env.AI_PRICE_CACHED_USD_PER_M ? Number(process.env.AI_PRICE_CACHED_USD_PER_M) : null,
+    usdToAr: Number(process.env.AI_USD_TO_AR ?? 4500),
+    monthlyBudgetUsd: process.env.AI_MONTHLY_BUDGET_USD ? Number(process.env.AI_MONTHLY_BUDGET_USD) : null,
+    monthlyTokenLimit: process.env.AI_MONTHLY_TOKEN_LIMIT ? Number(process.env.AI_MONTHLY_TOKEN_LIMIT) : null,
+    alertPercent: Number(process.env.AI_ALERT_PERCENT ?? 80), // e-mail aux administrateurs à ce seuil, puis à 100 %
   },
   publicApiUrl: publicApiUrl(),
   apiUrl: apiUrl(),

@@ -13,9 +13,9 @@ const inDays = (d: number) => new Date(now.getTime() + d * DAY);
 
 test("prix annuels : -15 % arrondi au millier, × 12", () => {
   assert.equal(priceOf("STARTER", "ANNUAL"), 504_000);
-  assert.equal(priceOf("PRO", "ANNUAL"), 1_320_000);
-  assert.equal(priceOf("BUSINESS", "ANNUAL"), 2_544_000);
-  assert.equal(priceOf("PRO", "MONTHLY"), 129_000);
+  assert.equal(priceOf("PRO", "ANNUAL"), 1_008_000);
+  assert.equal(priceOf("BUSINESS", "ANNUAL"), 2_028_000);
+  assert.equal(priceOf("PRO", "MONTHLY"), 99_000); // prix promotionnel : c'est lui qui est facturé
   assert.throws(() => priceOf("AGENCY", "MONTHLY"));
 });
 
@@ -24,6 +24,8 @@ test("la grille de la page d'accueil concorde avec celle de l'API", () => {
     const api = PLANS[def.id];
     assert.equal(def.base, api.monthly, `${def.id} : prix`);
     assert.deepEqual(def.quota, api.limits, `${def.id} : limites`);
+    assert.equal(def.list, api.listMonthly, `${def.id} : prix public barré`);
+    if (def.base !== null) assert.ok(api.listMonthly !== null && api.listMonthly > def.base, `${def.id} : le prix public dépasse le prix promotionnel`);
   }
 });
 
@@ -53,10 +55,10 @@ test("payer pendant l'essai conserve les jours d'essai restants", () => {
 });
 
 test("changer de formule convertit la valeur restante en jours", () => {
-  // Pro mensuel (4 300 Ar/j) avec 20 jours restants → Business mensuel (8 300 Ar/j) : 86 000 / 8 300 = 10 jours
+  // Pro mensuel (3 300 Ar/j) avec 20 jours restants → Business mensuel (6 633 Ar/j) : 66 000 / 6 633 = 9 jours
   const next = computeNextSubscription({ plan: "PRO", kind: "PAID", billingPeriod: "MONTHLY", periodEnd: inDays(20) }, { plan: "BUSINESS", period: "MONTHLY" }, now);
-  assert.equal(next.extraDays, 10);
-  assert.equal(next.periodEnd.getTime(), inDays(40).getTime());
+  assert.equal(next.extraDays, 9);
+  assert.equal(next.periodEnd.getTime(), inDays(39).getTime());
 });
 
 test("un abonnement expiré repart de maintenant", () => {

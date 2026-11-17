@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Bot, BellOff, Check, ExternalLink, FlaskConical, Info, ListChecks, Loader2, MessageCircleReply, Plus, ShieldCheck, Workflow } from "lucide-react";
+import { Bot, BellOff, Check, ChevronDown, ClipboardList, ExternalLink, FlaskConical, Info, ListChecks, Loader2, Mail, MessageCircleReply, Plus, Receipt, ScanSearch, Send, ShieldCheck, Workflow } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { IconTile } from "@/components/ui/Dash";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
@@ -11,23 +13,39 @@ import { swal } from "@/lib/swal";
 import { FIELD_OPTIONS, VARIABLES } from "./live";
 
 interface Props {
+  layout?: "stack" | "split"; // split : deux colonnes (page du live) ; stack : une colonne (fenêtre de création)
   accountId?: string | null; // compte du live : proposé par défaut aux nouvelles règles
   value: LiveSettings;
   onChange: (v: LiveSettings) => void;
   products: LiveProduct[];
 }
 
-const input = "w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gold/40";
-const inputStyle = { background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text };
+const input = "field-in w-full rounded-xl px-3.5 py-2.5 text-sm outline-none";
+const inputStyle = { border: 0 };
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <div>
-        <p className="text-sm font-semibold" style={{ color: theme.text }}>{title}</p>
-        {hint && <p className="text-xs" style={{ color: theme.textMuted }}>{hint}</p>}
+// Réglage regroupé dans une carte : tuile d'icône, titre, aide ; les blocs longs (messages) se replient avec un résumé
+function Section({ title, hint, icon, tint, wide, collapsible, summary, children }: {
+  title: string; hint?: string; icon?: LucideIcon; tint?: string; wide?: boolean; collapsible?: boolean; summary?: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(!collapsible);
+  const head = (
+    <div className="flex items-center gap-3">
+      {icon && <IconTile icon={icon} tint={tint} size="sm" />}
+      <div className="min-w-0 flex-1">
+        <p className="text-[14.5px] font-bold leading-tight" style={{ color: theme.text }}>{title}</p>
+        {(hint || (collapsible && !open && summary)) && <p className="mt-0.5 text-xs leading-snug" style={{ color: theme.textMuted }}>{collapsible && !open && summary ? summary : hint}</p>}
       </div>
-      {children}
+      {collapsible && <ChevronDown size={18} className="flex-shrink-0 transition-transform" style={{ color: theme.textMuted, transform: open ? "rotate(180deg)" : "none" }} />}
+    </div>
+  );
+  return (
+    <section className={`flex flex-col gap-3.5 rounded-2xl p-4 ${wide ? "lg:col-span-2" : ""}`} style={{ background: "var(--surface-2)", border: "1px solid var(--line)" }}>
+      {collapsible ? (
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full text-left">{head}</button>
+      ) : (
+        head
+      )}
+      {open && <div className="flex flex-col gap-3">{children}</div>}
     </section>
   );
 }
@@ -190,7 +208,7 @@ function OtherCommentsReplies({ v, set, accountId }: { v: LiveSettings; set: <K 
   );
 }
 
-export function SessionSettingsForm({ value: v, onChange, products, accountId }: Props) {
+export function SessionSettingsForm({ value: v, onChange, products, accountId, layout = "stack" }: Props) {
   const [recapDefaults, setRecapDefaults] = useState<{ recapMessage: string; recapUpdateMessage: string } | null>(null);
   useEffect(() => {
     liveApi.defaults().then((d) => setRecapDefaults({ recapMessage: d.recapMessage, recapUpdateMessage: d.recapUpdateMessage }));
@@ -209,8 +227,8 @@ export function SessionSettingsForm({ value: v, onChange, products, accountId }:
   );
 
   return (
-    <div className="flex flex-col gap-5">
-      <Section title="Détection des JP" hint="Mots-clés séparés par des virgules. Le code article est lu juste après (« jp A3 », « jp 12 x2 »).">
+    <div className={layout === "split" ? "grid items-start gap-4 lg:grid-cols-2" : "flex flex-col gap-4"}>
+      <Section title="Détection des JP" icon={ScanSearch} tint="#EF4444" hint="Mots-clés séparés par des virgules. Le code article est lu juste après (« jp A3 », « jp 12 x2 »).">
         <input value={v.keywords} onChange={(e) => set("keywords", e.target.value)} className={input} style={inputStyle} aria-label="Mots-clés" />
         <DetectionTester keywords={v.keywords} products={products} />
         <p className="flex items-start gap-1.5 rounded-xl p-2.5 text-[11.5px]" style={{ background: theme.bg, color: theme.textMuted }}>
@@ -219,11 +237,7 @@ export function SessionSettingsForm({ value: v, onChange, products, accountId }:
         </p>
       </Section>
 
-      <Section title="Réponses aux autres commentaires" hint="Prix, livraison, questions… : joignez une automatisation pour répondre aux commentaires qui ne sont pas des JP.">
-        <OtherCommentsReplies v={v} set={set} accountId={accountId ?? null} />
-      </Section>
-
-      <Section title="Informations à collecter" hint="Demandées en message privé ; la commande est confirmée quand tout est reçu.">
+      <Section title="Informations à collecter" icon={ClipboardList} tint="#F59E0B" hint="Demandées en message privé ; la commande est confirmée quand tout est reçu.">
         <div className="flex flex-wrap gap-2">
           {FIELD_OPTIONS.map((f) => {
             const on = v.requiredFields.includes(f.value);
@@ -243,7 +257,11 @@ export function SessionSettingsForm({ value: v, onChange, products, accountId }:
         </div>
       </Section>
 
-      <Section title="Envoi automatique">
+      <Section title="Réponses aux autres commentaires" icon={MessageCircleReply} tint="#8B5CF6" wide hint="Prix, livraison, questions… : joignez une automatisation pour répondre aux commentaires qui ne sont pas des JP.">
+        <OtherCommentsReplies v={v} set={set} accountId={accountId ?? null} />
+      </Section>
+
+      <Section title="Envoi automatique" icon={Send} tint="#10B981" hint="Ce qui part sans que vous ayez à intervenir.">
         <label className="flex items-start justify-between gap-3 rounded-xl p-3" style={{ background: theme.bg }}>
           <span>
             <span className="block text-sm font-medium" style={{ color: theme.text }}>Message privé à chaque JP</span>
@@ -260,26 +278,7 @@ export function SessionSettingsForm({ value: v, onChange, products, accountId }:
         </label>
       </Section>
 
-      <Section title="Messages privés">
-        {template("firstMessage", "Premier message", "Envoyé à chaque JP : il demande les informations à collecter.")}
-        {template("missingMessage", "Informations manquantes", "Quand la réponse du client est incomplète (3 relances au plus).")}
-        {template("confirmMessage", "Confirmation", "Quand tout est reçu, ou dès le JP si le client est déjà connu.")}
-        {template("soldOutMessage", "Article épuisé", "Quand le stock du catalogue est atteint : le client passe en liste d'attente.")}
-        <div className="flex items-start gap-2 rounded-xl p-3 text-[11px]" style={{ background: theme.bg, color: theme.textMuted }}>
-          <Info size={13} className="mt-0.5 flex-shrink-0" />
-          <p>
-            Variables :{" "}
-            {VARIABLES.map(([k, label], i) => (
-              <span key={k}>
-                <code style={{ color: theme.goldDark }}>{k}</code> {label}
-                {i < VARIABLES.length - 1 ? " · " : ""}
-              </span>
-            ))}
-          </p>
-        </div>
-      </Section>
-
-      <Section title="Récapitulatif de fin de live" hint="Envoyé automatiquement à la fin du live à chaque participant ayant au moins un JP confirmé. Visible et imprimable dans l'onglet « Factures ».">
+      <Section title="Récapitulatif de fin de live" icon={Receipt} tint="#06B6D4" collapsible summary="Frais de livraison et messages envoyés à chaque client à la fin du live." hint="Envoyé automatiquement à la fin du live à chaque participant ayant au moins un JP confirmé. Visible et imprimable dans l'onglet « Factures ».">
         <label className="block">
           <span className="block text-xs font-medium" style={{ color: theme.text }}>Frais de livraison (Ar)</span>
           <span className="mb-1 block text-[11px]" style={{ color: theme.textMuted }}>Ajoutés une fois par client dans le total du récapitulatif. Modifiable facture par facture si besoin.</span>
@@ -347,6 +346,25 @@ export function SessionSettingsForm({ value: v, onChange, products, accountId }:
               </div>
             ))}
           </dl>
+        </div>
+      </Section>
+
+      <Section title="Messages privés" icon={Mail} tint="#3B82F6" wide collapsible summary="Premier message, informations manquantes, confirmation, article épuisé : modèles et variables.">
+        {template("firstMessage", "Premier message", "Envoyé à chaque JP : il demande les informations à collecter.")}
+        {template("missingMessage", "Informations manquantes", "Quand la réponse du client est incomplète (3 relances au plus).")}
+        {template("confirmMessage", "Confirmation", "Quand tout est reçu, ou dès le JP si le client est déjà connu.")}
+        {template("soldOutMessage", "Article épuisé", "Quand le stock du catalogue est atteint : le client passe en liste d'attente.")}
+        <div className="flex items-start gap-2 rounded-xl p-3 text-[11px]" style={{ background: theme.bg, color: theme.textMuted }}>
+          <Info size={13} className="mt-0.5 flex-shrink-0" />
+          <p>
+            Variables :{" "}
+            {VARIABLES.map(([k, label], i) => (
+              <span key={k}>
+                <code style={{ color: theme.goldDark }}>{k}</code> {label}
+                {i < VARIABLES.length - 1 ? " · " : ""}
+              </span>
+            ))}
+          </p>
         </div>
       </Section>
     </div>

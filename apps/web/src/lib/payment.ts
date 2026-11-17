@@ -6,6 +6,8 @@ import { useSyncExternalStore } from "react";
 
 export const PAYMENT_CHANNEL = "suiteflow-payment";
 export const PAYMENT_MESSAGE = "suiteflow:payment";
+// Paiement réussi : la fenêtre de paiement reste visible un instant (le temps de voir le succès) avant de se fermer
+export const SUCCESS_CLOSE_DELAY_MS = 3000;
 export const BILLING_UPDATED = "suiteflow:billing-updated"; // événement window : formule ou crédit modifiés
 
 export interface PaymentInfo {
@@ -85,9 +87,14 @@ export const payment = {
 
   popupClosed: () => !popup || popup.closed,
 
-  finish() {
-    if (popup && !popup.closed) popup.close();
+  // closeAfterMs : paiement réussi, la fenêtre de paiement se ferme après ce délai ; sinon tout de suite
+  finish(closeAfterMs = 0) {
+    const win = popup;
     popup = null;
+    if (win && !win.closed) {
+      if (closeAfterMs > 0) setTimeout(() => !win.closed && win.close(), closeAfterMs);
+      else win.close();
+    }
     set({ open: false, reference: null, link: null, info: null });
   },
 };

@@ -34,7 +34,9 @@ export interface SubscriptionSummary {
 export interface PublicPlan {
   id: PlanId;
   name: string;
-  monthly: number | null;
+  monthly: number | null; // prix promotionnel, celui qui est facturé
+  listMonthly: number | null; // prix public habituel, affiché barré
+  listAnnualMonthly: number | null; // le même, en formule annuelle (−15 %)
   annual: number | null; // total payé pour un an
   annualMonthly: number | null;
   limits: Limits;

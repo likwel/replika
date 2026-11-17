@@ -111,6 +111,7 @@ export function renderTemplate(template: string, vars: Record<string, string | n
     .replace(/[ \t]{2,}/g, " ")
     .replace(/ +([,.])/g, "$1")
     .replace(/\(\s*\)/g, "")
+    .replace(/^[,;:\s]+/, "") // « {nom}, merci » sans nom connu : pas de virgule orpheline en tête
     .trim();
 }
 
