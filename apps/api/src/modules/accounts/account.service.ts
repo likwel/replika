@@ -60,6 +60,12 @@ export const accountService = {
   async remove(userId: string, id: string) {
     const acc = await prisma.socialAccount.findFirst({ where: { id, userId } });
     if (!acc) throw new AppError("Compte introuvable", 404);
-    await prisma.socialAccount.delete({ where: { id } });
+    // Les règles ne sont plus liées au compte par une clé étrangère : on le retire de leur liste ;
+    // une règle qui ne visait que lui est supprimée (comme avant, quand la suppression était en cascade)
+    await prisma.$transaction([
+      prisma.automationRule.deleteMany({ where: { userId, accountIds: { equals: [id] } } }),
+      prisma.$executeRaw`UPDATE "AutomationRule" SET "accountIds" = array_remove("accountIds", ${id}) WHERE "userId" = ${userId} AND ${id} = ANY("accountIds")`,
+      prisma.socialAccount.delete({ where: { id } }),
+    ]);
   },
 };

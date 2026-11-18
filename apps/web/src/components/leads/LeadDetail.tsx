@@ -192,9 +192,9 @@ export function LeadDetail({ leadId, onClose, onChanged }: Props) {
             {lead.messages.map((m) => (
               <li key={m.id} className="flex items-start gap-2 rounded-xl p-2.5" style={{ background: theme.bg }}>
                 {m.kind === "DIRECT" ? (
-                  <MessagesSquare size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#0d9488" }} />
+                  <MessagesSquare size={14} className="mt-0.5 flex-shrink-0" style={{ color: theme.textMuted }} />
                 ) : (
-                  <MessageCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: "#6D28D9" }} />
+                  <MessageCircle size={14} className="mt-0.5 flex-shrink-0" style={{ color: theme.textMuted }} />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="whitespace-pre-line break-words text-sm" style={{ color: theme.text }}>{m.content}</p>

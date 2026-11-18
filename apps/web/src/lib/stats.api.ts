@@ -36,7 +36,7 @@ export interface RuleStats {
   autoSend: boolean;
   hitCount: number;
   lastTriggeredAt: string | null;
-  account: { name: string } | null;
+  accounts: Array<{ name: string }>;
 }
 
 export interface RevenueStats {

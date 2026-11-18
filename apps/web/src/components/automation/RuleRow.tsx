@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { FloatingMenu, MenuItem } from "@/components/ui/FloatingMenu";
 import {
-  AlertTriangle, Copy, CornerDownRight, Image, Layers, Mail, MessageCircle, MoreHorizontal, Pencil, Trash2, UserCheck, Zap,
+  AlertTriangle, BarChart3, ChevronDown, Copy, CornerDownRight, Image, Layers, Mail, MessageCircle, Hash, MessageSquareDashed, Pause, Pencil, Play, Power, Settings2, Sparkles, Trash2, UserCheck,
 } from "lucide-react";
 import { theme } from "@/theme";
 import { Toggle } from "@/components/ui/Toggle";
-import { plural, timeAgo } from "@/lib/format";
+import { Button } from "@/components/ui/Button";
+import { IconTile } from "@/components/ui/Dash";
+import { timeAgo } from "@/lib/format";
 import type { AutomationRule } from "@/lib/automation.api";
-import { RULE_LANGUAGES, splitKeywords, splitVariants } from "./rules";
+import { RULE_LANGUAGES, accountsLabel, allAccountsUnusable, splitKeywords, splitVariants } from "./rules";
 
 export const CHANNEL_META = {
   ALL: { label: "Commentaires et messages", icon: Layers },
@@ -36,37 +38,70 @@ export function Chip({ children, color = theme.textMuted, bg = theme.bg }: { chi
 
 interface Props {
   rule: AutomationRule;
-  onToggle: () => void;
+  onToggle: () => void; // active / met en pause la règle
+  onToggleAuto: () => void; // envoi automatique ↔ validation avant envoi
+  onTest: () => void;
+  onStats: () => void;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
 }
 
 // Compte visé désactivé ou non autorisé : la règle ne peut pas se déclencher
-export const isUnusable = (rule: AutomationRule) =>
-  Boolean(rule.account && (!rule.account.isActive || /non autoris/i.test(rule.account.syncError ?? "")));
+export const isUnusable = (rule: AutomationRule) => allAccountsUnusable(rule.accounts);
 
-// Une règle se lit comme une phrase : QUAND (ce que dit le client) → ALORS (ce que SuiteFlow répond)
-export function RuleRow({ rule, onToggle, onEdit, onDuplicate, onDelete }: Props) {
+// Nature de la règle : mots-clés, IA ou réponse par défaut (couleur + icône pour la reconnaître d'un coup d'œil)
+export function ruleKind(r: AutomationRule) {
+  if (r.useAi) return { label: "IA", icon: Sparkles, tint: "#F59E0B" };
+  if (r.matchType === "ANY") return { label: "Par défaut", icon: MessageSquareDashed, tint: "#64748B" };
+  return { label: "Mots-clés", icon: Hash, tint: "#8B5CF6" };
+}
+
+// Interrupteur avec son libellé : cliquer sur le texte bascule aussi
+export function LabeledSwitch({ checked, onChange, text, hint, disabled }: { checked: boolean; onChange: () => void; text: string; hint: string; disabled?: boolean }) {
+  return (
+    <label className={`inline-flex items-center gap-2 text-[12.5px] font-semibold ${disabled ? "opacity-50" : "cursor-pointer"}`} style={{ color: theme.text }} title={hint}>
+      <Toggle checked={checked} onChange={onChange} label={text} disabled={disabled} />
+      <span className="select-none">{text}</span>
+    </label>
+  );
+}
+
+// Une règle se lit comme une phrase : QUAND (ce que dit le client) → ALORS (ce que SuiteFlow répond).
+// Sous la phrase, la barre de contrôle : activer, réponse automatique, gérer.
+export function RuleRow({ rule, onToggle, onToggleAuto, onTest, onStats, onEdit, onDuplicate, onDelete }: Props) {
   const channel = CHANNEL_META[rule.channel];
   const keywords = splitKeywords(rule.trigger);
   const variants = splitVariants(rule.response);
   const unusable = isUnusable(rule);
+  const kind = ruleKind(rule);
   const where = rule.channel === "COMMENT" ? "un commentaire" : rule.channel === "DIRECT" ? "un message privé" : "un commentaire ou un message";
 
   return (
-    <div className="row-s !items-start !gap-3 !p-3.5" style={{ opacity: rule.isActive ? 1 : 0.62, ...(unusable ? { boxShadow: "inset 0 0 0 1.5px rgba(225,29,72,0.4)" } : {}) }}>
-      <div className="pt-0.5">
-        <Toggle checked={rule.isActive} onChange={onToggle} label={rule.isActive ? "Mettre la règle en pause" : "Activer la règle"} />
-      </div>
-
-      <button onClick={onEdit} className="min-w-0 flex-1 text-left" title="Modifier la règle">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <b className="truncate text-[14.5px] font-bold tracking-[-0.01em]" style={{ color: theme.text }}>{rule.name}</b>
-          {!rule.isActive && <span className="chip off !text-[10.5px]">En pause</span>}
+    <div className="row-s !flex-col !items-stretch !gap-0 !overflow-hidden !p-0" style={unusable ? { boxShadow: "inset 0 0 0 1.5px rgba(225,29,72,0.4)" } : undefined}>
+      <button onClick={onEdit} className="min-w-0 p-3.5 text-left" title="Gérer la règle" style={{ opacity: rule.isActive ? 1 : 0.62 }}>
+        <div className="flex items-start gap-3">
+          <IconTile icon={kind.icon} tint={rule.isActive ? kind.tint : "#94A3B8"} size="md" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <b className="truncate text-[15px] font-bold tracking-[-0.01em]" style={{ color: theme.text }}>{rule.name}</b>
+              <span className="chip off !text-[10.5px]">{kind.label}</span>
+              <span className={`chip ${rule.isActive ? "ok" : "off"} !text-[10.5px]`}>{rule.isActive ? "Active" : "En pause"}</span>
+            </div>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px]" style={{ color: theme.textMuted }}>
+              <span className="inline-flex items-center gap-1"><channel.icon size={11} /> {accountsLabel(rule.accounts)}</span>
+              {rule.postId && <span className="inline-flex items-center gap-1"><Image size={11} /> {rule.postLabel ?? "1 publication"}</span>}
+              {(rule.language === "FR" || rule.language === "MG") && <LangChip rule={rule} />}
+            </p>
+          </div>
+          {/* Performance : le chiffre qui compte */}
+          <div className="flex-shrink-0 text-right leading-tight">
+            <b className="block text-[18px] font-extrabold tabular-nums" style={{ color: rule.hitCount ? theme.text : theme.textMuted }}>{rule.hitCount}</b>
+            <span className="block text-[10.5px]" style={{ color: theme.textMuted }}>{rule.hitCount > 1 ? "réponses" : "réponse"}</span>
+          </div>
         </div>
 
-        <dl className="mt-2 grid grid-cols-[3.4rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5 text-[13px]">
+        <dl className="mt-3 grid grid-cols-[3.4rem_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1.5 text-[13px]">
           <dt className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: theme.textMuted }}>Quand</dt>
           <dd className="flex flex-wrap items-center gap-1" style={{ color: theme.text }}>
             {rule.matchType === "ANY" ? (
@@ -92,33 +127,35 @@ export function RuleRow({ rule, onToggle, onEdit, onDuplicate, onDelete }: Props
           </dd>
         </dl>
 
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px]" style={{ color: theme.textMuted }}>
-          {rule.autoSend ? (
-            <span className="inline-flex items-center gap-1 font-semibold" style={{ color: theme.green }} title="La réponse part toute seule"><Zap size={11} /> Envoi automatique</span>
-          ) : (
-            <span className="inline-flex items-center gap-1 font-semibold" style={{ color: theme.amber }} title="La réponse vous est proposée dans « À traiter »"><UserCheck size={11} /> Vous validez avant l'envoi</span>
-          )}
-          <span className="inline-flex items-center gap-1"><channel.icon size={11} /> {rule.account ? rule.account.name : "Tous les comptes"}</span>
-          {rule.postId && <span className="inline-flex items-center gap-1"><Image size={11} /> {rule.postLabel ?? "1 publication"}</span>}
-          {(rule.language === "FR" || rule.language === "MG") && <LangChip rule={rule} />}
-          <span className="ml-auto">
-            {rule.hitCount > 0 ? `${plural(rule.hitCount, "réponse envoyée", "réponses envoyées")}${rule.lastTriggeredAt ? ` · ${timeAgo(rule.lastTriggeredAt)}` : ""}` : "Pas encore utilisée"}
-          </span>
-        </div>
+        {rule.lastTriggeredAt && <p className="mt-2 text-[11.5px]" style={{ color: theme.textMuted }}>Dernière réponse {timeAgo(rule.lastTriggeredAt)}</p>}
         {unusable && (
           <p className="mt-2 flex items-center gap-1.5 text-[12px]" style={{ color: theme.red }}>
-            <AlertTriangle size={12} /> {rule.account!.name} est inutilisable : la règle ne se déclenche pas.
+            <AlertTriangle size={12} /> {accountsLabel(rule.accounts)} {rule.accounts.length > 1 ? "sont inutilisables" : "est inutilisable"} : la règle ne se déclenche pas.
           </p>
         )}
       </button>
 
-      <RowMenu onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
+      {/* Barre de contrôle : tout se règle sans ouvrir la règle */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-3.5 py-2" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <LabeledSwitch
+          checked={rule.autoSend}
+          onChange={onToggleAuto}
+          text="Réponse automatique"
+          hint={rule.autoSend ? "La réponse part toute seule. Désactivez pour la valider vous-même dans « À traiter »." : "La réponse vous est proposée dans « À traiter ». Activez pour qu'elle parte toute seule."}
+        />
+        {!rule.autoSend && (
+          <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: theme.amber }}><UserCheck size={12} /> Vous validez avant l'envoi</span>
+        )}
+        <div className="ml-auto flex items-center gap-1">
+          <RowMenu active={rule.isActive} onToggle={onToggle} onEdit={onEdit} onTest={onTest} onStats={onStats} onDuplicate={onDuplicate} onDelete={onDelete} />
+        </div>
+      </div>
     </div>
   );
 }
 
-// Actions d'une règle : menu flottant, jamais coupé par le tableau ou la grille
-export function RowMenu({ onEdit, onDuplicate, onDelete }: { onEdit: () => void; onDuplicate: () => void; onDelete: () => void }) {
+// « Gérer » : un seul bouton qui déplie toutes les actions d'une règle (menu flottant, jamais coupé par le tableau)
+export function RowMenu({ active, onToggle, onEdit, onTest, onStats, onDuplicate, onDelete }: { active: boolean; onToggle: () => void; onEdit: () => void; onTest: () => void; onStats: () => void; onDuplicate: () => void; onDelete: () => void }) {
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const act = (fn: () => void) => () => {
     setAnchor(null);
@@ -126,21 +163,26 @@ export function RowMenu({ onEdit, onDuplicate, onDelete }: { onEdit: () => void;
   };
   return (
     <>
-      <button
+      <Button
+        size="sm"
+        variant="ghost"
+        icon={Settings2}
         onClick={(e) => {
           const el = e.currentTarget;
           setAnchor((cur) => (cur ? null : el));
         }}
-        className="rounded-lg p-1.5 hover:bg-black/5"
-        aria-label="Actions de la règle"
         aria-expanded={Boolean(anchor)}
         aria-haspopup="menu"
       >
-        <MoreHorizontal size={16} style={{ color: theme.textMuted }} />
-      </button>
+        Gérer
+        <ChevronDown size={13} className="transition-transform" style={{ transform: anchor ? "rotate(180deg)" : undefined }} />
+      </Button>
       {anchor && (
-        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={168}>
-          <MenuItem icon={Pencil} label="Modifier" onClick={act(onEdit)} />
+        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={188}>
+          <MenuItem icon={Pencil} label="Modifier la règle" onClick={act(onEdit)} />
+          <MenuItem icon={Play} label="Tester" onClick={act(onTest)} />
+          <MenuItem icon={BarChart3} label="Statistiques" onClick={act(onStats)} />
+          <MenuItem icon={active ? Pause : Power} label={active ? "Mettre en pause" : "Activer"} onClick={act(onToggle)} />
           <MenuItem icon={Copy} label="Dupliquer" onClick={act(onDuplicate)} />
           <MenuItem icon={Trash2} label="Supprimer" onClick={act(onDelete)} danger />
         </FloatingMenu>

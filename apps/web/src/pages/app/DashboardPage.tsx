@@ -1,13 +1,14 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import {
-  AlertTriangle, BarChart3, Bell, Bot, Check, ChevronRight, History, Inbox, Info, KeyRound, Lock, Mail, MessageCircle, Plug, Plus, ShieldCheck, Sparkles, Star, Trophy, Users, Settings2, UserPlus, Power, Pencil, CreditCard, } from "lucide-react";
+  AlertTriangle, BarChart3, Bell, Bot, Check, ChevronRight, History, Inbox, KeyRound, Lock, Mail, MessageCircle, Plug, Plus, ShieldCheck, Sparkles, Star, Trophy, Users, Settings2, UserPlus, Power, Pencil, CreditCard, } from "lucide-react";
 import { theme } from "@/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useAccess } from "@/hooks/useAccess";
 import { usePlan, fmtDate, fmtNum } from "@/hooks/usePlan";
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
+import { Alert } from "@/components/ui/Alert";
 import { CountUp, Hero, Panel, ProgressRow, SkeletonCards } from "@/components/ui/Dash";
 import { AccountAvatar } from "@/components/workspace/AccountAvatar";
 import { actionMeta, detailOf } from "@/components/history/history";
@@ -20,7 +21,7 @@ import { statsApi, type RuleStats, type StatsOverview } from "@/lib/stats.api";
 import { automationApi, type AutomationSettings } from "@/lib/automation.api";
 import { billingApi, repliesLeft, type BillingOverview } from "@/lib/billing.api";
 import { teamApi, type TeamOverview } from "@/lib/team.api";
-import { RULE_PRESETS } from "@/components/automation/rules";
+import { RULE_PRESETS, accountsLabel } from "@/components/automation/rules";
 import { Avatar } from "@/components/ui/Avatar";
 import { historyApi, type HistoryEntry } from "@/lib/history.api";
 
@@ -68,10 +69,7 @@ export function DashboardPage() {
   }, []);
 
   const pending = (accounts ?? []).reduce((n, a) => n + a.pending, 0);
-  const broken = (accounts ?? []).filter((a) => a.syncError);
   const firstName = (user?.name ?? "").split(/\s+/)[0];
-  const hasIg = (accounts ?? []).some((a) => a.platform === "INSTAGRAM");
-  const hasFb = (accounts ?? []).some((a) => a.platform === "FACEBOOK");
 
   // Protection du compte : deux réglages qui comptent vraiment
   const twoFa = Boolean(user?.twoFactorMethod);
@@ -128,8 +126,8 @@ export function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* Un compte par ligne : état à gauche de « Gérer » (coche verte quand tout est à jour) */}
-              <ul className="stagger flex flex-col gap-2">
+              {/* Un compte par ligne : état à gauche de « Gérer » ; au-delà de 5 lignes la liste défile */}
+              <ul className="stagger -mr-1 flex max-h-[19rem] flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
                 {accounts.map((a) => (
                   <li key={a.id} className="row-s">
                     <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={go(a.pending ? "a-traiter" : "gestion")} title={a.syncError ?? undefined}>
@@ -150,20 +148,27 @@ export function DashboardPage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-3 text-[13px]" style={{ color: theme.textMuted }}>
-                {broken.length > 0 ? <AlertTriangle size={15} style={{ color: theme.amber }} className="flex-shrink-0" /> : <Info size={15} className="flex-shrink-0" />}
-                <span className="min-w-0 flex-1 basis-56">
-                  {broken.length > 0
-                    ? `${plural(broken.length, "compte ne se synchronise plus", "comptes ne se synchronisent plus")} : reconnectez-${broken.length > 1 ? "les" : "le"} pour recevoir leurs messages.`
-                    : !hasIg || !hasFb
-                      ? `Aucun compte ${hasIg ? "Facebook" : "Instagram"} associé : ajoutez-en un pour répondre aussi à ses commentaires et messages.`
-                      : "Vos commentaires et messages arrivent automatiquement dans « À traiter »."}
-                </span>
-                {/* Toujours proposé quand au moins un compte est associé */}
-                <div className="flex flex-wrap items-center gap-2">
-                  {broken.length > 0 && <Button variant="soft" icon={Plug} onClick={openAssociate}>Reconnecter</Button>}
-                  <Button variant="ghost" icon={Plus} onClick={openAssociate}>Associer un autre compte</Button>
-                </div>
+              {/* Statistiques par réseau : chaque carte a son bouton d'association */}
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(["FACEBOOK", "INSTAGRAM"] as const).map((net) => {
+                  const list = (accounts ?? []).filter((a) => a.platform === net);
+                  const waiting = list.reduce((n, a) => n + a.pending, 0);
+                  const lost = list.filter((a) => a.syncError).length;
+                  const fb = net === "FACEBOOK";
+                  return (
+                    <div key={net} className="flex min-w-0 items-center gap-2.5 rounded-xl py-2 pl-3 pr-2" style={{ background: "var(--surface-2)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+                      <PlatIcon p={fb ? "fb" : "ig"} size={24} />
+                      <span className="min-w-0 flex-1 leading-tight">
+                        <b className="text-[15px] font-extrabold tabular-nums" style={{ color: list.length ? theme.text : theme.textMuted }}>{list.length}</b>
+                        <span className="ml-1 text-[12px]" style={{ color: theme.textMuted }}>{fb ? (list.length > 1 ? "Pages" : "Page") : (list.length > 1 ? "comptes" : "compte")}</span>
+                        <small className="block truncate text-[11.5px]" style={{ color: lost ? theme.red : waiting ? theme.amber : theme.textMuted }}>
+                          {list.length === 0 ? "Non associé" : lost ? `${lost} à reconnecter` : waiting ? `${waiting} à traiter` : "À jour"}
+                        </small>
+                      </span>
+                      <Button size="sm" variant="ghost" icon={Plus} onClick={openAssociate} aria-label={`Associer ${fb ? "une Page Facebook" : "un compte Instagram"}`}>Associer</Button>
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -179,7 +184,7 @@ export function DashboardPage() {
               ? "Chargement…"
               : pending > 0
                 ? <>{plural(pending, "message ou commentaire attend", "messages et commentaires attendent")} <b className="font-bold text-white">votre réponse</b>.</>
-                : "Tout est à jour. Les réponses automatiques s'occupent du reste."
+                : "Rien en attente : tout est traité."
           }
         >
           <div className="flex flex-col gap-4">
@@ -231,8 +236,8 @@ export function DashboardPage() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button className="btn-w" onClick={go("a-traiter")}><Inbox />Ouvrir la file</button>
-              <button className="btn-g" onClick={go("regles")}><Bot />Règles</button>
+              <button className="btn btn-sm btn-w" onClick={go("a-traiter")}><Inbox />Ouvrir la file</button>
+              <button className="btn btn-sm btn-g" onClick={go("regles")}><Bot />Règles</button>
             </div>
           </div>
         </Hero>
@@ -264,10 +269,22 @@ export function DashboardPage() {
       <div className="stagger grid gap-4 lg:grid-cols-3 lg:gap-5">
         <Panel
           title="Invitez votre équipe"
-          subtitle="Partagez la gestion de vos Pages"
+          subtitle="Collaborez sur vos Pages"
           icon={Users}
           tint="#a855f7"
           link={canMenu("set", 3) && team !== "na" ? { label: "Gérer", onClick: go("parametres", 3) } : undefined}
+          footer={
+            team !== null && team !== "na" && team.seats !== 0 ? (
+              <div className="grid grid-cols-2 gap-2 border-t px-4 py-3 sm:px-5" style={{ borderColor: "var(--line)" }}>
+                <button className="btn btn-sm btn-soft" onClick={go("parametres", 3)}><Settings2 />Gérer</button>
+                {team.seats !== null && team.used >= team.seats ? (
+                  <button className="btn btn-sm btn-brand" onClick={go("parametres", 4)}><Sparkles />Plus de places</button>
+                ) : (
+                  <button className="btn btn-sm btn-brand" onClick={go("parametres", 3)}><UserPlus />Inviter</button>
+                )}
+              </div>
+            ) : undefined
+          }
         >
           {team === null ? (
             <div className="flex flex-col gap-3"><span className="sk h-9 w-24" /><span className="sk h-3 w-3/4" /><span className="sk h-11 w-full" /></div>
@@ -288,7 +305,7 @@ export function DashboardPage() {
                 <Lock />
                 <span>L'équipe est incluse à partir de la formule <b>Business</b> (5 membres).</span>
               </div>
-              <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 4)}><Sparkles size={15} className="mr-1.5 inline" />Voir les formules</button>
+              <button className="btn btn-sm btn-brand" onClick={go("parametres", 4)}><Sparkles size={15}/>Voir les formules</button>
             </div>
           ) : (
             <>
@@ -317,11 +334,11 @@ export function DashboardPage() {
               </p>
 
               {team.members.length === 0 ? (
-                <p className="mb-3 rounded-xl px-3.5 py-3 text-[13px] leading-snug" style={{ background: "var(--surface-2)", color: theme.textMuted }}>
+                <p className="rounded-xl px-3.5 py-3 text-[13px] leading-snug" style={{ background: "var(--surface-2)", color: theme.textMuted }}>
                   Personne d'autre n'a encore accès à votre espace. Invitez un collaborateur par e-mail et choisissez ce qu'il peut voir et faire.
                 </p>
               ) : (
-                <ul className="mb-3 flex flex-col gap-1">
+                <ul className="flex flex-col gap-1">
                   {team.members.slice(0, 3).map((m) => (
                     <li key={m.id} className="flex items-center gap-2.5 rounded-xl px-1 py-1">
                       <Avatar name={m.name ?? m.email} src={m.avatarUrl} size={28} />
@@ -337,25 +354,13 @@ export function DashboardPage() {
                   {team.members.length > 3 && <li className="px-1 text-xs" style={{ color: theme.textMuted }}>+ {plural(team.members.length - 3, "autre membre", "autres membres")}</li>}
                 </ul>
               )}
-
-              {team.seats !== null && team.used >= team.seats ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <button className="btn-soft h-11 rounded-[14px] text-[13.5px] font-semibold" onClick={go("parametres", 3)}><Settings2 size={15} className="mr-1.5 inline" />Gérer</button>
-                  <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 4)}><Sparkles size={15} className="mr-1.5 inline" />Plus de places</button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <button className="btn-soft h-11 rounded-[14px] text-[13.5px] font-semibold" onClick={go("parametres", 3)}><Settings2 size={15} className="mr-1.5 inline" />Gérer</button>
-                  <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("parametres", 3)}><UserPlus size={15} className="mr-1.5 inline" />Inviter</button>
-                </div>
-              )}
             </>
           )}
         </Panel>
 
         <Panel
           title="Règles les plus actives"
-          subtitle="Total depuis la création de chaque règle"
+          subtitle="Total depuis la création"
           icon={Trophy}
           tint="#f59e0b"
           flush
@@ -372,7 +377,7 @@ export function DashboardPage() {
             <div className="flex flex-col gap-3 px-5 pb-4">{[0, 1, 2].map((i) => <span key={i} className="sk h-10 w-full" />)}</div>
           ) : topRules.length === 0 ? (
             <div className="flex flex-col gap-3 px-5 pb-5">
-              <p className="text-[13.5px] leading-snug" style={{ color: theme.textMuted }}>Aucune règle n'a encore répondu. Choisissez un modèle pour commencer.</p>
+              <Alert variant="info" compact>Aucune règle n'a encore répondu. Choisissez un modèle pour commencer.</Alert>
               <div className="flex flex-col gap-1.5">
                 {suggestions.map((p) => (
                   <button key={p.id} className="prow w-full text-left" onClick={go(`regles?creer=${p.id}`)}>
@@ -382,7 +387,7 @@ export function DashboardPage() {
                   </button>
                 ))}
               </div>
-              <button className="btn-brand h-11 rounded-[14px] text-[13.5px] font-bold" onClick={go("regles?creer=1")}><Plus size={15} className="mr-1.5 inline" />Créer une règle</button>
+              <button className="btn btn-sm btn-brand" onClick={go("regles?creer=1")}><Plus size={15}/>Créer une règle</button>
             </div>
           ) : (
             <>
@@ -391,7 +396,7 @@ export function DashboardPage() {
                   <span className={`medal-rank r${i + 1}`}>{i + 1}</span>
                   <span className="tr-m">
                     <b>{r.name}</b>
-                    <small>{CHANNEL[r.channel]}{r.account ? ` · ${r.account.name}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}</small>
+                    <small>{CHANNEL[r.channel]}{r.accounts.length ? ` · ${accountsLabel(r.accounts)}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}</small>
                     <span className="mt-1.5 block h-1 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }} aria-hidden>
                       <span className="block h-full rounded-full" style={{ width: `${Math.max(4, (r.hitCount / maxHits) * 100)}%`, background: "linear-gradient(90deg,#fcd34d,#f59e0b)" }} />
                     </span>
@@ -430,7 +435,7 @@ export function DashboardPage() {
               <b>Double validation</b>
               <small>{twoFa ? (user?.twoFactorMethod === "TOTP" ? "Application d'authentification" : `Code envoyé à ${maskEmail(user?.email ?? "")}`) : "Un code en plus du mot de passe"}</small>
             </span>
-            {twoFa ? <span className="chip ok">Activée</span> : <button className="btn-soft h-9 rounded-[11px] px-3.5 text-[13px] font-semibold" onClick={go("parametres", 1)}><Power size={15} className="mr-1.5 inline" />Activer</button>}
+            {twoFa ? <span className="chip ok">Activée</span> : <button className="btn btn-soft btn-sm" onClick={go("parametres", 1)}><Power size={15}/>Activer</button>}
           </div>
           <div className="trow">
             <span className={`tr-ico ${notif ? "ok" : ""}`}>{notif ? <Check /> : <Bell />}</span>
@@ -438,7 +443,7 @@ export function DashboardPage() {
               <b>Alertes du navigateur</b>
               <small>{notif ? "Vous êtes prévenu des nouveaux messages" : "Soyez prévenu des messages à traiter"}</small>
             </span>
-            {notif ? <span className="chip ok">Activées</span> : <button className="btn-soft h-9 rounded-[11px] px-3.5 text-[13px] font-semibold" onClick={go("parametres", 2)}><Power size={15} className="mr-1.5 inline" />Activer</button>}
+            {notif ? <span className="chip ok">Activées</span> : <button className="btn btn-soft btn-sm" onClick={go("parametres", 2)}><Power size={15}/>Activer</button>}
           </div>
           <div className="trow">
             <span className="tr-ico"><Lock /></span>
@@ -446,13 +451,13 @@ export function DashboardPage() {
               <b>Mot de passe</b>
               <small>À changer régulièrement</small>
             </span>
-            <button className="btn-soft h-9 rounded-[11px] px-3.5 text-[13px] font-semibold" onClick={go("parametres", 1)}><Pencil size={15} className="mr-1.5 inline" />Modifier</button>
+            <button className="btn btn-soft btn-sm" onClick={go("parametres", 1)}><Pencil size={15}/>Modifier</button>
           </div>
           {status === "EXPIRED" && (
             <div className="trow">
               <span className="tr-ico warn"><AlertTriangle /></span>
               <span className="tr-m"><b>Abonnement expiré</b><small>Les réponses automatiques sont en pause</small></span>
-              <button className="btn-soft h-9 rounded-[11px] px-3.5 text-[13px] font-semibold" onClick={go("parametres", 4)}><CreditCard size={15} className="mr-1.5 inline" />Renouveler</button>
+              <button className="btn btn-soft btn-sm" onClick={go("parametres", 4)}><CreditCard size={15}/>Renouveler</button>
             </div>
           )}
         </Panel>

@@ -51,7 +51,7 @@
   --color-bgDark2: #1d202a;
   /* Contrastes vérifiés (WCAG) : texte 18:1, secondaire 7:1, couleurs d'état ≥ 4,5:1 sur leur fond */
   --color-text: var(--ink);
-  --color-textMuted: #566073;
+  --color-textMuted: #7a808d;
   --color-placeholder: var(--ink-3);
   --color-border: rgba(15, 23, 42, 0.10);
   --color-red: #be123c;
@@ -96,7 +96,7 @@
   --color-scroll: #3a3f4c;
   --color-bgDark: #151820;
   --color-bgDark2: #1d202a;
-  --color-textMuted: #9aa1b0;
+  --color-textMuted: #838a98;
   --color-border: rgba(255, 255, 255, 0.09);
   --color-red: #fb7185;
   --color-redLight: #fda4af;
@@ -369,19 +369,19 @@ body {
   display: grid;
   place-items: center;
   flex: none;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--surface);
   color: var(--ink-2);
-  box-shadow: var(--sh-card);
+  box-shadow: inset 0 0 0 1px var(--line-2);
   cursor: pointer;
-  transition: transform 0.15s var(--ease), box-shadow 0.2s, color 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
-.ibtn:hover { color: var(--ink); box-shadow: var(--sh-lift); transform: translateY(-1px); }
-.ibtn:active { transform: translateY(1px); }
+.ibtn:hover { color: var(--ink); background: var(--surface-2); }
+.ibtn:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
 
 /* Pastille de compteur */
 .bd {
@@ -401,36 +401,66 @@ body {
   box-shadow: 0 0 0 2px var(--ground), 0 4px 10px -4px var(--brand-glow);
 }
 
-/* Bouton principal : dégradé de marque, relief en bas, halo coloré */
-.btn-brand {
-  color: var(--color-onAccent);
-  text-shadow: 0 1px 1px rgba(110, 20, 0, 0.3);
-  background: var(--brand);
-  box-shadow: 0 14px 26px -14px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(120, 20, 0, 0.18);
-  transition: transform 0.15s var(--ease), filter 0.2s, box-shadow 0.2s;
+/* Tous les boutons texte partagent la même base : hauteur 40 px (32 px en « sm »), marge interne 16 px (12 px),
+   rayon 10 px, icône + libellé séparés de 8 px, sans marge externe. Aplats unis, sans dégradé ni ombre. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  gap: 8px;
+  height: 40px;
+  min-width: 40px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, filter 0.15s, color 0.15s;
 }
-:root[data-accent="classic"] .btn-brand { text-shadow: 0 1px 1px rgba(0, 50, 40, 0.3); box-shadow: 0 14px 26px -14px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(0, 60, 48, 0.18); }
-.btn-brand:hover:not(:disabled) { transform: translateY(-1px); filter: saturate(1.1); }
-.btn-brand:active:not(:disabled) { transform: translateY(1px); }
+.btn.btn-sm { height: 32px; min-width: 32px; gap: 6px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; }
+.btn svg { flex: none; width: 16px; height: 16px; }
+.btn.btn-sm svg { width: 14px; height: 14px; }
+.btn:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
-/* Bouton secondaire : surface blanche cerclée */
-.btn-soft {
-  color: var(--ink);
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(15, 23, 42, 0.06), inset 0 -1px 0 rgba(15, 23, 42, 0.05);
-  transition: transform 0.15s var(--ease), box-shadow 0.2s;
-}
+/* Principal : couleur de marque unie */
+.btn-brand { color: var(--color-onAccent); background: var(--brand-2); }
+.btn-brand:hover:not(:disabled) { filter: brightness(0.92); }
+/* Secondaire : surface cerclée d'un filet */
+.btn-soft { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); }
 :root[data-theme="dark"] .btn-soft { background: var(--surface-3); }
-.btn-soft:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--line-2), 0 8px 16px -10px rgba(15, 23, 42, 0.35), inset 0 -1px 0 rgba(15, 23, 42, 0.05); }
-.btn-soft:active:not(:disabled) { transform: translateY(1px); }
+.btn-soft:hover:not(:disabled) { background: var(--surface-2); }
+:root[data-theme="dark"] .btn-soft:hover:not(:disabled) { background: var(--line-2); }
+/* Danger, sombre, teinté */
+.btn-danger { color: #fff; background: #e11d48; }
+.btn-danger:hover:not(:disabled) { filter: brightness(0.92); }
+.btn-dark { color: #fff; background: #14161c; }
+.btn-dark:hover:not(:disabled) { filter: brightness(1.35); }
+.btn-tint { color: var(--color-goldDark); background: var(--color-goldSoft); }
+.btn-tint:hover:not(:disabled) { filter: brightness(0.96); }
 
-/* Boutons « tactile » : la hauteur monte à 44 px sur mobile */
+/* Commandes de l'en-tête : même gabarit que le champ de recherche et la pastille de formule (38 px, rayon 12 px) */
+.btn.hdr-ctl, .ibtn.hdr-ctl { height: 38px; border-radius: 12px; }
+.ibtn.hdr-ctl { width: 38px; }
+
+/* Boutons « tactile » : 44 px (36 px en sm) sur mobile */
 @media (max-width: 900px), (pointer: coarse) {
-  .ibtn { width: 44px; height: 44px; border-radius: 13px; }
+  .btn { height: 44px; }
+  .btn.btn-sm { height: 36px; }
+  .ibtn { width: 44px; height: 44px; }
+  .btn.hdr-ctl, .ibtn.hdr-ctl { height: 44px; }
+  .ibtn.hdr-ctl { width: 44px; }
 }
 
 /* ---------- Tuiles d'icône ---------- */
-/* Carré arrondi en dégradé (--a → --b) avec reflet haut et ombre colorée */
+/* Carré arrondi plat et sobre : une seule teinte pour toute l'application (fond de marque très léger,
+   pictogramme de marque). --a / --b et la couleur inline des appels sont ignorés exprès : la couleur ne sert
+   plus à distinguer les modules, c'est le pictogramme qui le fait. */
 .ico-tile {
   position: relative;
   display: grid;
@@ -439,9 +469,8 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  color: #fff;
-  background: linear-gradient(155deg, var(--a) 0%, var(--b) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1.5px 2.5px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(16, 24, 40, 0.16), 0 6px 12px -7px color-mix(in srgb, var(--b) 38%, #101828);
+  color: var(--brand-ink) !important;
+  background: color-mix(in srgb, var(--brand-2) 11%, var(--surface));
 }
 .ico-tile.sm { width: 34px; height: 34px; border-radius: 10px; }
 .ico-tile.lg { width: 52px; height: 52px; border-radius: 15px; }
@@ -465,7 +494,7 @@ body {
   border: 0;
   border-radius: 11px;
   background: none;
-  color: var(--color-textMuted);
+  color: var(--ink-2);
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
@@ -473,7 +502,7 @@ body {
   flex: none;
   transition: color 0.2s, background-color 0.15s, box-shadow 0.25s var(--ease);
 }
-.side-item > svg { width: 17px; height: 17px; flex: none; opacity: 0.72; transition: opacity 0.15s; }
+.side-item > svg { width: 17px; height: 17px; flex: none; opacity: 0.85; transition: opacity 0.15s; }
 .side-item:hover { background: var(--surface-3); color: var(--ink); }
 .side-item.on {
   color: var(--color-onAccent);
@@ -537,17 +566,16 @@ body {
 .cnt.hot { background: var(--brand); color: var(--color-onAccent); box-shadow: 0 4px 10px -4px var(--brand-glow); }
 .side-item.on .cnt { background: #fff; color: #9a3412; box-shadow: none; }
 
-/* Logo : tuile sombre à reflet, comme la pastille « PR » de pr.social */
+/* Logo : tuile sombre plate */
 .mark-tile {
   position: relative;
   display: grid;
   place-items: center;
   flex: none;
   color: #fff;
-  background: linear-gradient(180deg, #2c2f39 0%, #0e1014 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.45), 0 1px 2px rgba(16, 24, 40, 0.3), 0 6px 12px -7px rgba(16, 24, 40, 0.6);
+  background: #14161c;
 }
-:root[data-theme="dark"] .mark-tile { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 12px -7px rgba(0, 0, 0, 0.8); }
+:root[data-theme="dark"] .mark-tile { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13); }
 
 /* ---------- Contrôle segmenté et onglets ---------- */
 .seg {
@@ -583,35 +611,51 @@ body {
 :root[data-theme="dark"] .seg-b.on { background: var(--surface-2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 6px 12px -8px rgba(0, 0, 0, 0.8); }
 @media (max-width: 900px), (pointer: coarse) { .seg-b { min-height: 38px; } }
 
-/* ---------- Interrupteur ---------- */
+/* ---------- Interrupteur moderne : pastille blanche avec coche quand il est allumé ---------- */
 .sw {
   position: relative;
   flex: none;
-  width: 44px;
-  height: 26px;
+  width: 48px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: 999px;
   background: var(--surface-3);
-  box-shadow: inset 0 0 0 1px var(--line-2);
+  box-shadow: inset 0 0 0 1px var(--line-2), inset 0 1px 2px rgba(15, 23, 42, 0.08);
   cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition: background 0.25s, box-shadow 0.25s;
 }
-.sw::after {
-  content: "";
+.sw:hover:not(:disabled) { background: var(--line-2); }
+.sw:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; }
+.sw-k {
   position: absolute;
   top: 3px;
   inset-inline-start: 3px;
-  width: 20px;
-  height: 20px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  transition: transform 0.2s var(--ease);
+  color: var(--brand-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 3px 6px -2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.25s var(--ease), width 0.15s;
+}
+.sw:active:not(:disabled) .sw-k { width: 26px; }
+.sw-k svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transform: scale(0.4) rotate(-20deg);
+  transition: opacity 0.2s, transform 0.25s var(--ease);
 }
 .sw[aria-checked="true"] { background: var(--brand); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08), 0 6px 12px -6px var(--brand-glow); }
-.sw[aria-checked="true"]::after { transform: translateX(18px); }
-[dir="rtl"] .sw[aria-checked="true"]::after { transform: translateX(-18px); }
+.sw[aria-checked="true"]:hover:not(:disabled) { background: var(--brand); filter: brightness(1.05); }
+.sw[aria-checked="true"] .sw-k { transform: translateX(20px); }
+.sw[aria-checked="true"]:active:not(:disabled) .sw-k { transform: translateX(16px); }
+.sw[aria-checked="true"] .sw-k svg { opacity: 1; transform: none; }
+[dir="rtl"] .sw[aria-checked="true"] .sw-k { transform: translateX(-20px); }
+[dir="rtl"] .sw[aria-checked="true"]:active:not(:disabled) .sw-k { transform: translateX(-16px); }
 
 /* ---------- Pastille d'état ---------- */
 .chip {
@@ -706,7 +750,7 @@ body {
 .tab i svg { width: 21px; height: 21px; }
 .tab:active i { transform: scale(0.92); }
 .tab.on { color: var(--ink); }
-.tab.on i { background: var(--brand); color: var(--color-onAccent); box-shadow: 0 8px 16px -8px var(--brand-glow), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+.tab.on i { background: var(--brand-2); color: var(--color-onAccent); }
 .tab .bd { top: -4px; inset-inline-end: 2px; box-shadow: 0 0 0 2px var(--surface), 0 4px 10px -4px var(--brand-glow); }
 
 /* ---------- Squelettes de chargement ---------- */
@@ -741,7 +785,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .page-in, .stagger > *, .drawer-in, .sheet, .pop, .scrim, .sk { animation: none !important; }
-  .card-s, .ibtn, .btn-brand, .btn-soft, .seg-b, .sw, .sw::after, .tab i { transition: none !important; }
+  .card-s, .ibtn, .btn, .seg-b, .sw, .sw-k, .sw-k svg, .tab i { transition: none !important; }
 }
 
 /* ---------- Surfaces du shell ---------- */
@@ -760,7 +804,7 @@ body {
 }
 
 /* Bouton principal désactivé : surface grise en creux, comme sur pr.social */
-.btn-brand:disabled { background: var(--surface-3); color: var(--ink-2); text-shadow: none; box-shadow: inset 0 0 0 1px var(--line); opacity: 1 !important; }
+.btn-brand:disabled { background: var(--surface-3); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); opacity: 1 !important; }
 
 /* =====================================================================================
    Briques de tableau de bord
@@ -833,9 +877,9 @@ body {
 
 /* Numéro de rang d'une liste classée */
 .medal-rank { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--surface-3); color: var(--ink-2); font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.medal-rank.r1 { color: #5b3a00; background: linear-gradient(180deg, #fde68a, #f59e0b); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 5px 9px -5px rgba(245,158,11,.9); }
-.medal-rank.r2 { color: #394150; background: linear-gradient(180deg, #f1f3f6, #b3bac7); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 5px 9px -5px rgba(100,112,134,.8); }
-.medal-rank.r3 { color: #5a2d0c; background: linear-gradient(180deg, #f8cfab, #c8773d); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 5px 9px -5px rgba(200,119,61,.9); }
+.medal-rank.r1 { color: #5b3a00; background: #fbbf24; }
+.medal-rank.r2 { color: #394150; background: #d1d5db; }
+.medal-rank.r3 { color: #5a2d0c; background: #e0a070; }
 
 /* =====================================================================================
    Carte « neutre » : le relief de .card-s (fond, ombre, filet lumineux, halo au survol) sans toucher
@@ -907,7 +951,7 @@ select { min-height: 2.375rem; line-height: 1.3; }
 .lang svg { width: 15px; height: 15px; flex: none; }
 .lang svg:last-child { margin-inline-start: auto; width: 14px; height: 14px; }
 .lang span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.side-foot .ibtn { width: 36px; height: 36px; border-radius: 11px; }
+.side-foot .ibtn { width: 36px; height: 36px; border-radius: 10px; }
 .me { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .who { min-width: 0; flex: 1; text-align: start; }
 .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
@@ -917,16 +961,10 @@ select { min-height: 2.375rem; line-height: 1.3; }
 .who span svg { width: 12px; height: 12px; }
 
 /* ---------- Boutons sur carte héros ---------- */
-.btn-w, .btn-g {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 20px;
-  border: 0; border-radius: 14px; font-size: 14.5px; font-weight: 700; letter-spacing: -0.005em; white-space: nowrap; cursor: pointer;
-  transition: transform 0.15s var(--ease), box-shadow 0.2s;
-}
-.btn-w svg, .btn-g svg { width: 17px; height: 17px; }
-.btn-w { background: linear-gradient(180deg, #fff, #f1f2f5); color: #0e1016; box-shadow: 0 16px 26px -14px rgba(0, 0, 0, 0.95), inset 0 -3px 0 rgba(14, 16, 22, 0.13), inset 0 1px 0 #fff; }
-.btn-g { color: #fff; background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
-.btn-w:hover, .btn-g:hover { transform: translateY(-1px); }
-.btn-w:active, .btn-g:active { transform: translateY(1px); }
+.btn-w { background: #fff; color: #0e1016; }
+.btn-g { color: #fff; background: rgba(255, 255, 255, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.btn-w:hover { background: #eef0f4; }
+.btn-g:hover { background: rgba(255, 255, 255, 0.2); }
 
 /* ---------- Lignes de liste dans une carte ---------- */
 .trow {
@@ -1062,9 +1100,9 @@ h1, h2, h3, .hero-fig, .font-display { font-family: var(--font-display); }
 
 /* Pastille « validé » : rond plein vert, coche blanche, ombre verte douce. 26 px par défaut ; .sm (20 px) pour les listes denses
    (étapes, lignes de menu, cartes compactes) */
-.tr-ico.ok-solid { width: 26px; height: 26px; background: #22C55E; color: #fff; box-shadow: 0 5px 11px -3px rgba(34, 197, 94, 0.65); }
+.tr-ico.ok-solid { width: 26px; height: 26px; background: #22C55E; color: #fff; }
 .tr-ico.ok-solid svg { width: 14px; height: 14px; }
-.tr-ico.ok-solid.sm { width: 20px; height: 20px; box-shadow: 0 3px 8px -2px rgba(34, 197, 94, 0.6); }
+.tr-ico.ok-solid.sm { width: 20px; height: 20px; }
 .tr-ico.ok-solid.sm svg { width: 12px; height: 12px; }
 /* Mêmes tailles pour les autres pastilles (alerte, bloqué…) posées à côté d'une coche verte */
 .tr-ico.md { width: 26px; height: 26px; }
@@ -1100,3 +1138,7 @@ h1, h2, h3, .hero-fig, .font-display { font-family: var(--font-display); }
     linear-gradient(#000 0 0) 0 var(--t) / 100% calc(100% - var(--t) * 2) no-repeat,
     conic-gradient(from -45deg at 50% 100%, #000 0 90deg, #0000 0) bottom / calc(var(--t) * 2) var(--t) repeat-x;
 }
+
+/* Champ de recherche sans cadre : fond en creux seulement, même au focus */
+.field-bare { background: var(--surface-3); box-shadow: none; transition: background-color 0.15s; }
+.field-bare:hover, .field-bare:focus-within { background: var(--surface-2); box-shadow: none; outline: none; }

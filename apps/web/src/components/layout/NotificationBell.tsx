@@ -46,7 +46,7 @@ export function NotificationBell({ onNavigate }: Props) {
       <button
         ref={btn}
         onClick={() => setOpen((o) => !o)}
-        className="ibtn relative"
+        className="ibtn hdr-ctl relative rounded-xl"
         aria-label={unseen ? `Notifications : ${unseen} nouveau${unseen > 1 ? "x" : ""} à traiter` : "Notifications : rien de nouveau"}
         aria-haspopup="menu"
         aria-expanded={open}

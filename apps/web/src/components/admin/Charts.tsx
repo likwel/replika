@@ -100,7 +100,7 @@ export function ColumnChart({ title, subtitle, data, format, icon: Icon, height 
       action={
         <button
           onClick={() => setTable((t) => !t)}
-          className="btn-soft flex h-8 items-center gap-1.5 rounded-[10px] px-2.5 text-[12px] font-semibold"
+          className="btn btn-soft btn-sm"
           aria-pressed={table}
         >
           <Table2 size={13} /> {table ? "Graphique" : "Tableau"}

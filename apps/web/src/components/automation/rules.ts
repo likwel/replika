@@ -15,7 +15,7 @@ export const EMPTY_RULE: RuleInput = {
   autoSend: false,
   isActive: true,
   priority: 0,
-  accountId: null,
+  accountIds: [],
   postId: null,
   postLabel: null,
 };
@@ -207,3 +207,11 @@ export const KNOWLEDGE_TEMPLATES: Record<RuleLang, Array<{ label: string; text: 
     { label: "Ora sy adiresy", text: "Misokatra … ka hatramin'ny …, amin'ny … ka hatramin'ny …\nAdiresy : …" },
   ],
 };
+
+// Comptes visés, en une ligne : « Tous les comptes », le nom du compte, ou « 3 comptes »
+export const accountsLabel = (accounts: Array<{ name: string }>) =>
+  accounts.length === 0 ? "Tous les comptes" : accounts.length === 1 ? accounts[0].name : `${accounts.length} comptes`;
+
+// Au moins un compte visé, et tous inutilisables (désactivés ou non autorisés) : la règle ne peut pas se déclencher
+export const allAccountsUnusable = (accounts: Array<{ isActive: boolean; syncError: string | null }>) =>
+  accounts.length > 0 && accounts.every((a) => !a.isActive || /non autoris/i.test(a.syncError ?? ""));

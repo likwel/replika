@@ -182,8 +182,9 @@ model AutomationRule {
   hitCount        Int             @default(0)
   lastTriggeredAt DateTime?
   account         SocialAccount?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  accountId       String? // null = tous les comptes
-  postId          String? // identifiant Facebook/Instagram de la publication ; null = toutes les publications
+  accountId       String? // ancien compte unique : vidé par la migration, remplacé par accountIds
+  accountIds      String[]        @default([]) // comptes visés ; liste vide = tous les comptes
+  postId          String? // identifiant Facebook/Instagram de la publication ; null = toutes les publications (un seul compte visé)
   postLabel       String? // extrait de la publication, mis en cache pour l'affichage
   messages        SocialMessage[]
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -826,7 +827,8 @@ model Pipeline {
   isActive    Boolean         @default(false)
   steps       Json // [{ id, type, config }] : voir modules/pipelines/pipeline.schema.ts
   account     SocialAccount?  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  accountId   String? // null = tous les comptes
+  accountId   String? // ancien compte unique : repris dans accountIds, n'est plus écrit
+  accountIds  String[]        @default([]) // comptes visés ; vide = tous les comptes
   runCount    Int             @default(0)
   lastRunAt   DateTime?
   runs        PipelineRun[]

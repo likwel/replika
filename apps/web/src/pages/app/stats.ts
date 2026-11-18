@@ -18,7 +18,7 @@ export function exportReportCsv(accounts: AccountStats[], rules: RuleStats[]) {
     ...rules.map((r) => [
       r.name,
       r.channel,
-      r.account?.name ?? "",
+      r.accounts.map((a) => a.name).join(" + "),
       r.hitCount,
       r.autoSend ? "Oui" : "Non",
       r.lastTriggeredAt ? new Date(r.lastTriggeredAt).toLocaleString("fr-FR") : "",

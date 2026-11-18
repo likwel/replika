@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma.js";
+import { attachAccounts } from "../automation/automation.accounts.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = 7; // fenêtre fixe des Rapports et du chiffre d'affaires
@@ -131,8 +132,8 @@ export const statsService = {
   },
 
   // Rapports : règles les plus déclenchées (total depuis leur création, pas seulement la fenêtre récente)
-  rules: (userId: string) =>
-    prisma.automationRule.findMany({
+  async rules(userId: string) {
+    const rules = await prisma.automationRule.findMany({
       where: { userId, hitCount: { gt: 0 } },
       select: {
         id: true,
@@ -141,9 +142,11 @@ export const statsService = {
         autoSend: true,
         hitCount: true,
         lastTriggeredAt: true,
-        account: { select: { name: true } },
+        accountIds: true,
       },
       orderBy: { hitCount: "desc" },
       take: 10,
-    }),
+    });
+    return attachAccounts(rules);
+  },
 };

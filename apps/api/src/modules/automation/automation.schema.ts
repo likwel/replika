@@ -22,7 +22,7 @@ export const ruleSchema = z.object({
   autoSend: z.boolean().optional(),
   isActive: z.boolean().optional(),
   priority: z.number().int().min(-100).max(100).optional(),
-  accountId: z.string().nullish(),
+  accountIds: z.array(z.string().min(1)).max(50, "50 comptes au maximum").optional(), // vide = tous les comptes
   postId: z.string().trim().nullish(),
   postLabel: z
     .string()

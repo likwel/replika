@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AlertTriangle, Check, Copy, MoreHorizontal, Pencil, Plus, Search, Trash2, Workflow, X, Zap } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, Copy, Pause, Pencil, Play, Plus, Search, Settings2, Trash2, Workflow, X, Zap } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
-import { Toggle } from "@/components/ui/Toggle";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { PageCard } from "@/components/ui/PageCard";
@@ -12,7 +11,7 @@ import { FloatingMenu, MenuItem } from "@/components/ui/FloatingMenu";
 import { IconTile } from "@/components/ui/Dash";
 import { EmptyState, FilterChips, ListSkeleton } from "@/components/workspace/WorkspaceUi";
 import { PipelineEditor } from "@/components/pipelines/PipelineEditor";
-import { PipelineFlow } from "@/components/pipelines/PipelineFlow";
+import { PipelineDiagram, PipelineFlow } from "@/components/pipelines/PipelineFlow";
 import { TEMPLATES, stepMeta, triggerOf } from "@/components/pipelines/meta";
 import { accountApi, type SocialAccount } from "@/lib/account.api";
 import { automationApi, type AutomationRule } from "@/lib/automation.api";
@@ -97,7 +96,7 @@ function PipelinesView() {
   };
 
   const duplicate = (p: Pipeline) =>
-    setEditor({ pipeline: null, preset: { name: `${p.name} (copie)`, description: p.description, trigger: p.trigger, accountId: p.accountId, steps: p.steps.map((s) => ({ ...s, id: Math.random().toString(36).slice(2, 10) })) } });
+    setEditor({ pipeline: null, preset: { name: `${p.name} (copie)`, description: p.description, trigger: p.trigger, accountIds: p.accountIds, steps: p.steps.map((s) => ({ ...s, id: Math.random().toString(36).slice(2, 10) })) } });
 
   const saved = (p: Pipeline) => {
     const isNew = !editor?.pipeline;
@@ -161,7 +160,7 @@ function PipelinesView() {
       ) : (
         <ul className="stagger flex flex-col gap-3">
           {visible.map((p) => (
-            <PipelineCard key={p.id} p={p} onToggle={() => void toggle(p)} onEdit={() => setEditor({ pipeline: p })} onDuplicate={() => duplicate(p)} onDelete={() => void remove(p)} />
+            <PipelineCard key={p.id} p={p} rules={rules} accounts={accounts} onToggle={() => void toggle(p)} onEdit={() => setEditor({ pipeline: p })} onDuplicate={() => duplicate(p)} onDelete={() => void remove(p)} />
           ))}
         </ul>
       )}
@@ -171,7 +170,15 @@ function PipelinesView() {
   );
 }
 
-function PipelineCard({ p, onToggle, onEdit, onDuplicate, onDelete }: { p: Pipeline; onToggle: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void }) {
+// « Tous les comptes », le nom de la Page, ou « Page A, Page B +2 »
+function accountsLabel(p: Pipeline, accounts: SocialAccount[]): string {
+  if (p.accountIds.length === 0) return "Tous les comptes";
+  const names = p.accountIds.map((id) => accounts.find((a) => a.id === id)?.name).filter((n): n is string => Boolean(n));
+  if (names.length === 0) return "Compte supprimé";
+  return names.length > 2 ? `${names.slice(0, 2).join(", ")} +${names.length - 2}` : names.join(", ");
+}
+
+function PipelineCard({ p, rules, accounts, onToggle, onEdit, onDuplicate, onDelete }: { p: Pipeline; rules: AutomationRule[]; accounts: SocialAccount[]; onToggle: () => void; onEdit: () => void; onDuplicate: () => void; onDelete: () => void }) {
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const t = triggerOf(p.trigger);
   const act = (fn: () => void) => () => {
@@ -179,30 +186,57 @@ function PipelineCard({ p, onToggle, onEdit, onDuplicate, onDelete }: { p: Pipel
     fn();
   };
   return (
-    <li className="row-s !items-start !gap-3.5 !p-4" style={{ opacity: p.isActive ? 1 : 0.75 }}>
-      <div className="pt-0.5"><Toggle checked={p.isActive} onChange={onToggle} label={p.isActive ? "Mettre en pause" : "Activer"} /></div>
-      <button onClick={onEdit} className="min-w-0 flex-1 text-left" title="Modifier le pipeline">
-        <div className="flex flex-wrap items-center gap-2">
-          <b className="text-[15px] font-bold tracking-[-0.01em]" style={{ color: theme.text }}>{p.name}</b>
-          <span className={`chip ${p.isActive ? "ok" : "off"}`}>{p.isActive ? "Actif" : "En pause"}</span>
-        </div>
-        {p.description && <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: theme.textMuted }}>{p.description}</p>}
-        <div className="mt-2.5"><PipelineFlow pipeline={p} /></div>
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]" style={{ color: theme.textMuted }}>
-          <span>{t.label}</span>
-          <span>· {p.account ? p.account.name : "Tous les comptes"}</span>
-          <span>· {plural(p.steps.length, "étape")}</span>
-          <span className="ml-auto">
-            {p.runCount > 0 ? `${plural(p.runCount, "exécution")}${p.lastRunAt ? ` · ${timeAgo(p.lastRunAt)}` : ""}` : "Jamais exécuté"}
+    <li className="row-s !flex-col !items-stretch !gap-0 !overflow-hidden !p-0">
+      <div className="flex items-start gap-3 p-4" style={{ opacity: p.isActive ? 1 : 0.7 }}>
+        <IconTile icon={Workflow} tint={p.isActive ? t.tint : "#94A3B8"} size="md" />
+        <button onClick={onEdit} className="min-w-0 flex-1 text-left" title="Modifier le pipeline">
+          <span className="flex flex-wrap items-center gap-2">
+            <b className="text-[15px] font-bold tracking-[-0.01em]" style={{ color: theme.text }}>{p.name}</b>
+            <span className={`chip ${p.isActive ? "ok" : "off"}`}>{p.isActive ? "Actif" : "En pause"}</span>
           </span>
-        </p>
-      </button>
-      <button onClick={(e) => { const el = e.currentTarget; setAnchor((c) => (c ? null : el)); }} className="rounded-lg p-1.5 hover:bg-black/5" aria-label="Actions du pipeline" aria-haspopup="menu" aria-expanded={Boolean(anchor)}>
-        <MoreHorizontal size={16} style={{ color: theme.textMuted }} />
-      </button>
+          {p.description && <span className="mt-0.5 block text-[12.5px] leading-snug" style={{ color: theme.textMuted }}>{p.description}</span>}
+          <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px]" style={{ color: theme.textMuted }}>
+            <span>{accountsLabel(p, accounts)}</span>
+            <span>· {plural(p.steps.length, "étape")}</span>
+          </span>
+        </button>
+        {/* Activité : le chiffre qui compte */}
+        <div className="flex-shrink-0 text-right leading-tight">
+          <b className="block text-[18px] font-extrabold tabular-nums" style={{ color: p.runCount ? theme.text : theme.textMuted }}>{p.runCount}</b>
+          <span className="block text-[10.5px]" style={{ color: theme.textMuted }}>{p.runCount > 1 ? "exécutions" : "exécution"}</span>
+        </div>
+      </div>
+
+      {/* Le workflow : déclencheur, étapes, fin */}
+      <div className="px-4 pb-3.5" style={{ opacity: p.isActive ? 1 : 0.7 }}>
+        <div className="rounded-xl px-2 py-1" style={{ background: "var(--surface)", boxShadow: "inset 0 0 0 1px var(--line)" }}>
+          <PipelineDiagram pipeline={p} rules={rules} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-4 py-2" style={{ borderColor: "var(--line)", background: "var(--surface)" }}>
+        <span className="min-w-0 flex-1 basis-48 truncate text-[12px]" style={{ color: theme.textMuted }}>
+          {p.runCount > 0 && p.lastRunAt ? `Dernière exécution ${timeAgo(p.lastRunAt)}` : "Jamais exécuté"}
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={Settings2}
+          onClick={(e) => {
+            const el = e.currentTarget;
+            setAnchor((c) => (c ? null : el));
+          }}
+          aria-haspopup="menu"
+          aria-expanded={Boolean(anchor)}
+        >
+          Gérer
+          <ChevronDown size={13} className="transition-transform" style={{ transform: anchor ? "rotate(180deg)" : undefined }} />
+        </Button>
+      </div>
       {anchor && (
-        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={176}>
-          <MenuItem icon={Pencil} label="Modifier" onClick={act(onEdit)} />
+        <FloatingMenu anchor={anchor} onClose={() => setAnchor(null)} width={196}>
+          <MenuItem icon={Pencil} label="Modifier le pipeline" onClick={act(onEdit)} />
+          <MenuItem icon={p.isActive ? Pause : Play} label={p.isActive ? "Mettre en pause" : "Activer"} onClick={act(onToggle)} />
           <MenuItem icon={Copy} label="Dupliquer" onClick={act(onDuplicate)} />
           <MenuItem icon={Trash2} label="Supprimer" onClick={act(onDelete)} danger />
         </FloatingMenu>

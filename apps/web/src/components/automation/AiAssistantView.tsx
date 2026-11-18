@@ -1,13 +1,17 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Select } from "@/components/ui/Select";
 import { AiModelPicker } from "@/components/automation/AiModelPicker";
-import { Sparkles, ExternalLink, Loader2, Layers, MessageCircle, Mail, Facebook, Instagram, Check, UserCheck, CircleSlash, FilePlus, FlaskConical, Save } from "lucide-react";
+import { AlertTriangle, BookOpen, Cpu, Power, SlidersHorizontal, Sparkles, ExternalLink, Loader2, Layers, MessageCircle, Mail, Check, UserCheck, CircleSlash, FilePlus, FlaskConical, Save, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { CardTitle } from "@/components/ui/Dash";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { Segmented } from "@/components/ui/Segmented";
+import { StepCard, type StepTone } from "@/components/ui/StepCard";
+import { ScrollRow } from "@/components/ui/ScrollRow";
+import { AccountAvatar } from "@/components/workspace/AccountAvatar";
+import { KnowledgeImportModal } from "@/components/automation/KnowledgeImportModal";
 import { IntentChip } from "@/components/messages/IntentChip";
 import { ApiError } from "@/lib/api";
 import { offerReplyCredits } from "@/lib/replyCredits";
@@ -114,55 +118,61 @@ export function AiAssistantView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <ModelStatus overview={overview} />
-      <AiModelPicker overview={overview} />
-
       {overview.accounts.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center text-sm card-x" style={{ color: theme.textMuted }}>
-          Connectez une Page Facebook ou un compte Instagram pour configurer l'assistant.
-        </div>
+        <>
+          <ModelStatus overview={overview} />
+          <AiModelPicker overview={overview} />
+          <div className="rounded-2xl p-8 text-center text-sm card-x" style={{ color: theme.textMuted }}>
+            Connectez une Page Facebook ou un compte Instagram pour configurer l'assistant.
+          </div>
+        </>
       ) : (
         <>
-          <div className="no-scrollbar flex gap-2 overflow-x-auto">
-            {overview.accounts.map((a) => {
-              const active = a.id === selectedId;
-              const Icon = a.platform === "INSTAGRAM" ? Instagram : Facebook;
-              return (
-                <button
-                  key={a.id}
-                  onClick={() => setSelectedId(a.id)}
-                  className="flex h-9 flex-shrink-0 items-center gap-2 rounded-full pl-1.5 pr-3.5 text-[13px] font-semibold transition-all"
-                  style={{
-                    background: active ? theme.bgDark : theme.bgCard,
-                    color: active ? "#fff" : theme.text,
-                    border: `1px solid ${active ? theme.bgDark : theme.border}`,
-                  }}
-                >
-                  {a.avatarUrl ? (
-                    <img src={a.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
-                  ) : (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white">
-                      <Icon size={13} color={a.platform === "INSTAGRAM" ? "#E4405F" : "#1877F2"} />
+          {/* Choix du compte à configurer : flèches quand la liste dépasse la largeur */}
+          <div className="flex flex-col gap-1.5">
+            <p className="flex items-center gap-2 px-0.5 text-[12.5px] font-semibold" style={{ color: theme.textMuted }}>
+              Compte à configurer
+              <span className="chip off !text-[10.5px]">{overview.accounts.length}</span>
+            </p>
+            <ScrollRow label="Comptes" activeKey={selectedId}>
+              {overview.accounts.map((a) => {
+                const active = a.id === selectedId;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    data-active={active}
+                    aria-pressed={active}
+                    onClick={() => setSelectedId(a.id)}
+                    className="flex h-11 flex-shrink-0 items-center gap-2.5 rounded-full pl-2 pr-3.5 text-left transition-all hover:-translate-y-px"
+                    style={{
+                      background: active ? theme.bgDark : theme.bgCard,
+                      color: active ? "#fff" : theme.text,
+                      border: `1px solid ${active ? theme.bgDark : theme.border}`,
+                      boxShadow: active ? "0 8px 16px -10px rgba(15,23,42,0.55)" : undefined,
+                    }}
+                  >
+                    <AccountAvatar name={a.name} src={a.avatarUrl} platform={a.platform === "INSTAGRAM" ? "INSTAGRAM" : "FACEBOOK"} size={28} />
+                    <span className="min-w-0 leading-tight">
+                      <span className="block max-w-[150px] truncate text-[13px] font-semibold">{a.name}</span>
+                      <span className="block text-[10.5px]" style={{ color: active ? "rgba(255,255,255,0.65)" : theme.textMuted }}>
+                        {a.aiEnabled ? `IA active · ${LANGS.find((l) => l.value === (a.aiLanguage ?? "AUTO"))!.short}` : "IA inactive"}
+                      </span>
                     </span>
-                  )}
-                  {a.name}
-                  {a.aiEnabled && (
-                    <span className="rounded px-1 text-[10px] font-bold" style={{ background: active ? "#ffffff26" : theme.bg, color: active ? "#fff" : theme.textMuted }}>
-                      {LANGS.find((l) => l.value === (a.aiLanguage ?? "AUTO"))!.short}
-                    </span>
-                  )}
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: a.aiEnabled ? theme.gold : active ? "#FFFFFF40" : theme.border }}
-                    title={a.aiEnabled ? "IA active" : "IA inactive"}
-                  />
-                </button>
-              );
-            })}
+                    {/* Statut de l'assistant sur ce compte */}
+                    {a.aiEnabled ? (
+                      <span className="tr-ico ok-solid sm flex-shrink-0" title="Assistant actif"><Check strokeWidth={3} /></span>
+                    ) : (
+                      <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ background: active ? "rgba(255,255,255,0.35)" : "var(--line-2)" }} title="Assistant inactif" />
+                    )}
+                  </button>
+                );
+              })}
+            </ScrollRow>
           </div>
 
           {account && (
-            <AccountPanel key={account.id} account={account} configured={overview.configured} onSaved={onSaved} />
+            <AccountPanel key={account.id} account={account} overview={overview} onSaved={onSaved} />
           )}
         </>
       )}
@@ -203,29 +213,16 @@ function ModelStatus({ overview }: { overview: AiOverview }) {
   return null; // modèle configuré : il est présenté dans le sélecteur « Modèle IA »
 }
 
-// Section numérotée : le numéro, un titre, une phrase d'explication, puis le contenu aligné sous le titre
-function Step({ n, title, text, children }: { n: number; title: string; text: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-start gap-3">
-        <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-[12.5px] font-extrabold" style={{ background: theme.goldSoft, color: theme.goldDark }}>{n}</span>
-        <div className="min-w-0">
-          <h4 className="text-[15px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>{title}</h4>
-          <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: theme.textMuted }}>{text}</p>
-        </div>
-      </div>
-      <div className="flex flex-col gap-3 sm:pl-10">{children}</div>
-    </section>
-  );
-}
-
 interface PanelProps {
   account: AiAccount;
-  configured: boolean;
+  overview: AiOverview;
   onSaved: (a: AiAccount) => void;
 }
 
-function AccountPanel({ account, configured, onSaved }: PanelProps) {
+const channelLabel = (c: RuleChannel) => CHANNELS.find((x) => x.value === c)!.label.toLowerCase();
+
+function AccountPanel({ account, overview, onSaved }: PanelProps) {
+  const configured = overview.configured;
   const initial = {
     aiEnabled: account.aiEnabled,
     aiAutoSend: account.aiAutoSend,
@@ -239,6 +236,7 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
+  const [importing, setImporting] = useState<"aiContext" | "aiInstructions" | null>(null); // champ qui reçoit l'import
 
   const set = <K extends keyof typeof draft>(key: K, value: (typeof draft)[K]) => {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -262,83 +260,160 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
   };
 
   const field = "field-in w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium outline-none";
+  const hasContext = draft.aiContext.trim().length > 0;
+  const lang = LANGS.find((l) => l.value === draft.aiLanguage)!;
+
+  // Les quatre étapes et leur état actuel (calculé sur le brouillon : l'icône réagit en direct)
+  const steps: Array<{ id: number; icon: LucideIcon; title: string; summary: string; tone: StepTone; optional?: boolean }> = [
+    {
+      id: 1,
+      icon: Cpu,
+      title: "Modèle IA",
+      summary: configured ? `${overview.model} · ${overview.provider}` : "Non configuré sur ce serveur",
+      tone: configured ? "ok" : "todo",
+    },
+    {
+      id: 2,
+      icon: Power,
+      title: `Activer sur ${account.name}`,
+      summary: draft.aiEnabled ? "Activé : répond aux messages sans règle" : "Désactivé : aucun message ne passe par l'IA",
+      tone: draft.aiEnabled ? "ok" : "todo",
+    },
+    {
+      id: 3,
+      icon: BookOpen,
+      title: "Ce qu'il doit savoir",
+      summary: hasContext ? `${draft.aiContext.trim().length} caractères${draft.aiInstructions.trim() ? " · avec consignes" : ""}` : "Aucune information : l'IA restera générique",
+      tone: hasContext ? "ok" : draft.aiEnabled ? "todo" : "info",
+    },
+    {
+      id: 4,
+      icon: SlidersHorizontal,
+      title: "Sa façon de répondre",
+      summary: `${lang.label} · ${channelLabel(draft.aiChannel)} · ${draft.aiAutoSend ? "envoi automatique" : "vous relisez avant l'envoi"}`,
+      tone: "ok",
+      optional: true,
+    },
+  ];
+  const ready = steps.filter((s) => s.tone === "ok").length;
+  // Dépliées au départ : les étapes à configurer (choisies une fois, pour ne pas se replier pendant la saisie)
+  const [openSteps, setOpenSteps] = useState<Set<number>>(() => new Set(steps.filter((s) => s.tone === "todo").map((s) => s.id)));
+  const toggle = (id: number) =>
+    setOpenSteps((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const card = (id: number, children: ReactNode) => {
+    const st = steps.find((x) => x.id === id)!;
+    return (
+      <StepCard n={id} icon={st.icon} title={st.title} summary={st.summary} tone={st.tone} optional={st.optional} open={openSteps.has(id)} onToggle={() => toggle(id)}>
+        {children}
+      </StepCard>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
-      <div className="card-x flex flex-col gap-6 rounded-2xl p-5 lg:col-span-2">
-        {/* 1 · Activer */}
-        <Step n={1} title={`Activer l'assistant sur ${account.name}`} text="Pour les messages qu'aucune règle ne couvre. Les réponses par défaut « tout message » servent de secours si le modèle est indisponible.">
+      <div className="flex flex-col gap-3 lg:col-span-2">
+        {/* Avancement : combien d'étapes sont en place */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-3 card-x">
+          <div className="min-w-0 flex-1 basis-56">
+            <p className="text-[14px] font-bold" style={{ color: theme.text }}>Configuration de l'assistant</p>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: "var(--surface-3)" }} role="progressbar" aria-valuenow={ready} aria-valuemin={0} aria-valuemax={steps.length}>
+              <div className="h-full rounded-full transition-all" style={{ width: `${(ready / steps.length) * 100}%`, background: ready === steps.length ? theme.green : theme.gold }} />
+            </div>
+          </div>
+          <span className={`chip ${ready === steps.length ? "ok" : "warn"}`}>{ready === steps.length ? "Prêt" : `${ready} / ${steps.length} étapes`}</span>
+        </div>
+
+        {card(1, configured ? <AiModelPicker overview={overview} bare /> : <ModelStatus overview={overview} />)}
+
+        {card(
+          2,
           <div className="row-s !p-3.5">
             <span className={`tr-ico ${draft.aiEnabled ? "ok-solid" : ""}`}>{draft.aiEnabled ? <Check strokeWidth={3} /> : <Sparkles />}</span>
             <div className="min-w-0 flex-1">
               <b className="block text-[13.5px] font-semibold" style={{ color: theme.text }}>{draft.aiEnabled ? "L'assistant est activé" : "L'assistant est désactivé"}</b>
-              <small className="block text-[12px]" style={{ color: theme.textMuted }}>{draft.aiEnabled ? "Il répond aux messages sans règle correspondante." : "Activez-le pour qu'il réponde à votre place."}</small>
+              <small className="block text-[12px]" style={{ color: theme.textMuted }}>Pour les messages qu'aucune règle ne couvre. Les réponses par défaut « tout message » servent de secours si le modèle est indisponible.</small>
             </div>
             <Toggle checked={draft.aiEnabled} onChange={(v) => set("aiEnabled", v)} label="Activer l'IA" />
           </div>
-        </Step>
+        )}
 
-        {/* 2 · Ce qu'il doit savoir */}
-        <Step n={2} title="Ce qu'il doit savoir" text="L'IA ne répond qu'à partir de ces informations : elle n'invente ni prix, ni stock, ni délai.">
-          <div>
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-[13px] font-semibold" style={{ color: theme.text }}>Informations sur votre activité</span>
-              {!draft.aiContext.trim() && <Button icon={FilePlus} size="sm" variant="soft" onClick={() => set("aiContext", CONTEXT_TEMPLATE)}>Insérer un modèle</Button>}
-            </div>
-            <textarea
-              rows={9}
-              maxLength={8000}
-              className={field}
-              value={draft.aiContext}
-              onChange={(e) => set("aiContext", e.target.value)}
-              placeholder={"Produits et prix : panier S 25 000 Ar, panier M 35 000 Ar…\nLivraison : Tana 5 000 Ar sous 48 h…"}
-            />
-            <div className="mt-1 flex justify-between text-[11.5px]" style={{ color: theme.textMuted }}>
-              <span>{draft.aiEnabled && !draft.aiContext.trim() && "Sans ces informations, l'IA restera générique et escaladera les questions précises."}</span>
-              <span className="tabular">{draft.aiContext.length} / 8000</span>
-            </div>
-          </div>
-          <div>
-            <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Consignes <span className="font-normal" style={{ color: theme.textMuted }}>(facultatif)</span></span>
-            <textarea
-              rows={3}
-              maxLength={2000}
-              className={field}
-              value={draft.aiInstructions}
-              onChange={(e) => set("aiInstructions", e.target.value)}
-              placeholder="Vouvoyer les clients, ton chaleureux, signer « L'équipe ShopRaphia »…"
-            />
-          </div>
-        </Step>
-
-        {/* 3 · Sa façon de répondre */}
-        <Step n={3} title="Sa façon de répondre" text="La langue, les messages concernés, et si vous relisez avant l'envoi.">
-          <LanguagePicker value={draft.aiLanguage} onChange={(v) => set("aiLanguage", v)} />
-          <div className={draft.aiEnabled ? "flex flex-col gap-3" : "pointer-events-none flex flex-col gap-3 opacity-50"}>
+        {card(
+          3,
+          <>
+            <p className="text-[12.5px] leading-snug" style={{ color: theme.textMuted }}>L'IA ne répond qu'à partir de ces informations : elle n'invente ni prix, ni stock, ni délai.</p>
             <div>
-              <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Messages traités</span>
-              <Segmented options={CHANNELS} value={draft.aiChannel} onChange={(v) => set("aiChannel", v)} />
-            </div>
-            <div className="row-s !p-3.5">
-              <div className="min-w-0 flex-1">
-                <b className="block text-[13.5px] font-semibold" style={{ color: theme.text }}>Envoi automatique</b>
-                <small className="block text-[12px] leading-snug" style={{ color: theme.textMuted }}>
-                  {draft.aiAutoSend
-                    ? "Publiée directement. Réclamations et questions sans réponse restent escaladées vers vous."
-                    : "Proposée dans « À traiter » : vous relisez avant l'envoi. Recommandé pour commencer."}
-                </small>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="text-[13px] font-semibold" style={{ color: theme.text }}>Informations sur votre activité</span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {!hasContext && <Button icon={FilePlus} size="sm" variant="soft" onClick={() => set("aiContext", CONTEXT_TEMPLATE)}>Insérer un modèle</Button>}
+                  <Button icon={Upload} size="sm" variant="soft" onClick={() => setImporting("aiContext")} title="Depuis un fichier .txt, .csv, .xlsx ou un Google Sheet">Importer</Button>
+                </span>
               </div>
-              <Toggle checked={draft.aiAutoSend} onChange={(v) => set("aiAutoSend", v)} label="Envoi automatique" />
+              <textarea
+                rows={9}
+                maxLength={8000}
+                className={field}
+                value={draft.aiContext}
+                onChange={(e) => set("aiContext", e.target.value)}
+                placeholder={"Produits et prix : panier S 25 000 Ar, panier M 35 000 Ar…\nLivraison : Tana 5 000 Ar sous 48 h…"}
+              />
+              <div className="mt-1 flex justify-between text-[11.5px]" style={{ color: theme.textMuted }}>
+                <span>{draft.aiEnabled && !hasContext && "Sans ces informations, l'IA restera générique et escaladera les questions précises."}</span>
+                <span className="tabular">{draft.aiContext.length} / 8000</span>
+              </div>
             </div>
-          </div>
-        </Step>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="text-[13px] font-semibold" style={{ color: theme.text }}>Consignes <span className="font-normal" style={{ color: theme.textMuted }}>(facultatif)</span></span>
+                <Button icon={Upload} size="sm" variant="soft" onClick={() => setImporting("aiInstructions")} title="Depuis un fichier .txt, .csv, .xlsx ou un Google Sheet">Importer</Button>
+              </div>
+              <textarea
+                rows={3}
+                maxLength={2000}
+                className={field}
+                value={draft.aiInstructions}
+                onChange={(e) => set("aiInstructions", e.target.value)}
+                placeholder="Vouvoyer les clients, ton chaleureux, signer « L'équipe ShopRaphia »…"
+              />
+            </div>
+          </>
+        )}
+
+        {card(
+          4,
+          <>
+            <LanguagePicker value={draft.aiLanguage} onChange={(v) => set("aiLanguage", v)} />
+            <div className={draft.aiEnabled ? "flex flex-col gap-3" : "pointer-events-none flex flex-col gap-3 opacity-50"}>
+              <div>
+                <span className="mb-1.5 block text-[13px] font-semibold" style={{ color: theme.text }}>Messages traités</span>
+                <Segmented options={CHANNELS} value={draft.aiChannel} onChange={(v) => set("aiChannel", v)} />
+              </div>
+              <div className="row-s !p-3.5">
+                <div className="min-w-0 flex-1">
+                  <b className="block text-[13.5px] font-semibold" style={{ color: theme.text }}>Envoi automatique</b>
+                  <small className="block text-[12px] leading-snug" style={{ color: theme.textMuted }}>
+                    {draft.aiAutoSend
+                      ? "Publiée directement. Réclamations et questions sans réponse restent escaladées vers vous."
+                      : "Proposée dans « À traiter » : vous relisez avant l'envoi. Recommandé pour commencer."}
+                  </small>
+                </div>
+                <Toggle checked={draft.aiAutoSend} onChange={(v) => set("aiAutoSend", v)} label="Envoi automatique" />
+              </div>
+            </div>
+          </>
+        )}
 
         {error && <p className="row-s text-[13px]" style={{ color: theme.red }}>{error}</p>}
 
         {/* Barre d'enregistrement : reste visible pendant le défilement */}
-        <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center justify-end gap-3 border-t px-5 py-3" style={{ borderColor: "var(--line)", background: "var(--surface-2)", borderRadius: "0 0 18px 18px", boxShadow: "0 -14px 16px -14px rgba(15,23,42,0.18)" }}>
+        <div className="sticky bottom-0 flex items-center justify-end gap-3 rounded-2xl px-4 py-3 card-x" style={{ boxShadow: "0 -10px 22px -12px rgba(15,23,42,0.25)" }}>
           {dirty ? (
-            <span className="mr-auto text-[12px] font-semibold" style={{ color: theme.amber }}>Modifications non enregistrées</span>
+            <span className="mr-auto flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: theme.amber }}><AlertTriangle size={13} /> Modifications non enregistrées</span>
           ) : (
             justSaved && (
               <span className="mr-auto flex items-center gap-1.5 text-[12px] font-semibold" style={{ color: theme.green }}>
@@ -350,8 +425,18 @@ function AccountPanel({ account, configured, onSaved }: PanelProps) {
         </div>
       </div>
 
+      {importing && (
+        <KnowledgeImportModal
+          title={importing === "aiContext" ? "Importer des informations" : "Importer des consignes"}
+          current={draft[importing]}
+          maxLength={importing === "aiContext" ? 8000 : 2000}
+          onApply={(v) => set(importing, v)}
+          onClose={() => setImporting(null)}
+        />
+      )}
+
       <div className="lg:sticky lg:top-0">
-      <AiTester accountId={account.id} configured={configured} aiContext={draft.aiContext} aiInstructions={draft.aiInstructions} aiLanguage={draft.aiLanguage} />
+        <AiTester accountId={account.id} configured={configured} aiContext={draft.aiContext} aiInstructions={draft.aiInstructions} aiLanguage={draft.aiLanguage} />
       </div>
     </div>
   );

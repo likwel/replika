@@ -92,14 +92,22 @@ export function AutomationHero({ onSynced }: Props) {
             {!settings
               ? "Chargement…"
               : enabled
-                ? "SuiteFlow répond à vos clients en commentaire et en message privé, même la nuit."
+                ? "SuiteFlow répond à vos clients, même la nuit."
                 : "Aucune réponse n'est envoyée : les messages attendent dans « À traiter »."}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" icon={busy === "sync" ? Loader2 : RefreshCw} onClick={sync} disabled={busy !== null} className={busy === "sync" ? "[&>svg]:animate-spin" : ""}>
-            Synchroniser
-          </Button>
+          <button
+            type="button"
+            onClick={sync}
+            disabled={busy !== null}
+            title="Synchroniser : aller chercher les nouveaux messages maintenant"
+            aria-label="Synchroniser"
+            className="grid h-9 w-9 place-items-center rounded-lg disabled:opacity-50"
+            style={{ background: theme.bg, border: `1px solid ${theme.border}`, color: theme.textMuted }}
+          >
+            {busy === "sync" ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+          </button>
           <label className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5" style={{ background: theme.bg, border: `1px solid ${theme.border}` }}>
             <span className="text-[13px] font-medium" style={{ color: theme.text }}>{enabled ? "Activées" : "Désactivées"}</span>
             <Toggle checked={enabled} onChange={toggle} disabled={!settings || busy !== null} label="Réponses automatiques" />
@@ -111,8 +119,9 @@ export function AutomationHero({ onSynced }: Props) {
       <div className="flex flex-wrap items-stretch border-t" style={{ borderColor: "var(--line)" }}>
         <Kpi label="envoyées aujourd'hui" value={stats?.autoRepliedToday} />
         <Kpi label="à valider" value={stats?.suggested} tone={stats?.suggested ? "amber" : undefined} />
-        <Kpi label="escaladées" value={stats?.escalated} tone={stats?.escalated ? "amber" : undefined} />
-        <Kpi label="échecs" value={stats?.failed} tone={stats?.failed ? "red" : undefined} />
+        {/* Escaladées et échecs : affichés seulement quand il y en a */}
+        {!!stats?.escalated && <Kpi label="escaladées" value={stats.escalated} tone="amber" />}
+        {!!stats?.failed && <Kpi label="échecs" value={stats.failed} tone="red" />}
         <ReplyBalance />
       </div>
 

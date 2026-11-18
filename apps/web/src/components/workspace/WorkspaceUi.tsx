@@ -52,7 +52,7 @@ export function RefreshButton({ loading, onClick, title = "Actualiser" }: { load
   return (
     <button
       onClick={onClick}
-      className="btn-soft flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+      className="btn btn-sm btn-soft w-8 px-0"
       title={title}
       aria-label={title}
     >

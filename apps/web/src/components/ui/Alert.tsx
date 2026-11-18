@@ -19,16 +19,17 @@ interface Props {
   action?: ReactNode;
   onClose?: () => void;
   className?: string;
+  compact?: boolean;
 }
 
 // Bannière de notification : remplace les blocs ad-hoc répétés page par page
-export function Alert({ variant, icon, children, action, onClose, className = "" }: Props) {
+export function Alert({ variant, icon, children, action, onClose, className = "", compact }: Props) {
   const v = VARIANTS[variant];
   const Icon = icon ?? v.icon;
   return (
-    <div className={`flex flex-wrap items-start gap-2 rounded-xl px-4 py-3 text-sm ${className}`} style={{ background: v.bg, color: v.color }}>
-      <Icon size={16} className="mt-0.5 flex-shrink-0" />
-      <div className="min-w-0 flex-1 basis-56">{children}</div>
+    <div className={`flex flex-wrap items-start gap-2 ${compact ? "gap-x-2 rounded-lg px-3 py-1.5 text-[12.5px] leading-snug" : "rounded-xl px-4 py-3 text-sm"} ${className}`} style={{ background: v.bg, color: v.color }}>
+      <Icon size={compact ? 14 : 16} className="mt-0.5 flex-shrink-0" />
+      <div className={`min-w-0 flex-1 ${compact ? "basis-48 self-center" : "basis-56"}`}>{children}</div>
       {action}
       {onClose && (
         <button onClick={onClose} aria-label="Fermer" className="flex-shrink-0">

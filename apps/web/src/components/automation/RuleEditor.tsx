@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { IconTile } from "@/components/ui/Dash";
 import { Segmented } from "@/components/ui/Segmented";
+import { AccountMultiSelect } from "@/components/workspace/AccountMultiSelect";
 import { ApiError } from "@/lib/api";
 import { offerReplyCredits } from "@/lib/replyCredits";
 import type { SocialAccount } from "@/lib/account.api";
@@ -80,11 +81,11 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
           autoSend: rule.autoSend,
           isActive: rule.isActive,
           priority: rule.priority,
-          accountId: rule.accountId,
+          accountIds: rule.accountIds,
           postId: rule.postId,
           postLabel: rule.postLabel,
         }
-      : { ...EMPTY_RULE, channel: defaultChannel ?? EMPTY_RULE.channel, accountId: defaultAccountId, ...preset }
+      : { ...EMPTY_RULE, channel: defaultChannel ?? EMPTY_RULE.channel, accountIds: defaultAccountId ? [defaultAccountId] : [], ...preset }
   );
   // Création : modèle choisi (les autres sont grisés). Un modèle transmis par la page est présélectionné.
   const [modelId, setModelId] = useState<string | null>(() =>
@@ -105,7 +106,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
     setModelId(id);
     // Langue de la règle alignée sur celle du modèle (l'IA suit le compte en français)
     const language = id === "custom" ? "ACCOUNT" : l === "mg" ? "MG" : id === "ai" ? "ACCOUNT" : "FR";
-    setForm((f) => ({ ...EMPTY_RULE, channel: defaultChannel ?? EMPTY_RULE.channel, accountId: f.accountId, postId: null, postLabel: null, ...m.rule, language }));
+    setForm((f) => ({ ...EMPTY_RULE, channel: defaultChannel ?? EMPTY_RULE.channel, accountIds: f.accountIds, postId: null, postLabel: null, ...m.rule, language }));
     setError(null);
   };
   const [saving, setSaving] = useState(false);
@@ -116,17 +117,18 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
   const set = <K extends keyof RuleInput>(key: K, value: RuleInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  // Les publications ne peuvent être listées que pour un compte précis
+  // Les publications ne se listent que pour un compte précis : un seul compte visé
+  const singleAccountId = form.accountIds.length === 1 ? form.accountIds[0] : null;
   useEffect(() => {
-    if (!form.accountId) return setPosts([]);
+    if (!singleAccountId) return setPosts([]);
     setPostsLoading(true);
     workspaceApi
-      .posts([form.accountId])
+      .posts([singleAccountId])
       .then((d) => setPosts(d.posts))
       .catch(() => setPosts([]))
       .finally(() => setPostsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.accountId]);
+  }, [singleAccountId]);
 
   // Fermeture au clavier
   useEffect(() => {
@@ -199,7 +201,9 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
   // On ne saute pas par-dessus une étape incomplète ; revenir en arrière est toujours possible
   const reachable = (id: StepId) => stepIds.slice(0, stepIds.indexOf(id)).every((x) => stepMissing(x).length === 0);
   const model = RULE_PRESETS.find((m) => m.id === modelId);
-  const accountName = replyAccounts.find((a) => a.id === form.accountId)?.name ?? replyAccounts[0]?.name ?? "Ma Page";
+  const pickedAccounts = replyAccounts.filter((a) => form.accountIds.includes(a.id));
+  const accountName = pickedAccounts[0]?.name ?? replyAccounts[0]?.name ?? "Ma Page";
+  const accountsText = pickedAccounts.length > 1 ? `${pickedAccounts.length} comptes` : accountName;
 
   // Portail : sinon la carte de la page (isolation) emprisonne l'overlay sous l'en-tête
   return createPortal(
@@ -294,24 +298,19 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <Label>Compte</Label>
-                    <Select
-                      className={inputClass}
-                      style={inputStyle}
-                      value={form.accountId ?? ""}
-                      onChange={(e) => {
-                        const accountId = e.target.value || null;
-                        setForm((f) => ({ ...f, accountId, postId: null, postLabel: null }));
-                      }}
-                    >
-                      <option value="">Tous les comptes</option>
-                      {replyAccounts.map((a) => (
-                        <option key={a.id} value={a.id}>{a.name} · {a.platform === "INSTAGRAM" ? "Instagram" : "Facebook"}</option>
-                      ))}
-                    </Select>
+                  <div className={form.accountIds.length > 1 ? "sm:col-span-2" : undefined}>
+                    <Label>Comptes</Label>
+                    <AccountMultiSelect
+                      accounts={replyAccounts}
+                      value={form.accountIds}
+                      label="Comptes concernés par la règle"
+                      onChange={(accountIds) => setForm((f) => ({ ...f, accountIds, ...(accountIds.length === 1 && accountIds[0] === f.accountIds[0] ? {} : { postId: null, postLabel: null }) }))}
+                    />
+                    {form.accountIds.length > 1 && (
+                      <p className="mt-1 text-[11px]" style={{ color: theme.textMuted }}>Pour cibler une publication précise, ne gardez qu'un seul compte.</p>
+                    )}
                   </div>
-                  {form.accountId && (
+                  {singleAccountId && (
                     <div>
                       <Label>Publication (facultatif)</Label>
                       <Select
@@ -385,7 +384,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
                 ) : (
                   <>
                     <KnowledgeField value={form.aiKnowledge ?? ""} onChange={(v) => set("aiKnowledge", v || null)} lang={form.language === "MG" ? "mg" : "fr"} />
-                    <RuleAiPreview accountId={form.accountId ?? replyAccounts[0]?.id ?? null} channel={form.channel} language={form.language} knowledge={form.aiKnowledge} />
+                    <RuleAiPreview accountId={pickedAccounts[0]?.id ?? replyAccounts[0]?.id ?? null} channel={form.channel} language={form.language} knowledge={form.aiKnowledge} />
                   </>
                 )}
 
@@ -462,7 +461,7 @@ export function RuleEditor({ rule, preset, accounts, onClose, onSaved, defaultAc
                 <p className="mb-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: theme.textMuted }}>En résumé</p>
                 <p className="text-[13.5px] leading-relaxed" style={{ color: theme.text }}>
                   Quand {form.channel === "DIRECT" ? "un message privé" : form.channel === "COMMENT" ? "un commentaire" : "un commentaire ou un message"}
-                  {form.accountId ? ` sur ${accountName}` : ""}
+                  {form.accountIds.length ? ` sur ${accountsText}` : ""}
                   {form.matchType === "ANY" ? " n'a pas d'autre réponse" : form.matchType === "EXACT" ? <> est exactement <b>« {keywords.join(" » ou « ") || "…"} »</b></> : <> contient <b>{keywords.length ? keywords.map((k) => `« ${k} »`).join(", ") : "…"}</b></>}
                   {", "}
                   {form.useAi ? "l'IA rédige la réponse" : "le texte fixe est envoyé"}

@@ -49,5 +49,5 @@ export function searchMenus(query: string): MenuSearchHit[] {
       }
     });
   }
-  return hits.slice(0, 8);
+  return hits.slice(0, 10);
 }

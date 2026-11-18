@@ -4,6 +4,14 @@ export type RuleChannel = "ALL" | "COMMENT" | "DIRECT";
 export type RuleLanguage = "ACCOUNT" | "AUTO" | "FR" | "MG";
 export type MatchType = "CONTAINS" | "EXACT" | "ANY";
 
+export interface RuleAccount {
+  id: string;
+  name: string;
+  platform: "FACEBOOK" | "INSTAGRAM" | "TIKTOK";
+  isActive: boolean;
+  syncError: string | null;
+}
+
 export interface AutomationRule {
   id: string;
   name: string;
@@ -20,10 +28,10 @@ export interface AutomationRule {
   priority: number;
   hitCount: number;
   lastTriggeredAt: string | null;
-  accountId: string | null;
+  accountIds: string[]; // comptes visés ; vide = tous les comptes
+  accounts: RuleAccount[]; // les mêmes, résolus (nom, plateforme, état)
   postId: string | null;
   postLabel: string | null;
-  account: { name: string; platform: "FACEBOOK" | "INSTAGRAM" | "TIKTOK"; isActive: boolean; syncError: string | null } | null;
   createdAt: string;
 }
 
@@ -41,7 +49,7 @@ export type RuleInput = Pick<
   | "autoSend"
   | "isActive"
   | "priority"
-  | "accountId"
+  | "accountIds"
   | "postId"
   | "postLabel"
 >;

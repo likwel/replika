@@ -80,7 +80,7 @@ export function MoreSheet({ active, sub, attention, tabIds, onNavigate, onSearch
             <b>{user?.name}</b>
             {expired ? <span className="warn"><AlertTriangle />Abonnement expiré</span> : <span className="ok"><CheckCircle2 />{user?.role === "ADMIN" ? "Administrateur" : "Compte actif"}</span>}
           </span>
-          <button className="btn-soft h-11 rounded-[13px] px-3.5 text-[13.5px] font-semibold" onClick={handleLogout}>
+          <button className="btn btn-sm btn-soft" onClick={handleLogout}>
             <LogOut size={15} className="mr-1.5 inline" />Quitter
           </button>
           <button className="xbtn" onClick={onClose} aria-label="Fermer"><X /></button>

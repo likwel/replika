@@ -2,19 +2,19 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { IconTile } from "@/components/ui/Dash";
 import { PageCard } from "@/components/ui/PageCard";
 import { useOutletContext, useSearchParams } from "react-router-dom";
-import { Check, FlaskConical, Info, LayoutGrid, List, MessageSquareText, Pause, Play, Plus, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
+import { Check, Info, List, MessageSquareText, Pause, Play, Plus, Search, Sparkles, Table2, Trash2, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { theme } from "@/theme";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Modal } from "@/components/ui/Modal";
-import { AutomationHero } from "@/components/automation/AutomationHero";
-import { ReplyChain } from "@/components/automation/ReplyChain";
+import { ReplyChainButton } from "@/components/automation/ReplyChain";
 import { FloatingMenu } from "@/components/ui/FloatingMenu";
 import { RuleEditor } from "@/components/automation/RuleEditor";
 import { RuleRow } from "@/components/automation/RuleRow";
-import { RuleGrid, RuleTable, type RuleSort } from "@/components/automation/RuleViews";
+import { RuleTable, type RuleSort } from "@/components/automation/RuleViews";
 import { RuleTester } from "@/components/automation/RuleTester";
+import { RuleStatsModal } from "@/components/automation/RuleStatsModal";
 import { RULE_PRESETS } from "@/components/automation/rules";
 import { AiAssistantView } from "@/components/automation/AiAssistantView";
 import { AutomationHealth } from "@/components/automation/AutomationHealth";
@@ -39,12 +39,11 @@ const FILTERS: Array<{ id: Filter; label: string; test: (r: AutomationRule) => b
   { id: "paused", label: "En pause", test: (r) => !r.isActive },
 ];
 
-type View = "list" | "table" | "grid";
+type View = "list" | "table";
 
 const VIEWS: Array<{ id: View; label: string; icon: LucideIcon; pageSize: number }> = [
   { id: "list", label: "Liste", icon: List, pageSize: 20 },
   { id: "table", label: "Tableau", icon: Table2, pageSize: 30 },
-  { id: "grid", label: "Grille", icon: LayoutGrid, pageSize: 24 },
 ];
 
 // Ordre d'évaluation : celui de l'API (priorité décroissante, puis ancienneté)
@@ -60,9 +59,9 @@ const VIEW_KEY = "suiteflow:rulesView";
 const readView = (): View => {
   try {
     const v = localStorage.getItem(VIEW_KEY);
-    return v === "table" || v === "grid" ? v : "list";
+    return v === "list" ? "list" : "table"; // tableau par défaut (l'ancienne grille y renvoie aussi)
   } catch {
-    return "list";
+    return "table";
   }
 };
 
@@ -117,7 +116,8 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
   const [sort, setSort] = useState<RuleSort>("priority");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [showTester, setShowTester] = useState(false);
+  const [statsRule, setStatsRule] = useState<AutomationRule | null>(null);
+  const [testRule, setTestRule] = useState<AutomationRule | null>(null); // règle en cours d'essai
   const [showTips, setShowTips] = useState(false);
 
   const setView = (v: View) => {
@@ -150,7 +150,7 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
     const test = FILTERS.find((f) => f.id === filter)!.test;
     const q = fold(query.trim());
     const list = inChannel.filter(
-      (r) => test(r) && (!q || fold(`${r.name} ${r.trigger} ${r.response ?? ""} ${r.account?.name ?? ""}`).includes(q)),
+      (r) => test(r) && (!q || fold(`${r.name} ${r.trigger} ${r.response ?? ""} ${r.accounts.map((a) => a.name).join(" ")}`).includes(q)),
     );
     const by = sorters[sort];
     return by ? [...list].sort(by) : list;
@@ -198,6 +198,18 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
     }
   };
 
+  // Envoi automatique ↔ validation avant envoi (sans ouvrir la règle)
+  const toggleAuto = async (rule: AutomationRule) => {
+    setRules((prev) => prev.map((r) => (r.id === rule.id ? { ...r, autoSend: !r.autoSend } : r)));
+    try {
+      await automationApi.update(rule.id, { autoSend: !rule.autoSend });
+      swal.toast({ title: !rule.autoSend ? "Réponse automatique activée" : "Vous validez désormais les réponses", text: !rule.autoSend ? "Elle part toute seule." : "Elles vous seront proposées dans « À traiter »." });
+    } catch (e) {
+      swal.toast({ variant: "error", title: "Modification impossible", text: (e as Error).message });
+      void loadRules();
+    }
+  };
+
   const remove = async (rule: AutomationRule) => {
     if (!(await swal.confirm({ title: `Supprimer la règle « ${rule.name} » ?`, text: "Les réponses automatiques qu'elle envoyait s'arrêtent immédiatement.", confirmText: "Supprimer", variant: "danger" }))) return;
     await automationApi.remove(rule.id);
@@ -221,7 +233,7 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
         privateReply: rule.privateReply,
         autoSend: rule.autoSend,
         priority: rule.priority,
-        accountId: rule.accountId,
+        accountIds: rule.accountIds,
         postId: rule.postId,
         postLabel: rule.postLabel,
       },
@@ -230,14 +242,14 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
   // Modèle adapté au canal sans réponse, pour tous les comptes
   const createFor = (kind: "COMMENT" | "DIRECT") => {
     const preset = RULE_PRESETS.find((p) => (kind === "DIRECT" ? p.id === "welcome" : p.id === "price"))!;
-    setEditor({ rule: null, preset: { ...preset.rule, accountId: null } });
+    setEditor({ rule: null, preset: { ...preset.rule, accountIds: [] } });
   };
 
   // Éditeur ouvert par un lien : vierge (?creer=1) ou depuis un modèle (?creer=price)
   useEffect(() => {
     if (!deepLink) return;
     const preset = RULE_PRESETS.find((p) => p.id === deepLink);
-    setEditor(preset ? { rule: null, preset: { ...preset.rule, accountId: null } } : { rule: null });
+    setEditor(preset ? { rule: null, preset: { ...preset.rule, accountIds: [] } } : { rule: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -256,6 +268,9 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
 
   const actions = {
     onToggle: toggleActive,
+    onToggleAuto: toggleAuto,
+    onTest: setTestRule,
+    onStats: setStatsRule,
     onEdit: (r: AutomationRule) => setEditor({ rule: r }),
     onDuplicate: duplicate,
     onDelete: remove,
@@ -265,13 +280,7 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
 
   return (
     <div className="flex flex-col gap-5">
-      {/* 1. L'essentiel : est-ce que ça tourne ? (interrupteur, solde, activité du jour) */}
-      <AutomationHero onSynced={loadRules} />
-
-      {/* 2. Le principe, en trois étapes (repliable) */}
-      <ReplyChain rules={rules} onOpenAi={onOpenAi} onCreateRule={() => setEditor({ rule: null })} onCreateDefault={() => createFor("DIRECT")} onEditRule={(r) => setEditor({ rule: r })} />
-
-      {/* 3. Mes règles : la liste est le cœur de la page */}
+      {/* Mes règles : la liste est le cœur de la page ; chaque règle porte ses propres réglages (active, réponse automatique) */}
       <section className="tbl !overflow-visible">
         <div className="hd-line flex flex-wrap items-center gap-3 px-5 pb-3.5 pt-[18px]">
           <IconTile icon={MessageSquareText} tint="#8B5CF6" size="md" />
@@ -282,8 +291,8 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" icon={FlaskConical} onClick={() => setShowTester(true)} title="Voir quelle règle répondrait à un message, sans rien publier">Tester</Button>
-            <TemplatesMenu onPick={(preset) => setEditor({ rule: null, preset: { ...preset, accountId: null } })} />
+            <ReplyChainButton rules={rules} onOpenAi={onOpenAi} onCreateRule={() => setEditor({ rule: null })} onCreateDefault={() => createFor("DIRECT")} onEditRule={(r) => setEditor({ rule: r })} />
+            <TemplatesMenu onPick={(preset) => setEditor({ rule: null, preset: { ...preset, accountIds: [] } })} />
             <Button icon={Plus} onClick={() => setEditor({ rule: null })}>Nouvelle règle</Button>
           </div>
         </div>
@@ -355,11 +364,9 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
             <div className="flex flex-col gap-2.5">
               {view === "table" ? (
                 <RuleTable rules={rulesPage.pageItems} sort={sort} onSort={setSort} selected={selected} onSelect={select} {...actions} />
-              ) : view === "grid" ? (
-                <RuleGrid rules={rulesPage.pageItems} {...actions} />
               ) : (
                 rulesPage.pageItems.map((r) => (
-                  <RuleRow key={r.id} rule={r} onToggle={() => toggleActive(r)} onEdit={() => setEditor({ rule: r })} onDuplicate={() => duplicate(r)} onDelete={() => remove(r)} />
+                  <RuleRow key={r.id} rule={r} onToggle={() => toggleActive(r)} onToggleAuto={() => toggleAuto(r)} onTest={() => setTestRule(r)} onStats={() => setStatsRule(r)} onEdit={() => setEditor({ rule: r })} onDuplicate={() => duplicate(r)} onDelete={() => remove(r)} />
                 ))
               )}
               <Pagination page={rulesPage.page} pageCount={rulesPage.pageCount} onChange={rulesPage.setPage} total={rulesPage.total} pageSize={VIEWS.find((v) => v.id === view)!.pageSize} />
@@ -377,9 +384,10 @@ function RulesView({ onOpenAi, initialCreate, onCreateConsumed, deepLink }: { on
       {editor && (
         <RuleEditor rule={editor.rule} preset={editor.preset} accounts={accounts} onClose={() => setEditor(null)} onSaved={onSaved} />
       )}
-      {showTester && (
-        <Modal title="Tester vos règles" subtitle="Simulez un message reçu : rien n'est publié." onClose={() => setShowTester(false)} footer={<Button icon={X} size="sm" onClick={() => setShowTester(false)}>Fermer</Button>}>
-          <RuleTester accounts={accounts} bare />
+      {statsRule && <RuleStatsModal rule={statsRule} rules={rules} onClose={() => setStatsRule(null)} />}
+      {testRule && (
+        <Modal title={`Tester « ${testRule.name} »`} subtitle="Écrivez un message client : on vous dit si cette règle répond. Rien n'est publié." onClose={() => setTestRule(null)} footer={<Button icon={X} size="sm" onClick={() => setTestRule(null)}>Fermer</Button>}>
+          <RuleTester key={testRule.id} accounts={accounts} rule={testRule} bare />
         </Modal>
       )}
       {showTips && (

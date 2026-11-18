@@ -32,3 +32,6 @@ export const aiTestSchema = z.object({
 
 export type AiAccountInput = z.infer<typeof aiAccountSchema>;
 export type AiTestInput = z.infer<typeof aiTestSchema>;
+
+// Lecture d'un Google Sheet (ou d'un CSV en ligne) pour en tirer le texte des connaissances de l'assistant
+export const aiSheetSchema = z.object({ url: z.string().trim().min(1, "Collez l'adresse du tableur").max(2000) });

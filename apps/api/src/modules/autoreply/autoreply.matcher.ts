@@ -4,7 +4,7 @@ export type IncomingKind = "COMMENT" | "DIRECT";
 
 type MatchableRule = Pick<
   AutomationRule,
-  "id" | "matchType" | "trigger" | "channel" | "accountId" | "postId" | "priority" | "createdAt"
+  "id" | "matchType" | "trigger" | "channel" | "accountIds" | "postId" | "priority" | "createdAt"
 >;
 
 // Minuscules, sans accents, espaces compactés : "Prix ?" et "prix?" deviennent comparables
@@ -48,7 +48,7 @@ export function candidateRules<R extends MatchableRule>(
 ): R[] {
   return rules
     .filter((r) => r.channel === "ALL" || r.channel === ctx.kind)
-    .filter((r) => !r.accountId || r.accountId === ctx.accountId)
+    .filter((r) => r.accountIds.length === 0 || r.accountIds.includes(ctx.accountId))
     .filter((r) => !r.postId || r.postId === ctx.postId)
     .sort((a, b) => b.priority - a.priority || +a.createdAt - +b.createdAt)
     .sort((a, b) => Number(a.matchType === "ANY") - Number(b.matchType === "ANY"));

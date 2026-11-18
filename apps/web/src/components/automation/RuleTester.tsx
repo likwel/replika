@@ -1,24 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Select } from "@/components/ui/Select";
 import { FlaskConical, Loader2, CheckCircle2, CircleSlash } from "lucide-react";
 import { theme } from "@/theme";
 import { CardTitle } from "@/components/ui/Dash";
 import { Button } from "@/components/ui/Button";
 import type { SocialAccount } from "@/lib/account.api";
-import { automationApi, type TestResult } from "@/lib/automation.api";
+import { automationApi, type AutomationRule, type TestResult } from "@/lib/automation.api";
+import { splitKeywords } from "./rules";
 
 const inputStyle = { background: theme.bg, border: `1px solid ${theme.border}`, color: theme.text };
 
 // Simule un message entrant pour vérifier quelle règle répondrait — rien n'est publié
-export function RuleTester({ accounts, bare = false }: { accounts: SocialAccount[]; bare?: boolean }) {
-  const [text, setText] = useState("");
-  const [kind, setKind] = useState<"COMMENT" | "DIRECT">("COMMENT");
-  const [accountId, setAccountId] = useState("");
+// Avec `rule` : essai d'une règle précise, pré-rempli avec son premier mot-clé et lancé tout de suite
+export function RuleTester({ accounts, bare = false, rule }: { accounts: SocialAccount[]; bare?: boolean; rule?: AutomationRule }) {
+  const [text, setText] = useState(rule && rule.matchType !== "ANY" ? splitKeywords(rule.trigger)[0] ?? "" : "");
+  const [kind, setKind] = useState<"COMMENT" | "DIRECT">(rule?.channel === "DIRECT" ? "DIRECT" : "COMMENT");
+  const [accountId, setAccountId] = useState(rule?.accountIds[0] ?? "");
   const [result, setResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const run = async (e: FormEvent) => {
-    e.preventDefault();
+  const run = async (e?: FormEvent) => {
+    e?.preventDefault();
     if (!text.trim()) return;
     setLoading(true);
     try {
@@ -29,6 +31,11 @@ export function RuleTester({ accounts, bare = false }: { accounts: SocialAccount
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (rule && text.trim()) void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className={bare ? "" : "rounded-2xl p-5 card-x"}>
@@ -53,17 +60,17 @@ export function RuleTester({ accounts, bare = false }: { accounts: SocialAccount
             <option value="COMMENT">Commentaire</option>
             <option value="DIRECT">Message privé</option>
           </Select>
-          <Select
+          {(!rule || rule.accountIds.length !== 1) && <Select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
             className="flex-1 min-w-0 rounded-xl px-2.5 py-2 text-xs outline-none"
             style={inputStyle}
           >
-            <option value="">Tous les comptes</option>
-            {accounts.filter((a) => a.platform !== "TIKTOK").map((a) => (
+            {!rule?.accountIds.length && <option value="">Tous les comptes</option>}
+            {accounts.filter((a) => a.platform !== "TIKTOK" && (!rule?.accountIds.length || rule.accountIds.includes(a.id))).map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
-          </Select>
+          </Select>}
         </div>
         <Button type="submit" size="sm" variant="dark" className={`justify-center ${loading ? "[&>svg]:animate-spin" : ""}`} disabled={loading || !text.trim()} icon={loading ? Loader2 : FlaskConical}>Tester</Button>
       </form>
@@ -75,7 +82,7 @@ export function RuleTester({ accounts, bare = false }: { accounts: SocialAccount
               <p className="flex items-start gap-1.5 text-xs font-semibold" style={{ color: theme.goldDark }}>
                 <CheckCircle2 size={14} className="mt-px flex-shrink-0" />
                 <span>
-                  Règle « {result.rule.name} »{" "}
+                  {rule ? (result.rule.id === rule.id ? "Cette règle répond. " : "Une autre règle passe avant : ") : ""}Règle « {result.rule.name} »{" "}
                   <span className="font-normal" style={{ color: theme.textMuted }}>
                     · {result.rule.autoSend ? "envoi automatique" : "à valider"}
                   </span>
@@ -95,7 +102,7 @@ export function RuleTester({ accounts, bare = false }: { accounts: SocialAccount
             </>
           ) : (
             <p className="flex items-center gap-1.5 text-xs" style={{ color: theme.textMuted }}>
-              <CircleSlash size={14} /> Aucune règle ne correspond : l'assistant IA répondra s'il est activé,
+              <CircleSlash size={14} /> {rule ? "Cette règle ne correspond pas à ce message. Aucune autre non plus" : "Aucune règle ne correspond"} : l'assistant IA répondra s'il est activé,
               sinon le message ira dans la file d'attente.
             </p>
           )}

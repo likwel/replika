@@ -1,3 +1,4 @@
+import { accountsLabel } from "@/components/automation/rules";
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { MessageCircle, Mail, Users, Bot, Zap, UserCheck, Clock, BarChart3, Megaphone, ShoppingBag, Wallet, Receipt, Download, Sparkles } from "lucide-react";
@@ -294,7 +295,7 @@ function ReportsView() {
           )}
         </Panel>
 
-        <Panel title="Règles les plus actives" subtitle="Total depuis la création de chaque règle" icon={Megaphone} tint="#f05a1a">
+        <Panel title="Règles les plus actives" subtitle="Total depuis la création" icon={Megaphone} tint="#f05a1a">
           {rules === null ? (
             <div className="flex flex-col gap-2">{[0, 1, 2].map((i) => <div key={i} className="sk h-14 !rounded-[14px]" />)}</div>
           ) : rules.length === 0 ? (
@@ -308,7 +309,7 @@ function ReportsView() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold" style={{ color: theme.text }}>{r.name}</p>
                       <p className="mt-0.5 truncate text-[11.5px]" style={{ color: theme.textMuted }}>
-                        {CHANNEL_LABEL[r.channel]}{r.account ? ` · ${r.account.name}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}
+                        {CHANNEL_LABEL[r.channel]}{r.accounts.length ? ` · ${accountsLabel(r.accounts)}` : ""}{r.lastTriggeredAt ? ` · ${timeAgo(r.lastTriggeredAt)}` : ""}
                       </p>
                     </div>
                     <span className="chip brand flex-shrink-0">{r.hitCount}×</span>

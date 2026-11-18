@@ -18,23 +18,29 @@ const COMING: Array<{ id: string; name: string; vendor: string; mark: string; a:
 const mark = (a: string, b: string): CSSProperties => ({ "--a": a, "--b": b, color: "#fff", fontWeight: 800, fontSize: 16 }) as CSSProperties;
 
 // Choix du modèle IA : le modèle utilisé aujourd'hui est actif ; les autres sont annoncés (« Bientôt ») et désactivés
-export function AiModelPicker({ overview }: { overview: AiOverview }) {
+export function AiModelPicker({ overview, bare = false }: { overview: AiOverview; bare?: boolean }) {
   const ok = overview.configured;
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <IconTile icon={Cpu} tint="#8B5CF6" size="md" />
-        <div className="min-w-0 flex-1 basis-48">
-          <h3 className="text-[16px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>Modèle IA</h3>
-          <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>Le modèle qui rédige les réponses de l'assistant. Choisir un autre modèle arrive bientôt.</p>
+      {(!bare || overview.lastError) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {!bare && (
+            <>
+              <IconTile icon={Cpu} tint="#8B5CF6" size="md" />
+              <div className="min-w-0 flex-1 basis-48">
+                <h3 className="text-[16px] font-bold leading-tight tracking-[-0.01em]" style={{ color: theme.text }}>Modèle IA</h3>
+                <p className="mt-0.5 text-[13px] leading-snug" style={{ color: theme.textMuted }}>Le modèle qui rédige les réponses de l'assistant. Choisir un autre modèle arrive bientôt.</p>
+              </div>
+            </>
+          )}
+          {overview.lastError && (
+            <span className="chip bad !whitespace-normal" title={overview.lastError.message}>
+              <AlertTriangle size={12} />
+              {timeAgo(overview.lastError.at)} : erreur du modèle
+            </span>
+          )}
         </div>
-        {overview.lastError && (
-          <span className="chip bad !whitespace-normal" title={overview.lastError.message}>
-            <AlertTriangle size={12} />
-            {timeAgo(overview.lastError.at)} : erreur du modèle
-          </span>
-        )}
-      </div>
+      )}
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Modèle IA">
         {/* Modèle utilisé aujourd'hui */}

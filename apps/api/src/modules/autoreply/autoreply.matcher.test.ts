@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { firstName, isPlaceholderName, renderReply } from "./autoreply.matcher.js";
+import { candidateRules, firstName, isPlaceholderName, renderReply } from "./autoreply.matcher.js";
 
 // npx tsx --test src/modules/autoreply/autoreply.matcher.test.ts
 
@@ -27,4 +27,27 @@ test("sans nom connu : jamais « Bonjour Utilisateur », la salutation se passe 
   assert.equal(r("{nom}, votre commande est notée"), "Votre commande est notée");
   assert.equal(r("Bonjour {nom} 👋 Écrivez-nous"), "Bonjour 👋 Écrivez-nous");
   assert.equal(r("Un message de {page}"), "Un message de Ma Page");
+});
+
+const rule = (id: string, accountIds: string[], extra: Record<string, unknown> = {}) => ({
+  id, matchType: "CONTAINS" as const, trigger: "prix", channel: "ALL" as const, accountIds, postId: null, priority: 0, createdAt: new Date(2026, 0, 1), ...extra,
+});
+const ids = (rs: Array<{ id: string }>) => rs.map((r) => r.id).sort();
+
+test("règle multi-comptes : seuls les comptes listés la déclenchent", () => {
+  const rules = [rule("r1", ["a", "b"])];
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "a" })), ["r1"]);
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "b" })), ["r1"]);
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "c" })), []);
+});
+
+test("liste vide = tous les comptes", () => {
+  assert.deepEqual(ids(candidateRules([rule("r1", [])], { kind: "DIRECT", accountId: "zzz" })), ["r1"]);
+});
+
+test("publication ciblée : il faut aussi la bonne publication", () => {
+  const rules = [rule("r1", ["a"], { postId: "p1" })];
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "a", postId: "p1" })), ["r1"]);
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "a", postId: "p2" })), []);
+  assert.deepEqual(ids(candidateRules(rules, { kind: "COMMENT", accountId: "b", postId: "p1" })), []);
 });

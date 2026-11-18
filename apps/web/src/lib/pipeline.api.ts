@@ -1,14 +1,27 @@
 import { api } from "./api";
-import type { MetaPlatform } from "./workspace.api";
 
 export type PipelineTrigger = "NEW_COMMENT" | "NEW_MESSAGE" | "NEW_LEAD" | "HOT_LEAD";
 export type LeadStatusValue = "NEW" | "CONTACTED" | "QUALIFIED" | "WON" | "LOST";
+export type LeadIntentValue = "prix" | "commande" | "livraison" | "disponibilite" | "question" | "reclamation" | "compliment" | "autre";
 
 // Aligné sur apps/api/src/modules/pipelines/pipeline.schema.ts : le serveur rejette toute autre forme
 export type PipelineStep =
   | { id: string; type: "MATCH_RULE"; config: { ruleId: string } }
   | { id: string; type: "MIN_SCORE"; config: { min: number } }
+  | { id: string; type: "KEYWORD"; config: { keywords: string; mode: "CONTAINS" | "EXACT" } }
+  | { id: string; type: "CHANNEL"; config: { kind: "COMMENT" | "DIRECT" } }
+  | { id: string; type: "PLATFORM"; config: { platform: "FACEBOOK" | "INSTAGRAM" } }
+  | { id: string; type: "LEAD_STATUS"; config: { statuses: LeadStatusValue[] } }
+  | { id: string; type: "LEAD_INTENT"; config: { intents: LeadIntentValue[] } }
+  | { id: string; type: "LEAD_CONTACT"; config: Record<string, never> }
+  | { id: string; type: "BUSINESS_HOURS"; config: { mode: "INSIDE" | "OUTSIDE"; from: string; to: string } }
   | { id: string; type: "SEND_DM"; config: { text: string } }
+  | { id: string; type: "SEND_PUBLIC_REPLY"; config: { text: string } }
+  | { id: string; type: "SET_LEAD_NOTE"; config: { text: string } }
+  | { id: string; type: "SET_LEAD_VALUE"; config: { value: number } }
+  | { id: string; type: "IGNORE_MESSAGE"; config: Record<string, never> }
+  | { id: string; type: "EMAIL_OWNER"; config: { text: string } }
+  | { id: string; type: "WEBHOOK"; config: { url: string } }
   | { id: string; type: "SET_LEAD_STATUS"; config: { status: LeadStatusValue } }
   | { id: string; type: "ESCALATE"; config: Record<string, never> }
   | { id: string; type: "NOTIFY"; config: { text: string } };
@@ -22,8 +35,7 @@ export interface Pipeline {
   trigger: PipelineTrigger;
   isActive: boolean;
   steps: PipelineStep[];
-  accountId: string | null;
-  account: { id: string; name: string; platform: MetaPlatform | "TIKTOK"; avatarUrl: string | null } | null;
+  accountIds: string[]; // comptes visés ; vide = tous les comptes
   runCount: number;
   lastRunAt: string | null;
   createdAt: string;
@@ -33,7 +45,7 @@ export interface PipelineInput {
   name: string;
   description: string | null;
   trigger: PipelineTrigger;
-  accountId: string | null;
+  accountIds: string[];
   steps: PipelineStep[];
   isActive?: boolean;
 }

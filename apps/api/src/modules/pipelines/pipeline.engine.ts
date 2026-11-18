@@ -1,6 +1,8 @@
 import type { Lead, Prisma, SocialAccount, SocialMessage } from "@prisma/client";
 import { prisma } from "../../config/prisma.js";
 import { graphClient, graphErrorMessage } from "../facebook/graph.client.js";
+import { sendMail } from "../mail/mail.service.js";
+import { assertPublicUrl } from "../schedules/import.fetch.js";
 import { firstName, renderReply } from "../autoreply/autoreply.matcher.js";
 import { appliesTo, checkCondition, isCondition, stepLabel, subjectOf, type ConditionContext, type TraceEntry } from "./pipeline.logic.js";
 import { stepSchema, type PipelineStep } from "./pipeline.schema.js";
@@ -58,6 +60,9 @@ async function runOne(p: PipelineRow, account: SocialAccount, msg: SocialMessage
       text: msg.content,
       kind: msg.kind === "DIRECT" ? "DIRECT" : "COMMENT", // un commentaire de live se traite comme un commentaire
       leadScore: lead?.score ?? null,
+      platform: account.platform,
+      lead: lead ? { status: lead.status, intent: lead.intent, phone: lead.phone, email: lead.email } : null,
+      now: new Date(),
       rules: new Map(rules.map((r) => [r.id, r])),
     };
 
@@ -76,7 +81,7 @@ async function runOne(p: PipelineRow, account: SocialAccount, msg: SocialMessage
         break;
       }
       try {
-        const detail = await doAction(step, account, msg, lead);
+        const detail = await doAction(step, account, msg, lead, p.name);
         trace.push({ stepId: step.id, type: step.type, label, status: "ok", detail });
       } catch (e) {
         trace.push({ stepId: step.id, type: step.type, label, status: "failed", detail: e instanceof Error ? e.message : "Échec" });
@@ -99,7 +104,7 @@ async function runOne(p: PipelineRow, account: SocialAccount, msg: SocialMessage
 }
 
 // Exécute une action ; renvoie un détail lisible pour la trace
-async function doAction(step: PipelineStep, account: SocialAccount, msg: SocialMessage, lead: Lead | null): Promise<string | undefined> {
+async function doAction(step: PipelineStep, account: SocialAccount, msg: SocialMessage, lead: Lead | null, pipelineName: string): Promise<string | undefined> {
   switch (step.type) {
     case "SEND_DM": {
       const text = renderReply(step.config.text, { nom: firstName(msg.authorName), page: account.name });
@@ -123,6 +128,72 @@ async function doAction(step: PipelineStep, account: SocialAccount, msg: SocialM
     case "ESCALATE": {
       await prisma.socialMessage.update({ where: { id: msg.id }, data: { status: "ESCALATED" } });
       return undefined;
+    }
+    case "SEND_PUBLIC_REPLY": {
+      if (msg.kind === "DIRECT") return "Message privé : pas de réponse publique possible";
+      const text = renderReply(step.config.text, { nom: firstName(msg.authorName), page: account.name });
+      try {
+        if (account.platform === "INSTAGRAM") await graphClient.replyToInstagramComment(msg.externalId, text, account.accessToken);
+        else await graphClient.replyToComment(msg.externalId, text, account.accessToken);
+      } catch (e) {
+        throw new Error(`Réponse publique non envoyée : ${graphErrorMessage(e)}`);
+      }
+      return "Réponse publiée";
+    }
+    case "SET_LEAD_NOTE": {
+      if (!lead) return "Aucun lead pour ce message : rien à noter";
+      const note = [lead.note, step.config.text].filter(Boolean).join("\n").slice(-1000);
+      await prisma.lead.update({ where: { id: lead.id }, data: { note } });
+      return undefined;
+    }
+    case "SET_LEAD_VALUE": {
+      if (!lead) return "Aucun lead pour ce message : rien à estimer";
+      await prisma.lead.update({ where: { id: lead.id }, data: { value: step.config.value } });
+      return undefined;
+    }
+    case "IGNORE_MESSAGE": {
+      await prisma.socialMessage.update({ where: { id: msg.id }, data: { status: "IGNORED" } });
+      return undefined;
+    }
+    case "EMAIL_OWNER": {
+      const owner = await prisma.user.findUnique({ where: { id: account.userId }, select: { email: true, name: true } });
+      if (!owner) throw new Error("Propriétaire introuvable");
+      const excerpt = msg.content.replace(/\s+/g, " ").trim().slice(0, 200);
+      const text = `${step.config.text}\n\nCompte : ${account.name}\nDe : ${msg.authorName}\nMessage : ${excerpt}\n\nPipeline « ${pipelineName} » · SuiteFlow`;
+      const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+      const html = `<div style="font-family:Inter,Arial,sans-serif;max-width:480px;color:#111B21"><p style="font-size:15px">${esc(step.config.text)}</p><p style="font-size:13px;color:#54656F">Compte : ${esc(account.name)}<br>De : ${esc(msg.authorName)}<br>Message : ${esc(excerpt)}</p><p style="font-size:12px;color:#54656F">Pipeline « ${esc(pipelineName)} » · SuiteFlow</p></div>`;
+      try {
+        await sendMail(owner.email, `SuiteFlow · ${pipelineName}`, text, html);
+      } catch (e) {
+        throw new Error(`E-mail non envoyé : ${e instanceof Error ? e.message : "échec"}`);
+      }
+      return "E-mail envoyé";
+    }
+    case "WEBHOOK": {
+      // Adresse choisie par l'utilisateur : refusée si elle n'est pas publique (SSRF), sans redirection, durée limitée
+      const url = await assertPublicUrl(step.config.url);
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 8000);
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          redirect: "error",
+          signal: ctl.signal,
+          headers: { "Content-Type": "application/json", "User-Agent": "SuiteFlow-Pipeline/1.0" },
+          body: JSON.stringify({
+            pipeline: pipelineName,
+            account: { id: account.id, name: account.name, platform: account.platform },
+            message: { id: msg.id, kind: msg.kind, author: msg.authorName, text: msg.content },
+            lead: lead ? { id: lead.id, name: lead.name, score: lead.score, status: lead.status, intent: lead.intent, phone: lead.phone, email: lead.email } : null,
+          }),
+        });
+        if (!res.ok) throw new Error(`réponse ${res.status}`);
+      } catch (e) {
+        throw new Error(`Adresse web non jointe : ${e instanceof Error ? e.message : "échec"}`);
+      } finally {
+        clearTimeout(timer);
+      }
+      return "Envoyé";
     }
     case "NOTIFY": {
       await prisma.activityLog.create({

@@ -108,7 +108,7 @@ export function Header({ active, onNavigate, onOpenSettings, onOpenSearch }: Pro
             <kbd className="rounded-md px-1.5 py-px text-[10.5px] font-semibold" style={{ background: "var(--surface-3)", color: theme.textMuted }}>Ctrl K</kbd>
           </button>
           <span className="hidden md:contents lg:hidden">
-            <button className="ibtn" onClick={onOpenSearch} aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)">
+            <button className="ibtn hdr-ctl rounded-xl" onClick={onOpenSearch} aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)">
               <Search size={17} />
             </button>
           </span>
@@ -117,7 +117,7 @@ export function Header({ active, onNavigate, onOpenSettings, onOpenSearch }: Pro
           {can("inbox") && <NotificationBell onNavigate={onNavigate} />}
 
           {/* Aide de la page : icône seule, avec libellé sur grand écran */}
-          <button className="btn-soft inline-flex h-[38px] items-center justify-center gap-2 rounded-xl px-[11px] text-[13px] font-semibold xl:px-3.5" onClick={() => setHelpOpen(true)} aria-label="Comment fonctionne cette page" title="Comment fonctionne cette page">
+          <button className="btn btn-soft hdr-ctl rounded-xl" onClick={() => setHelpOpen(true)} aria-label="Comment fonctionne cette page" title="Comment fonctionne cette page">
             <CircleHelp size={17} />
             <span className="hidden xl:inline">Aide</span>
           </button>
@@ -128,7 +128,7 @@ export function Header({ active, onNavigate, onOpenSettings, onOpenSearch }: Pro
           {can("connections", "write") && (
             <button
               onClick={openAssociate}
-              className="btn-brand inline-flex h-[38px] items-center justify-center gap-2 rounded-xl px-2.5 text-[13px] font-bold lg:px-3.5"
+              className="btn btn-brand hdr-ctl rounded-xl"
               title="Associer un compte"
               aria-label="Associer un compte"
             >
@@ -187,7 +187,7 @@ export function Header({ active, onNavigate, onOpenSettings, onOpenSearch }: Pro
                     className="flex h-10 w-full items-center gap-3 rounded-[11px] px-2.5 text-[13.5px] font-medium transition-colors hover:bg-[var(--surface-3)]"
                     style={{ color: theme.text }}
                   >
-                    <ShieldCheck size={17} style={{ color: "#6366F1" }} /> Administration
+                    <ShieldCheck size={17} /> Administration
                   </button>
                 )}
                 <div className="mx-1 my-1" style={{ borderTop: "1px solid var(--line)" }} />

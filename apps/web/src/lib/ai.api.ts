@@ -65,6 +65,9 @@ export const aiApi = {
     aiContext?: string | null;
     aiInstructions?: string | null;
   }) => api.post<Res<AiReply>>("/ai/test", body).then((r) => r.data),
+
+  // CSV d'un Google Sheet partagé par lien (le serveur le télécharge)
+  importSheet: (url: string) => api.post<Res<{ csv: string }>>("/ai/import-sheet", { url }).then((r) => r.data),
 };
 
 export const INTENT_META: Record<Intent, { label: string; tone: "lead" | "alert" | "muted" | "neutral" }> = {

@@ -11,6 +11,7 @@ import { pollAccounts } from "../autoreply/autoreply.poller.js";
 import { aiProviderName, isAiConfigured } from "../ai/ai.client.js";
 import type { RuleInput, RuleUpdateInput, TestInput } from "./automation.schema.js";
 import { assertFeature } from "../billing/entitlements.js";
+import { attachAccounts } from "./automation.accounts.js";
 
 // Une règle à mots-clés sans mot-clé ne déclencherait jamais
 function assertKeywords(matchType: string | undefined, trigger: string | undefined) {
@@ -26,10 +27,18 @@ function assertResponse(useAi: boolean | undefined, response: string | undefined
   }
 }
 
-async function assertAccountOwned(userId: string, accountId: string | null | undefined) {
-  if (!accountId) return;
-  const acc = await prisma.socialAccount.findFirst({ where: { id: accountId, userId } });
-  if (!acc) throw new AppError("Compte introuvable", 404);
+async function assertAccountsOwned(userId: string, accountIds: string[] | undefined) {
+  const ids = [...new Set(accountIds ?? [])];
+  if (!ids.length) return;
+  const count = await prisma.socialAccount.count({ where: { userId, id: { in: ids } } });
+  if (count !== ids.length) throw new AppError("Compte introuvable", 404);
+}
+
+// Une publication appartient à un seul compte : la cibler impose de ne viser que ce compte
+function assertPostScope(postId: string | null | undefined, accountIds: string[] | undefined) {
+  if (postId && (accountIds?.length ?? 0) !== 1) {
+    throw new AppError("Une règle liée à une publication doit viser un seul compte", 422);
+  }
 }
 
 const startOfToday = () => {
@@ -39,17 +48,19 @@ const startOfToday = () => {
 };
 
 export const automationService = {
-  list: (userId: string) =>
-    prisma.automationRule.findMany({
+  async list(userId: string) {
+    const rules = await prisma.automationRule.findMany({
       where: { userId },
-      include: { account: { select: { name: true, platform: true, isActive: true, syncError: true } } },
       orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
-    }),
+    });
+    return attachAccounts(rules);
+  },
 
   async create(userId: string, data: RuleInput) {
     assertKeywords(data.matchType, data.trigger);
     assertResponse(data.useAi, data.response);
-    await assertAccountOwned(userId, data.accountId);
+    await assertAccountsOwned(userId, data.accountIds);
+    assertPostScope(data.postId, data.accountIds);
     if (data.postId && data.useAi) await assertFeature(userId, "postAiRules");
     return prisma.automationRule.create({ data: { ...data, trigger: data.trigger ?? "", userId } });
   },
@@ -59,8 +70,10 @@ export const automationService = {
     if (!rule) throw new AppError("Règle introuvable", 404);
     assertKeywords(data.matchType ?? rule.matchType, data.trigger ?? rule.trigger);
     assertResponse(data.useAi ?? rule.useAi, data.response ?? rule.response);
-    await assertAccountOwned(userId, data.accountId);
+    await assertAccountsOwned(userId, data.accountIds);
     const postId = data.postId !== undefined ? data.postId : rule.postId;
+    // Seulement si la portée change : une règle ancienne sans compte précis reste modifiable (pause, nom…)
+    if (data.postId !== undefined || data.accountIds !== undefined) assertPostScope(postId, data.accountIds ?? rule.accountIds);
     if (postId && (data.useAi ?? rule.useAi)) await assertFeature(userId, "postAiRules");
     return prisma.automationRule.update({ where: { id }, data });
   },

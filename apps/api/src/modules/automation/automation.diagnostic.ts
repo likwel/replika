@@ -6,6 +6,7 @@ import { tokenInfo } from "../facebook/tokenInfo.js";
 import { AppError } from "../../utils/AppError.js";
 import { aiProviderName, isAiConfigured } from "../ai/ai.client.js";
 import { isPublicAddress } from "../uploads/upload.service.js";
+import { attachAccounts } from "./automation.accounts.js";
 
 // Vérifie, compte par compte, tout ce qui conditionne une réponse automatique réelle
 export type CheckAction = "reconnect" | "activate" | "create_rule" | "enable_ai" | "resume";
@@ -30,7 +31,7 @@ const ago = (d: Date) => {
 };
 
 const appliesTo = (r: AutomationRule, acc: SocialAccount, channel: "COMMENT" | "DIRECT") =>
-  r.isActive && (!r.accountId || r.accountId === acc.id) && (r.channel === "ALL" || r.channel === channel);
+  r.isActive && (r.accountIds.length === 0 || r.accountIds.includes(acc.id)) && (r.channel === "ALL" || r.channel === channel);
 
 // Qui répond sur ce canal : règles (envoi auto ou suggestion) et assistant IA
 function coverage(acc: SocialAccount, rules: AutomationRule[], channel: "COMMENT" | "DIRECT", aiReady: boolean): Check {
@@ -67,7 +68,7 @@ export async function diagnose(userId: string) {
   const [user, accounts, rules] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { autoReplyEnabled: true } }),
     prisma.socialAccount.findMany({ where: { userId, platform: { in: ["FACEBOOK", "INSTAGRAM"] } }, orderBy: { createdAt: "asc" } }),
-    prisma.automationRule.findMany({ where: { userId }, include: { account: { select: { id: true, name: true, isActive: true, syncError: true } } } }),
+    prisma.automationRule.findMany({ where: { userId } }),
   ]);
   const aiReady = isAiConfigured();
   const pollSeconds = env.autoReply.pollSeconds;
@@ -146,9 +147,11 @@ export async function diagnose(userId: string) {
   );
 
   // Règles qui ne peuvent pas fonctionner : leur unique compte est inutilisable
-  const brokenRules = rules
-    .filter((r) => r.isActive && r.account && (!r.account.isActive || /non autoris/i.test(r.account.syncError ?? "")))
-    .map((r) => ({ id: r.id, name: r.name, account: r.account!.name }));
+  const withAccounts = await attachAccounts(rules.filter((r) => r.isActive && r.accountIds.length > 0));
+  const unusable = (a: { isActive: boolean; syncError: string | null }) => !a.isActive || /non autoris/i.test(a.syncError ?? "");
+  const brokenRules = withAccounts
+    .filter((r) => r.accounts.length > 0 && r.accounts.every(unusable))
+    .map((r) => ({ id: r.id, name: r.name, account: r.accounts.map((a) => a.name).join(", ") }));
 
   return {
     autoReplyEnabled: user?.autoReplyEnabled ?? false,

@@ -22,7 +22,7 @@ export function StatCard({ icon, label, value, trend, color, detail, tone }: Pro
     <div className="card-s lift justify-between gap-3.5 p-4">
       <div className="flex items-center gap-2.5">
         <IconTile icon={icon} tint={color} />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium" style={{ color: theme.textMuted }}>{label}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{label}</span>
       </div>
       <div className="flex flex-wrap items-end gap-x-2.5 gap-y-1">
         <p
